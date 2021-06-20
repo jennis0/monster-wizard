@@ -1,0 +1,61 @@
+
+SERYMS
+Seryms are creatures that are connected and share a hive
+ARMOR SERYM
+mind, consuming other living creatures to enable its rapid
+evolution and reproduction. Thanks to the hive mind
+Large monstrosity (serym), neutral evil
+connection, the seryms are able to share their abilities with
+other nearby seryms.
+Armor Class 16 (natural armor)
+It's common to see seryms of various types together,
+Hit Points 52 (7d10 + 14)
+allowing them to quickly change and share the abilities,
+Speed 30 ft.
+creating powerful hordes of monstrosities that can adapt in a
+blink of an eye to surpass an obstacle.
+STR
+DEX
+CON
+INT
+WIS
+CHA
+16 (+3) 14 (+2) 14 (+2) 11 (+0) 12 (+1) 10 (+0)
+SERYM
+Skills Perception +3
+Medium monstrosity (serym), neutral evil
+Senses darkvision 60 ft., passive Perception 13
+Armor Class 12
+Languages Serym (see Hive Mind)
+Hit Points 22 (4d8 + 4)
+Challenge 3 (700 XP)
+Speed 30 ft.
+Armor of the Hive. All seryms within 120 feet of the
+armor serym can't have AC less than 16.
+STR
+DEX
+CON
+INT
+WIS
+CHA
+Hive Mind. All seryms within 100 miles of their
+14 (+2) 15 (+2) 12 (+1) 11 (+0) 12 (+1) 8 (-1)
+queen are in constant communication via a
+telepathic bond. If one serym is aware of a threat,
+Skills Perception +3
+they all are.
+Senses darkvision 60 ft., passive Perception 13
+Languages Serym (see Hive Mind)
+Actions
+Challenge 1/2 (100 XP)
+Multiattack. The serym makes two claw attacks.
+Hive Mind. All seryms within 100 miles of their
+Claw. Melee Weapon Attack: +5 to hit, reach 5 ft.,
+queen are in constant communication via a
+one target. Hit 7 (1d8 + 3) slashing damage.
+telepathic bond. If one serym is aware of a threat,
+they all are.
+Actions
+Multiattack. The serym makes two claw attacks.
+Claw. Melee Weapon Attack: +4 to hit, reach 5 ft.,
+one target. Hit 5 (1d6 + 2) slashing damage.

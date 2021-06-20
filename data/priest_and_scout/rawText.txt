@@ -1,0 +1,109 @@
+
+Nobles wield great authority and influence as members of the upper class, possessing wealth and connections that can
+PREV CHAPTER
+NEXT CHAPTER
+make them as powerful as monarchs and generals. A noble often travels in the company of guards, as well as servants
+who are commoners.
+Chapter 12: Monsters
+The noble's statistics can also be used to represent courtiers who aren't of noble birth.
+Monster Statistics
+Legendary Creatures
+>
+PRIEST
+Spellcasting. The priest is a 5th-level spellcaster. Its spellcasting
+Monster Stat Blocks
+Medium humanoid (any race), any alignment
+ability is Wisdom (spell save DC 13, +5 to hit with spell attacks).
+The priest has the following cleric spells prepared:
+Nonplayer Characters
+>
+Armor Class 13 (chain shirt)
+Cantrips (at will): light, sacred flame, thaumaturgy
+NPC Descriptions
+Hit Points 27 (5d8 + 5)
+1st level (4 slots): cure wounds, guiding bolt, sanctuary
+Speed 30 ft.
+2nd level (3 slots): lesser restoration, spiritual weapon
+STR
+DEX
+CON
+INT
+WIS
+CHA
+3rd level (2 slots): dispel magic, spirit guardians
+10 (+0)
+10 (+0)
+12 (+1)
+13 (+1)
+16 (+3)
+13 (+1)
+Actions
+Mace. Melee Weapon Attack:- +2 to hit, reach 5 ft., one
+Skills Medicine +7, Persuasion +3, Religion +5
+target. Hit: 3 (1d6) bludgeoning damage.
+Senses passive Perception 13
+Languages any two languages
+Challenge 2 (450 XP)
+Divine Eminence. As a bonus action, the priest can expend a spell
+slot to cause its melee weapon attacks to magically deal an
+extra 10 (3d6) radiant damage to a target on a hit. This benefit
+lasts until the end of the turn. If the priest expends a spell slot of
+2nd level or higher, the extra damage increases by 1d6 for each
+level above 1st.
+Priests bring the teachings of their gods to the common folk. They are the spiritual leaders of temples and shrines
+and
+often hold positions of influence in their communities. Evil priests might work openly under a tyrant, or they might be the
+leaders of religious sects hidden in the shadows of good society, overseeing depraved rites.
+A priest typically has one or more acolytes to help with religious ceremonies and other sacred duties.
+SCOUT
+Challenge 1/2 (100 XP)
+Medium humanoid (any race), any alignment
+Keen Hearing and Sight. The scout has advantage on Wisdom
+Armor Class 13 (leather armor)
+(Perception) checks that rely on hearing or sight.
+Hit Points 16 (3d8 + 3)
+Actions
+Speed 30 ft.
+Multiattack. The scout makes two melee attacks or two ranged
+attacks.
+STR
+DEX
+CON
+INT
+WIS
+CHA
+Shortsword. Melee Weapon Attack: +4 to hit, reach 5 ft., one
+11 (+0)
+14 (+2)
+12 (+1)
+11 (+0)
+13 (+1)
+11 (+0)
+target. Hit: 5 (1d6 + 2) piercing damage.
+Longbow. Ranged Weapon Attack: +4 to hit, ranged 150/600 ft.,
+Skills Nature +4, Perception +5, Stealth +6, Survival +5
+one target. Hit: 6 (1d8 + 2) piercing damage.
+Senses passive Perception 15
+Languages any one language (usually Common)
+Scouts are skilled hunters and trackers who offer their services for a fee. Most hunt wild game, but a few work as
+bounty hunters, serve as guides, or provide military reconnaissance.
+SPY
+Medium humanoid (any race), any alignment
+Cunning Action. On each of its turns, the spy can use a bonus
+action to take the Dash, Disengage, or Hide action
+Armor Class 12
+Sneak Attack (1/Turn). The spy deals an extra 7 (2d6) damage
+Hit Points 27 (6d8)
+when it hits a target with a weapon attack and has advantage on
+Speed 30 ft.
+the attack roll, or when the target is within 5 feet of an ally of the
+spy that isn't incapacitated and the spy doesn't have
+disadvantage on the attack roll.
+STR
+DEX
+CON
+INT
+WIS
+CHA
+Actions
+10 (+0) 15 (+2) 10 (+0) 12 (+1) 14 (+2) 16 (+3)

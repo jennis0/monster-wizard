@@ -1,0 +1,109 @@
+
+Artificers
+G
+rtificers unlock the power in technology. For
+thousands of years, civilisation is dominated by
+those who can invent new items to further the
+Artifice Freelancer
+goals of their society. But in a world with dragons
+Medium humanoid (any race), any alignment
+and magic, there is less of a pressing need for
+using what the earth naturally provides. There is
+less need for invention. Or is there? A sect of
+Armor Class 20 (+1 black dragon scale mail, +1 shield
+of missile attraction)
+creators, weavers, designers, tinkerers, and artists says no, that
+Hit Points 78 (12d8 + 24)
+shall not do. There is need for the inventions within the minds
+Speed 30 ft.
+of sentient beings. Not all problems can be solved with magic.
+Artificer Workshops
+STR
+DEX
+CON
+INT
+WIS
+CHA
+14 (+2)
+16 (+3)
+15 (+2)
+16 (+3)
+12 (+1)
+13 (+1)
+Far from an ordinary workshop, an artificer workshop is a
+communal workspace for anyone who studies under the mantle
+Damage Resistances acid; all damage from ranged
+of artifice. Sharing the space with so many other artificers
+weapon attacks
+creates an open, collaborative working environment
+Skills Smith's Tools +5, Tinker's Tools +5
+encouraging of anyone to succeed. It's a space where people
+Senses passive Perception 11
+can work if they prefer the hustle and bustle of people around
+Languages any three languages
+them, to bounce ideas off of, or just to socialise. And,
+Challenge 7 (2,900 XP)
+occasionally, someone will come into an artificer workshop in
+need of someone who can solve for them a particular problem.
+Bandolier. The freelancer carries 10 pieces of
+Once freelancer artificers have been hired on the job, there is
+ammunition for its hunting rifle and 3 of each type of
+nothing that will stop them. Except for lack of funds.
+grenade it can use. It can replenish its hunting rifle
+ammunition after completing a short rest using its
+Interesting Problems
+smith's tools.
+Create a Machine of War
+Shield of Missile Attraction. Whenever a ranged
+weapon attack is made against a target within 10 feet
+Artificers from the workshop have been hired to devise a great
+of the freelancer, the freelancer becomes the target
+machine to lay siege on their patron's enemies. This kind of
+instead.
+patron is usually a king or queen, a warlord, or a noble. Perhaps
+even a dragon in disguise.
+Tinker's Shield. The freelancer's shield is held by a
+mechanical frame and arm attached to its back. The
+Armorer
+freelancer does not require a free hand to benefit from
+Artillerist
+its shield.
+Battle Smith
+Actions
+Bolster Productivity
+Multiattack. The freelancer makes two ranged weapon
+Artificers from the workshop have been hired to build a device
+attacks and can use one of its grenades.
+that will increase the productive yield of an organisation. This
+might be for farmers that work the land of a noble, for miners
+Hunting Rifle. Ranged Weapon Attack: +5 to hit, range
+employed by a dwarven king, or even for something more
+80/240 ft., one target. Hit: 14 (2d10 + 3) piercing
+abstract like increasing the capability of thieves for the thieves'
+damage. The freelancer must spend an action to reload
+guild.
+this weapon after making 5 attacks.
+Fragmentation Grenade. The freelancer throws the
+Alchemist
+grenade at a point it can see within 60 feet of it. Each
+Armorer
+creature within 20 feet of that point must make a DC
+15 Dexterity saving throw, taking 17 (5d6) piercing
+Unlock Forgotten Lore
+damage on a failed save, or half as much on a
+Artificers from the workshop have been hired to venture out
+successful one.
+and uncover dark secrets that others would prefer lay hidden.
+The patron for these expeditions might be someone benign, like
+Smoke Grenade. The freelancer throws the grenade at
+a point it can see within 60 feet of it. The grenade
+a king or queen who doesn't know what they're doing, or
+emits a cloud of smoke that creates a heavily-obscured
+someone more sinister, like a crafty devil attempting to learn
+area in a 20-foot radius. A moderate wind (10 mph)
+the true name of a rival.
+disperses the smoke in 4 rounds, and a strong wind (20
+Alchemist
+mph) disperses it in 1 round.
+Armorer
+5
