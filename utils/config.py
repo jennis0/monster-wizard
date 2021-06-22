@@ -1,9 +1,8 @@
 import configparser
+import argparse
 import os
 
 from typing import Dict
-
-from boto3 import setup_default_session
 
 from utils.aws import setup_aws_config
 
@@ -39,4 +38,18 @@ def get_config(config_path: str) -> configparser.ConfigParser:
     
     return config
 
+def get_argparser() -> argparse.ArgumentParser:
+    '''Creates command line argument parser to control the app'''
 
+    parser = argparse.ArgumentParser(
+        description="Extract 5e statblocks from images and PDFs"
+    )
+    parser.add_argument("targets", type=str, nargs='+', help="Images or PDFs to search for monster statblocks")
+    parser.add_argument("--source", "-s", type=str, help="A source label for the statblocks processed")
+    parser.add_argument("--output", "-o", type=str, help="Output JSON file containing statblocks")
+    parser.add_argument("--cache", "-C", type=str, default=".cache", help="Local cache to store API responses")
+    parser.add_argument("--config", "-c", type=str, default="default.conf", help="Configuration file for controlling parser")
+    parser.add_argument("--logs", "-l", type=str, default=None, help="Optional output log file")
+    parser.add_argument("--debug", action='store_true', default=False, help="Print debug logging")
+    parser.add_argument("--notebook", action='store_true', default=False, help="Turn off logging to stdout for notebook use")
+    return parser

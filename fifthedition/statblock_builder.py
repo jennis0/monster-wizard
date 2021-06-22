@@ -1,7 +1,21 @@
+import configparser
+import logging
+
+from typing import List
+from utils.datatypes import Line, Section, Bound
 
 class StatblockBuilder(object):
 
-    def can_be_continuation(self, current_tags, new_tags):
+    def __init__(self, config: configparser.ConfigParser, logger: logging.Logger):
+        self.config = config
+        self.logger = logger.getChild("builder")
+
+    def can_be_continuation(self, current_tags: List[str], new_tags: List[str]) -> bool:
+        '''Check whether the statblock would make logical sense if we combined the two candidate statblocks 
+        based on their contained parts'''
+
+        
+
         if len(current_tags) == 0:
             return False
 
@@ -10,13 +24,15 @@ class StatblockBuilder(object):
 
         tag_index_mapping = {
             "sb_start":0,
-            "sb_defence_block":1,
-            "sb_array_block":2,
-            "sb_flavour_block":3,
-            "sb_action_block":4,
-            "sb_legendary_action_block":5,
-            "sb_part":5,
-            "sb_part_weak":5
+            "sb_header":1,
+            "sb_defence_block":2,
+            "sb_array_title":3,
+            "sb_array_value":4,
+            "sb_flavour_block":5,
+            "sb_action_block":6,
+            "sb_legendary_action_block":7,
+            "sb_part":7,
+            "sb_part_weak":7
         }
 
         last_tag = max(tag_index_mapping[t] if "sb_part" not in t else 0 for t in current_tags)
@@ -24,140 +40,122 @@ class StatblockBuilder(object):
 
         return next_tag >= last_tag
 
-    def get_bounding_box(self, statblock, wh=False, flat=False):
-        box = {
-            "left":100000,
-            "top":100000,
-            "right":0,
-            "bottom":0
-        }
-
-        for cluster in statblock:
-            if flat:
-                if cluster[1]["left"] < box["left"]:
-                    box["left"] = cluster[1]["left"]
-                if cluster[1]["top"] < box["top"]:
-                    box["top"] = cluster[1]["top"]
-                if cluster[1]["left"] + cluster[1]["width"] > box["right"]:
-                    box["right"] = cluster[1]["left"] + cluster[1]["width"]
-                if cluster[1]["top"] + cluster[1]["height"] > box["bottom"]:
-                    box["bottom"] = cluster[1]["top"] + cluster[1]["height"]
-            else:
-                for line in cluster:
-                    if line[1]["left"] < box["left"]:
-                        box["left"] = line[1]["left"]
-                    if line[1]["top"] < box["top"]:
-                        box["top"] = line[1]["top"]
-                    if line[1]["left"] + line[1]["width"] > box["right"]:
-                        box["right"] = line[1]["left"] + line[1]["width"]
-                    if line[1]["top"] + line[1]["height"] > box["bottom"]:
-                        box["bottom"] = line[1]["top"] + line[1]["height"]
-
-        if not wh:
-            return box
-        else:
-            box["width"] = box["right"] - box["left"]
-            box["height"] = box["bottom"] - box["top"]
-            del box["bottom"]
-            del box["right"]
-            return box
-
-    def merge_statblocks(self, statblocks):
-        boxes = [self.get_bounding_box(s[0]) for s in statblocks]
+    def merge_statblocks(self, statblocks: List[Section]) -> List[Section]:
 
         merges = []
         used = []
         for i in range(len(statblocks)):
             s = statblocks[i]
-            b = boxes[i]
 
-            if "sb_start" not in s[1]:
+            #We want to attach 'to' a start, rather than go both ways
+            if "sb_start" not in s.attributes:
                 for j in range(len(statblocks)):
                     if i == j:
                         continue
 
-                    if b["left"] - boxes[j]["left"] < 100:
+                    if j in used:
                         continue
-                    if not self.can_be_continuation(statblocks[j][1], s[1]):
+
+                    test_block = statblocks[j]
+
+                    #Ignore blocks in the same column
+                    if s.bound.left - test_block.bound.left < 0.1:
                         continue
-                    if abs(b["top"] - boxes[j]["top"]) < 100:
+
+                    #Ignore blocks that don't make logical sense
+                    if not self.can_be_continuation(test_block.attributes, s.attributes):
+                        continue
+
+                    #Check blocks align horizontally
+                    if abs(s.bound.top - test_block.bound.top) < 0.1:
                         start_index = 0
-                        for line in statblocks[i][0][0]:
-                            if line[1]["top"] < statblocks[j][0][0][0][1]["top"] - 20:
+                        
+                        #Ignore any lines that are above the start of the originating block
+                        for line in s.lines:
+                            if line.bound.top - test_block.lines[0].bound.top > 0.02:
                                 start_index += 1
                             else:
                                 break
+                        statblocks[i].lines = statblocks[i].lines[start_index:]
 
-                        statblocks[i][0][0] = statblocks[i][0][0][start_index:]
-
-                        lines = statblocks[j][0] + statblocks[i][0]
-                        parts = statblocks[j][1] + statblocks[i][1]
-                        merges.append((lines, parts))
+                        #Merge
+                        statblocks[j].add_section(statblocks[i])
                         used += [j, i]
+                        merges.append(statblocks[j])
                         break
 
         for i in range(len(statblocks)):
             if i not in used:
                 merges.append(statblocks[i])
 
-        merges.sort(key = lambda x: x[0][0][0][1]["top"])
+        merges.sort(key = lambda x: x.bound.top)
         return merges
+
+    def filter_statblocks(self, sbs: List[Section]) -> List[Section]:
+        '''Remove any statblocks that do not make logical sense'''
         
-
-    def flatten_statblock(self, s):
-        lines = []
-        for cluster in s:
-            lines += cluster
-        return lines
-
-    def filter_statblocks(self, sbs):
         filtered_sb = []
         for sb in sbs:
-            start_index = -1
-            # Look for statblock title and remove statblocks without one
-            for i,line in enumerate(sb):
-                if "statblock_title" in line[2]:
-                    start_index = i
+            block_start = -1
+            for line in sb.lines:
+                if "statblock_title" in line.attributes:
+                    block_start = line.bound.top
                     break
-            if start_index < 0:
+
+            if block_start < 0:
                 continue
-            else:
-                filtered_sb.append(
-                    sb[start_index:]
-                )
+
+            # Remove any lines significantly above the title
+            # Long term - do this after 2nd columnisation to allow for misaligned statblocks
+            filtered_lines = []
+            for line in sb.lines:
+                if line.bound.top - block_start > -0.02:
+                    filtered_lines.append(line)
+
+            filtered_sb.append(Section(filtered_lines, attributes=sb.attributes))
+
         return filtered_sb
 
 
-    def create_statblocks(self, cols):
+    def create_statblocks(self, columns: List[List[Section]]) -> List[Section]:
+        '''Create candidate statblocks from columns of clustered text'''
+        self.logger.debug("Creating statblocks from {} columns of lines".format(len(columns)))
+        for i,col in enumerate(columns):
+            self.logger.debug("\tCol {} of len {}".format(i, len(col)))
+
         statblock_parts = []
-        for col in cols:
-            current_statblock = []
-            current_statblock_parts = []
+
+        for col in columns:
+            current_statblock = Section()
+
             for cluster in col:
-                sb_parts = [a for a in cluster[2] if isinstance(a, str) and a.startswith("sb_")]
+                sb_parts = [a for a in cluster.attributes if a.startswith("sb_")]
+                #No statblock tags, so finish current statblock part, excluding this cluster
                 if len(sb_parts) == 0:
+
                     if len(current_statblock) > 0:
-                        statblock_parts.append((current_statblock, current_statblock_parts))
-                    current_statblock = []
-                    current_statblock_parts = []
+                        statblock_parts.append(current_statblock)
+                    current_statblock = Section()
                     continue
 
-                if self.can_be_continuation(current_statblock_parts, sb_parts):
-                    current_statblock.append(cluster[0])
-                    current_statblock_parts += sb_parts
+                #Otherwise - can this part be added to our existing statblock and still make sense?
+                if self.can_be_continuation(current_statblock.attributes, sb_parts):
+                    current_statblock.add_section(cluster)
+
+                #If not - also start a new statblock
                 else:
                     if len(current_statblock) > 0:
-                        statblock_parts.append((current_statblock, current_statblock_parts))
-                    current_statblock = [cluster[0]]
-                    current_statblock_parts = sb_parts                    
+                        statblock_parts.append(current_statblock)
+                    current_statblock = Section()
+                    current_statblock.add_section(cluster)
 
             if len(current_statblock) > 0:
-                statblock_parts.append((current_statblock, current_statblock_parts))
+                statblock_parts.append(current_statblock)
 
+        #Merge statblocks across columns
         merged_statblocks = self.merge_statblocks(statblock_parts)
-        flat_statblocks = [self.flatten_statblock(s[0]) for s in merged_statblocks]
-        filtered_statblocks = self.filter_statblocks(flat_statblocks)
-        return [[sb, self.get_bounding_box(sb, wh=True, flat=True)] for sb in filtered_statblocks]
-        
+
+        #Remove any flatblocks that are incomplete
+        return self.filter_statblocks(merged_statblocks)        
 
 
