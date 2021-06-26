@@ -1,19 +1,33 @@
 
 import re
-import constants
 import json
+from enum import Enum
 
-class Creature(object):
+import fifthedition.constants as constants
+from utils.datatypes import Line, Section
+
+class Creature():
 
     average_and_dice_match = "([0-9]+)\s*\+?\s*(?:\(?([0-9]+d[0-9]+)\s*(\+\s*[0-9]*)?\)?)?"
 
     def set_size(self, s):
         self.size = s.strip().upper()[0]
 
-    def set_name(self, n):
-        ws = [w.lower() for w in n.split()]
-        ws = [w[0].upper() + w[1:] if w not in ["in", "of", "the", "and", "a", "an"] or i == 0 else w for i,w in enumerate(ws) ]
-        self.name = " ".join(ws)
+    def set_name(self, section: Section) -> str:
+        '''Sets the capitilisation-normalised name of a creature'''
+
+        #Split line into words
+        words = section.get_section_text().split()
+
+        #Normalise capitalisation
+        words = [word.lower() for word in words]
+        for i in range(len(words)):
+            word = words[i]
+            if i == 0 or word not in ["in", "of", "the", "and", "a", "an"]:
+                words[i] = word[0].upper() + word[1:]
+
+        self.name = " ".join(words)
+        return self.name
 
     def set_size_type_alignment(self, line):
         words = [w.lower() for w in line.split()]
@@ -93,7 +107,7 @@ class Creature(object):
                     "ac":int(ac[0]),
                 })
                 if len(ac[1]) > 0:
-                    self.ac[-1]["from"] = [s.strip() for s in ac[1].split(",")]
+                    self.ac[-1]["from"] = [s.strip() for s in ac[1].split(",") if s.strip() != '']
                 if len(ac[2]) > 0:
                     self.ac[-1]["condition"] = ac[2].strip()
             else:
@@ -194,46 +208,26 @@ class Creature(object):
 
         self.skills = parsed_skills
 
-    def _parse_enum_with_pre_post(self, title, text, enum):
+    def _parse_enum_with_pre_post(self, text: str, enum: Enum):
         results = []
         match = re.compile("([\w\s'()]+\w)?(?:^|\s+)({})(?:\s*)([^,]+)?,?".format("|".join(enum)),re.IGNORECASE)
         #if ';' in text:
         texts = text.split(";")
         for t in texts:
             matches = match.findall(t)
-            if len(matches) == 1:
-                if matches[0][0] == '' and matches[0][2] == '':
-                    results.append(matches[0][1].strip())
-                else:
-                    results.append({
-                        title:matches[0][1]
-                    })
-                    if matches[0][0] != '':
-                        results[-1]['preNote'] = matches[0][0].strip()
-                    if matches[0][2] != '':
-                        results[-1]['note'] = matches[0][2].strip()
-            elif len(matches) > 1:
-                fields = {title: [m[1] for m in matches]}
-                if matches[0][0] != '':
-                    fields["preNote"] = matches[0][0].strip()
-                if matches[-1][2] !=  '':
-                    fields["note"] = matches[-1][2].strip()
+            if len(matches) > 0:
+                fields = {
+                    "type": [m[1] for m in matches],
+                    "pre_text": matches[0][0].strip(),
+                    "post_text": matches[0][2].strip()
+                    }
                 results.append(fields)
             elif len(matches) == 0:
                 results.append({
-                    title:[],
-                    "note":t
+                    'type':[],
+                    "pre_text":t,
+                    "post_text":""
                 })
-        # else:
-        #     for r in match.findall(text):
-        #         if r[0] == '' and r[2] == '':
-        #             results.append(r[1].strip())
-        #         else:
-        #             results.append({title:r[1].strip()})
-        #             if r[0] != '':
-        #                 results[-1]['preNote'] = r[0].strip()
-        #             if r[2] != '':
-        #                 results[-1]['note'] = r[2].strip()
         return results
 
     def set_immunities(self, imm_string):

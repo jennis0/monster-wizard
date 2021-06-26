@@ -7,7 +7,8 @@ import cv2
 from configparser import ConfigParser
 from logging import Logger
 
-from utils.datatypes import Line, Section, Bound
+from utils.datatypes import Section
+from utils.drawing import drawBoundingBoxes
 
 from preprocessing.columniser import Columniser
 from preprocessing.clusterer import Clusterer
@@ -15,36 +16,6 @@ from preprocessing.clusterer import Clusterer
 from fifthedition.annotators import LineAnnotator, SectionAnnotator
 from fifthedition.statblock_builder import StatblockBuilder
          
-def drawBoundingBoxes(imageData, boxes: Union[List[Section], List[Line]], color = (0, 120, 0, 120)):
-    """Draw bounding boxes on an image.
-    imageData: image data in numpy array format
-    inferenceResults: inference results array off object (l,t,w,h)
-    colorMap: Bounding box color candidates, list of RGB tuples.
-    """
-    if len(color) != len(boxes):
-        colors = [color for i in range(len(boxes))]
-    else:
-        colors = color
-
-    for res,c in zip(boxes, colors):
-        #rint(res)
-        #res = Line("", "", res, [])
-        imgHeight, imgWidth, _ = imageData.shape
-
-        left = int(res.bound.left * imgWidth)
-        top = int(res.bound.top * imgHeight) 
-        right = int(res.bound.right() * imgWidth)
-        bottom = int(res.bound.bottom() * imgHeight)
-        
-        thick = int((imgHeight + imgWidth) // 900)
-        cv2.rectangle(imageData,(left, top), (right, bottom), c, thick)
-
-    plt.figure(figsize=(20, 20))
-    RGB_img = cv2.cvtColor(imageData, cv2.COLOR_BGR2RGB)
-    plt.imshow(RGB_img, )
-
-
-
 class StatblockExtractor(object):
 
     def __init__(self, config: ConfigParser, logger: Logger):
@@ -60,7 +31,7 @@ class StatblockExtractor(object):
         self.cluster_annotator = SectionAnnotator(config, logger)
         self.statblock_generator = StatblockBuilder(config, logger)
 
-        self.data = {}
+        self.data = None
         self.statblocks = {}
 
         self.line_colour = (120, 0, 0, 120)
@@ -95,7 +66,7 @@ class StatblockExtractor(object):
             loader = self.loaders_by_filetype[ft]
             source = loader.load_data_from_file(filepath)
             self.logger.info("Loaded file {}".format(filepath))
-            self.data[source.name] = source
+            self.data = source
         except Exception as e:
             self.logger.exception(e)
             self.logger.error("Failed to load file {}")
@@ -110,19 +81,19 @@ class StatblockExtractor(object):
 
         draw = draw_lines or draw_columns or draw_statblocks or draw_clusters
 
-        for f in self.data:
-            self.logger.info("Loading {}".format(f))
-            d = self.data[f].pages[0]
+        self.logger.info("Loading {}".format(self.data.name))
+        statblocks = {}
+        for i, page_data in enumerate(self.data.pages):
 
             boxes = []
             colours = []
 
             if draw_lines:
-                boxes += [x for x in d.lines]
-                colours += [self.line_colour for i in range(len(d.lines))]
+                boxes += [x for x in page_data.lines]
+                colours += [self.line_colour for i in range(len(page_data.lines))]
 
-             ### Parse data into sections
-            columns = self.columniser.find_columns(d.lines)
+                ### Parse data into sections
+            columns = self.columniser.find_columns(page_data.lines)
 
             if draw_columns:
                 boxes += [x for x in columns]
@@ -147,16 +118,16 @@ class StatblockExtractor(object):
                 self.cluster_annotator.annotate(col)
 
             ### Generate statblocks from clusters
-            self.statblocks[f] = self.statblock_generator.create_statblocks(clusters)
+            statblocks[i] = self.statblock_generator.create_statblocks(clusters)
 
             if draw_statblocks:
-                boxes += [s for s in self.statblocks[f]]
-                colours += [self.statblock_colour for i in range(len(self.statblocks[f]))]
+                boxes += [s for s in statblocks[i]]
+                colours += [self.statblock_colour for i in range(len(statblocks[i]))]
             
             # ### Recalculate columns within statblocks
             columned_statblocks = []
-            if len(self.statblocks[f]) > 0:
-                for sb in self.statblocks[f]:
+            if len(statblocks) > 0:
+                for sb in statblocks[i]:
                     new_sb = Section()
                     cols = self.columniser.find_columns(sb.lines)
                     for c in cols:
@@ -167,13 +138,10 @@ class StatblockExtractor(object):
                         boxes += [x for x in cols]
                         colours += [self.column_colour for i in range(len(cols))]
 
-            self.statblocks[f] = columned_statblocks
+            statblocks[i] = columned_statblocks
 
-            # for sb in self.statblocks[f]:
-            #     sb[0].append(["", {"left":0, "right":0, "width":0, "height":0}, ["end"]])
-
-            
             if draw:
-                drawBoundingBoxes(self.data[f].images[0], boxes, colours)
+                print(len(self.data.images))
+                drawBoundingBoxes(self.data.images[i], boxes, colours)
 
-        return self.statblocks
+        return statblocks

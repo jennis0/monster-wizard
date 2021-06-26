@@ -24,7 +24,10 @@ class LineAnnotator(object):
         '''Pregenerate regexes used for annotating lines'''
 
         ### Pregenerate Regexes
-        race_type_str = "^({})\s*({})?,?\s*({})?".format("|".join(constants.SIZES), "|".join(constants.CREATURE_TYPES), "|".join(constants.ALIGNMENTS))
+        race_type_str = "^({})\s*({})?,?\s*({})?".format(
+            "|".join(constants.enum_values(constants.SIZES)),
+            "|".join(constants.enum_values(constants.CREATURE_TYPES)), 
+            "|".join(constants.enum_values(constants.ALIGNMENTS)))
         self.race_type_regex =  re.compile(race_type_str, re.IGNORECASE)
 
         signatures_strs = [
@@ -54,6 +57,9 @@ class LineAnnotator(object):
                 ("^Senses\s+", "senses"),
                 ("Proficiency Bonus", "proficiency"),
                 ("Hit Dice", "hitdice"),
+                ("^Actions$", "action_header"),
+                ("^Legendary Actions$", "legendary_header"),
+                ("^Mythic Actions$", "mythic_header")
             ]
         self.signatures = []
         for ss in signatures_strs:
@@ -87,49 +93,55 @@ class LineAnnotator(object):
 
         return lines
 
-
-
-class SectionAnnotator(object):
-
-    defence_fields = [
+class LineAnnotationTypes:
+    defence_annotations = [
         "hp",
         "ac",
         "speed"
     ]
 
-    flavour_fields = [
+    trait_annotations = [
         "languages",
         "saves",
         "skills",
         "challenge",
         "senses",
-        "dam_immunites",
+        "dam_immunities",
         "resistances",
         "vulnerabilities",
-        "con_immunities"
+        "con_immunities",
+        "cr"
     ]
 
-    action_fields = [
+    action_annotations = [
+        "action_header",
         "action_title",
         "melee_attack",
         "ranged_attack",
     ]
 
-    legendary_action_fields = [
+    legendary_annotations = [
         "legendary_action_title",
         "legendary_action_cost",
+        "legendary_header"
     ]
 
-    strong_generic_fields = [
+    mythic_annotations = [
+        "mythic_header"
+    ]
+
+    generic_annotations = [
         "dice_roll",
         "check",
         "recharge",
         "counter",
     ]
 
-    weak_generic_fields = [
+    weak_generic_annotations = [
         "block_title"
     ]
+
+class SectionAnnotator(object):
 
     def __init__(self, config: configparser.ConfigParser, logger: logging.Logger):
         self.config = config
@@ -149,7 +161,7 @@ class SectionAnnotator(object):
             if "race_type_header" in line_annotations:
                 c.attributes.append("sb_header")
 
-            for df in SectionAnnotator.defence_fields:
+            for df in LineAnnotationTypes.defence_annotations:
                 if df in line_annotations:
                     c.attributes.append("sb_defence_block")
                     break
@@ -160,27 +172,27 @@ class SectionAnnotator(object):
             if "array_values" in line_annotations:
                 c.attributes.append("sb_array_value")
 
-            for df in SectionAnnotator.flavour_fields:
+            for df in LineAnnotationTypes.trait_annotations:
                 if df in line_annotations:
                     c.attributes.append("sb_flavour_block")
                     break
 
-            for af in SectionAnnotator.action_fields:
+            for af in LineAnnotationTypes.action_annotations:
                 if af in line_annotations:
                     c.attributes.append("sb_action_block")
                     break
 
-            for lf in SectionAnnotator.legendary_action_fields:
+            for lf in LineAnnotationTypes.legendary_annotations:
                 if lf in line_annotations:
                     c.attributes.append("sb_legendary_action_block")
                     break
 
-            for gf in SectionAnnotator.strong_generic_fields:
+            for gf in LineAnnotationTypes.generic_annotations:
                 if gf in line_annotations:
                     c.attributes.append("sb_part")
 
             num_generic = 0
-            for gf in SectionAnnotator.weak_generic_fields:
+            for gf in LineAnnotationTypes.weak_generic_annotations:
                 if gf in line_annotations:
                     num_generic += 1
             if num_generic > 0.1 * len(c.lines):

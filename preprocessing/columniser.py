@@ -1,5 +1,6 @@
 import configparser
 import logging
+import re
 
 from typing import List
 
@@ -10,7 +11,7 @@ class Columniser(object):
         self.left_offset_leeway = config.get("columniser", "left_leeway", fallback=0.01)
         self.right_offset_leeway = config.get("columniser", "right_leeway", fallback=0.1)
         self.max_vertical_gap = config.get("columniser", "max_vertical_gap", fallback=0.05)
-        self.max_horizontal_gap = config.get("columniser", "max_horizontal_gap", fallback=0.05)
+        self.max_horizontal_gap = config.get("columniser", "max_horizontal_gap", fallback=0.1)
         self.fuzzyness = config.get("columniser", "fuzzyness", fallback=0.01)
 
         self.logger = logger.getChild("columniser")
@@ -116,14 +117,16 @@ class Columniser(object):
         if len(candidates) == 1:
             return candidates
 
+        is_array_value = re.compile("^(\s*[0-9]+\s*|\s*\(\s*[+-][0-9]\s*\)\s*)+$")
+
         merged = []
         to_merge = [candidates[0]]
         for i in range(1, len(candidates)):
             l = candidates[i]
 
             #Hack to avoid merging titles
-            array_title = len(l.text.strip()) == 3
-            array_value = l.text.strip()[0].isnumeric()
+            array_title = len(l.text.strip()) == 3 and l.text.isalpha()
+            array_value = is_array_value.match(l.text.strip()) is not None
 
             #Don't want to merge if line is already wide
             too_wide = l.bound.width > self.max_horizontal_gap
