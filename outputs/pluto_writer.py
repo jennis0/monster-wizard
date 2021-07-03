@@ -69,11 +69,11 @@ class PlutoWriter(WriterInterface):
             data.append(
                 {
                     "title": source.name,
-                    "creatures": [c.to_json() for c in creatures]
+                    "creatures": [self.__convert_creature(c.to_json()) for c in creatures]
                 }
             )
-            if source.author is not None:
-                data[-1]["author"] = source.author
+            if source.authors is not None:
+                data[-1]["authors"] = source.authors
             if source.url is not None:
                 data[-1]["url"] = source.url
 
@@ -90,21 +90,42 @@ class PlutoWriter(WriterInterface):
         new_creature = {}
 
         new_creature["name"] = creature["name"]
-        new_creature["size"] = creature["size"][0].upper()
 
-        if creature["creature_type"]["swarm"]:
-            new_creature["type"] = {
-                "type":creature["creature_type"],
-                "swarmSize":new_creature["size"]
-            }
-        else:
-            new_creature["type"] = creature["creature_type"]["type"]
+        if "size" in creature:
+            new_creature["size"] = creature["size"][0].upper()
 
-        new_creature["alignment"] = self.__convert_alignment(creature["alignment"])
+        if "creature_type" in creature:
+            if creature["creature_type"]["swarm"]:
+                new_creature["type"] = {
+                    "type":creature["creature_type"],
+                    "swarmSize":new_creature["size"]
+                }
+            else:
+                new_creature["type"] = creature["creature_type"]["type"]
 
-        new_creature["ac"] = self.__convert_ac(creature["ac"])
-        new_creature["hp"] = creature["hp"]
-        new_creature["speed"] = self.__convert_speed(creature["speed"])
+        if "alignment" in creature:
+            new_creature["alignment"] = self.__convert_alignment(creature["alignment"])
+
+        if "ac" in creature:
+            new_creature["ac"] = self.__convert_ac(creature["ac"])
+
+        if "hp" in creature:
+            new_creature["hp"] = creature["hp"]
+
+        if "speed" in creature:
+            new_creature["speed"] = self.__convert_speed(creature["speed"])
+
+        return new_creature
+
+    def __format_from_ac_str(self, from_str: str) -> str:
+        '''Handle special cases where ac is not from armour'''
+        if from_str.lower() == "natural armour" or from_str.lower() == "natural armor":
+            return from_str
+        if from_str.lower() == "unarmoured defence" or from_str.lower() == "unarmored defence":
+            return from_str
+        
+        return "{@item " + from_str + "}"
+
 
     def __convert_ac(self, ac : Any) -> Any:
         '''Convert AC schema'''
@@ -114,9 +135,9 @@ class PlutoWriter(WriterInterface):
                 "ac": entry["ac"],
             })
             if len(entry["from"]) > 0:
-                new_ac["from"] = ["{{@item {}}}".format(item) for item in entry["from"]],
+                new_ac[-1]["from"] = [self.__format_from_ac_str(item) for item in entry["from"]]
             if entry["condition"] != '':
-                new_ac["condition"] = entry["condition"]
+                new_ac[-1]["condition"] = entry["condition"]
             
         return new_ac
 

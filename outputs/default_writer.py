@@ -62,10 +62,11 @@ class DefaultWriter(WriterInterface):
             self.logger.error("Output file is a directory. Can't write")
             return False
 
-        with open(filename, 'r') as f:
-            if make_file:
-                data = []
-            else:
+
+        if make_file:
+            data = []
+        else:
+            with open(filename, 'r') as f:
                 data = json.load(f)
 
         written = False

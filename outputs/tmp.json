@@ -1,0 +1,159 @@
+{
+	"name": "New Creature",
+	"size": "M",
+	"type": "aberration",
+	"source": "Homebrew",
+	"alignment": [
+		"N"
+	],
+	"ac": [
+		{
+			"ac": 10,
+			"from": [
+				"{@item vicious antimatter rifle}"
+			],
+			"condition": "Versus Ranged Attacks"
+		}
+	],
+	"hp": {
+		"average": 4,
+		"formula": "1d8"
+	},
+	"speed": {
+		"walk": 30
+	},
+	"str": 10,
+	"dex": 10,
+	"con": 10,
+	"int": 10,
+	"wis": 10,
+	"cha": 10,
+	"passive": 12,
+	"cr": "0",
+	"skill": {
+		"intimidation": "+2",
+		"perception": "+2",
+		"religion": "+4"
+	},
+	"action": [
+		{
+			"name": "Unarmed Strike",
+			"entries": [
+				"{@atk mw,rw} {@hit 2} to hit, reach 5 ft. or range 120/300 ft., one target. {@h}3 ({@damage 1d6}) force damage in melee, or 3 ({@damage 1d6}) slashing damage at range, plus 3 ({@damage 1d6}) fire damage."
+			]
+		},
+		{
+			"name": "A Wisdom Action",
+			"entries": [
+				"Must make a {@dc 16} Wisdom saving throw."
+			]
+		}
+	],
+	"damageTags": [
+		"O",
+		"S",
+		"F"
+	],
+	"miscTags": [
+		"RW",
+		"MW"
+	],
+	"conditionImmune": [
+		{
+			"conditionImmune": [
+				"deafened"
+			],
+			"preNote": "except when not"
+		}
+	],
+	"resist": [
+		{
+			"resist": [
+				"lightning"
+			]
+		},
+		{
+			"resist": [
+				"bludgeoning",
+				"piercing",
+				"slashing"
+			],
+			"note": "except from nonmagical attacks"
+		}
+	],
+	"vulnerable": [
+		"bludgeoning"
+	],
+	"legendaryHeader": [
+		"This is a legendary action intro"
+	],
+	"spellcasting": [
+		{
+			"name": "Spellcasting",
+			"headerEntries": [
+				"Spellcasting trait text the spellcasting"
+			],
+			"footerEntries": [
+				"Further spellcasting trait text"
+			],
+			"constant": [
+				"{@spell alter self}"
+			],
+			"will": [
+				"{@spell alter self}",
+				"{@spell arcane gate}"
+			],
+			"daily": {
+				"1": [
+					"{@spell animate objects}"
+				],
+				"1e": [
+					"{@spell arcane lock}"
+				]
+			},
+			"rest": {
+				"1": [
+					"{@spell animate dead}"
+				]
+			},
+			"weekly": {
+				"1": [
+					"{@spell arcane lock}"
+				]
+			},
+			"spells": {
+				"0": {
+					"spells": [
+						"{@spell guidance}",
+						"{@spell poison spray}"
+					]
+				},
+				"3": {
+					"spells": [
+						"{@spell create food and water}"
+					],
+					"slots": 0
+				}
+			},
+			"type": "spellcasting"
+		}
+	],
+	"trait": [
+		{
+			"name": "Legendary Resistance (3/Day)",
+			"entries": [
+				"If the new creature fails a saving throw, it can choose to succeed instead."
+			]
+		},
+		{
+			"name": "Regeneration (Vampire)",
+			"entries": [
+				"The new creature regains 20 ({@dice 3d8}) hit points at the start of its turn if it has at least 1 hit point and isn't in sunlight or running water. If the new creature takes radiant damage or damage from holy water, this trait doesn't function at the start of the new creature's next turn."
+			]
+		}
+	],
+	"traitTags": [
+		"Legendary Resistances",
+		"Regeneration"
+	]
+}

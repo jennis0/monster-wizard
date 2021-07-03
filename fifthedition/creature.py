@@ -150,9 +150,10 @@ class Creature():
 
         ac_data = []
         for ac in acs:
+            from_list = [s.strip() for s in ac[1].split(",") if s.strip() != '']
             ac_data.append({
                 "ac": int(ac[0]),
-                "from": [s.strip() for s in ac[1].split(",")],
+                "from": from_list,
                 "condition": ac[2].strip()
             })
 
