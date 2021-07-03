@@ -100,7 +100,7 @@ class StatblockExtractor(object):
     def get_loaded_files(self):
         return [list(self.data.keys())]
 
-    def parse(self, filepath: str, output_file: str=None, draw_lines=False, draw_columns=False, draw_statblocks=False, draw_clusters=False, draw_final_columns=False) \
+    def parse(self, filepath: str, output_file: str=None, pages: List[int]=None, draw_lines=False, draw_columns=False, draw_statblocks=False, draw_clusters=False, draw_final_columns=False) \
             -> Tuple[Dict[int, List[Any]], Dict[int, List[Section]]]:
         '''Load data from the file and try to find the statblocks. Use the draw options to show individual parts of the statblock discovery pipeline. Set output file
         to a filename to write using the selected writer.'''
@@ -126,6 +126,8 @@ class StatblockExtractor(object):
         statblocks = {}
         parsed_statblocks = {}
         for i, page_data in enumerate(data.pages):
+            if pages and i not in pages:
+                continue
 
             boxes = []
             colours = []
@@ -161,7 +163,7 @@ class StatblockExtractor(object):
 
             ### Generate statblocks from clusters
             statblocks[i] = self.statblock_generator.create_statblocks(clusters)
-
+            
             if draw_statblocks:
                 boxes += [s for s in statblocks[i]]
                 colours += [self.statblock_colour for i in range(len(statblocks[i]))]
@@ -186,9 +188,9 @@ class StatblockExtractor(object):
                 drawBoundingBoxes(data.images[i], boxes, colours)
 
             # Parse the creatures
-            if len(columned_statblocks) > 0:
+            if len(statblocks[i]) > 0:
                 parsed_statblocks[i] = []
-                for sb in columned_statblocks:
+                for sb in statblocks[i]:
                     parsed_statblocks[i].append(cp.statblock_to_creature(sb))
 
         # Write data to file
@@ -204,3 +206,4 @@ class StatblockExtractor(object):
             self.logger.info("Not writing as no output file specified")
 
         return parsed_statblocks, statblocks
+

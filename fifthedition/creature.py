@@ -102,23 +102,38 @@ class Creature():
         '''Set the race, type, and size of the monster'''
         parts = text.split(",")
 
-        ### Find size by pattern matching
-        size = self.__basic_pattern_match(parts[0], constants.SIZES)
-        if len(size) > 0:
-            self.data["size"] = size[0].lower()
-            self.__validate_part("size")
-
-        ### Find creature type, and whether they are a swarm
-        type = self.__basic_pattern_match(parts[0], constants.CREATURE_TYPES)
-        if len(type) > 0:
-            type = type[0].lower()
+        ### Check for complex swarm case
+        matches = re.findall("({})\s+swarm\s+of\s+({})\s+({})".format(
+            "|".join(constants.enum_values(constants.SIZES)),
+            "|".join(constants.enum_values(constants.SIZES)),
+            "|".join(constants.enum_values(constants.CREATURE_TYPES))
+        ), text, re.IGNORECASE)
+        if len(matches) == 1:
+            self.data["size"] = matches[0][0]
+            self.data["creature_type"] = {
+                "type": matches[0][1],
+                "swarm": True,
+                "swarm_size": matches[0][2]
+            }
         else:
-            type = ''
-        swarm = "swarm" in parts[0]
-        self.data["creature_type"] = {
-            "type": type, "swarm": swarm
-        }
-        self.__validate_part("creature_type")
+            ### Find size by pattern matching
+            size = self.__basic_pattern_match(parts[0], constants.SIZES)
+            if len(size) > 0:
+                self.data["size"] = size[0].lower()
+                self.__validate_part("size")
+
+            ### Find creature type, and whether they are a swarm
+            type = self.__basic_pattern_match(parts[0], constants.CREATURE_TYPES)
+            if len(type) > 0:
+                type = type[0].lower()
+            else:
+                type = ''
+            swarm = "swarm" in parts[0]
+            swarm_size = self.data["size"] if swarm else None
+            self.data["creature_type"] = {
+                "type": type, "swarm": swarm, "swarm_size": swarm_size
+            }
+            self.__validate_part("creature_type")
 
         if len(parts) > 1:
             self.data["alignment"] = ",".join(parts[1:]).strip()
@@ -300,8 +315,6 @@ class Creature():
             line.text,
             re.IGNORECASE
             )
-
-        print(skill_matches, "|".join(constants.enum_values(constants.SKILLS) + ["[a-zA-Z']\s+Tools"]))
 
         skills = []
         for skill in skill_matches:
@@ -568,9 +581,7 @@ class Creature():
             "cr": self.set_cr,
             "proficiency": self.set_proficiency
         }
-
-        #print(section.lines)
-
+        
         current_line = section.lines[0]
         for line in section.lines[1:]:
             if not any(attr in LineAnnotationTypes.trait_annotations for attr in line.attributes):

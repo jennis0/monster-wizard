@@ -14,6 +14,8 @@ class StatblockBuilder(object):
         '''Check whether the statblock would make logical sense if we combined the two candidate statblocks 
         based on their contained parts'''
 
+        current_tags = [t for t in current_tags if t.startswith("sb_")]
+        new_tags = [t for t in new_tags if t.startswith("sb_")]
         
 
         if len(current_tags) == 0:
@@ -41,54 +43,63 @@ class StatblockBuilder(object):
         return next_tag >= last_tag
 
     def merge_statblocks(self, statblocks: List[Section]) -> List[Section]:
-
         merges = []
         used = []
+
         for i in range(len(statblocks)):
             s = statblocks[i]
+            if i in used:
+                continue
 
-            #We want to attach 'to' a start, rather than go both ways
             if "sb_start" not in s.attributes:
-                for j in range(len(statblocks)):
-                    if i == j:
-                        continue
+                continue
 
-                    if j in used:
-                        continue
+            for j in range(i + 1, len(statblocks)):
+                if j <= i or j in used:
+                    continue
 
-                    test_block = statblocks[j]
+                test_block = statblocks[j]
 
-                    #Ignore blocks in the same column
-                    if s.bound.left - test_block.bound.left < 0.1:
-                        continue
+                #Ignore blocks in the same column
+                if abs(s.bound.left - test_block.bound.left) < 0.1:
+                    continue
 
-                    #Ignore blocks that don't make logical sense
-                    if not self.can_be_continuation(test_block.attributes, s.attributes):
-                        continue
+                #Ignore blocks that don't make logical sense
+                if not self.can_be_continuation(s.attributes, test_block.attributes):
+                    continue
 
-                    #Check blocks align horizontally
-                    if abs(s.bound.top - test_block.bound.top) < 0.1:
-                        start_index = 0
-                        
-                        #Ignore any lines that are above the start of the originating block
-                        for line in s.lines:
-                            if line.bound.top - test_block.lines[0].bound.top > 0.02:
-                                start_index += 1
-                            else:
-                                break
-                        statblocks[i].lines = statblocks[i].lines[start_index:]
+                # #Check for page breaks
+                # page_break = "col_end" in s.attributes and "col_start" in test_block.attributes
 
-                        #Merge
-                        statblocks[j].add_section(statblocks[i])
-                        used += [j, i]
-                        merges.append(statblocks[j])
-                        break
+                # #Check blocks align horizontally
+                # if page_break or abs(s.bound.top - test_block.bound.top) < 0.1:
+                #     start_index = 0
+                    
+                #     #Ignore any lines that are above the start of the originating block
+                #     if not page_break:
+                #         for line in s.lines:
+                #             if line.bound.top - test_block.lines[0].bound.top > 0.02:
+                #                 start_index += 1
+                #             else:
+                #                 break
+                #         statblocks[i].lines = statblocks[i].lines[start_index:]
+
+                #Merge#
+                # print(statblocks[i].lines)
+                # print()
+                # print(test_block.lines)
+                # print("=========================2")
+                statblocks[i].add_section(test_block, sort=False)
+                used += [j, i]
+                merges.append(statblocks[i])
+                break
 
         for i in range(len(statblocks)):
             if i not in used:
                 merges.append(statblocks[i])
 
         merges.sort(key = lambda x: x.bound.top)
+
         return merges
 
     def filter_statblocks(self, sbs: List[Section]) -> List[Section]:
@@ -100,21 +111,23 @@ class StatblockBuilder(object):
             for line in sb.lines:
                 if "statblock_title" in line.attributes:
                     block_start = line.bound.top
+                    block_left = line.bound.left
                     break
 
             if block_start < 0:
                 continue
 
-            # Remove any lines significantly above the title
+            # Remove any lines significantly above the title in the same column
             # Long term - do this after 2nd columnisation to allow for misaligned statblocks
             filtered_lines = []
             for line in sb.lines:
-                if line.bound.top - block_start > -0.02:
+                if line.bound.top - block_start > -0.02 or abs(line.bound.left - block_left) > 0.05:
                     filtered_lines.append(line)
 
             filtered_sb.append(Section(filtered_lines, attributes=sb.attributes))
 
         return filtered_sb
+
 
 
     def create_statblocks(self, columns: List[List[Section]]) -> List[Section]:
@@ -126,6 +139,7 @@ class StatblockBuilder(object):
         statblock_parts = []
 
         for col in columns:
+
             current_statblock = Section()
 
             for cluster in col:
@@ -156,6 +170,6 @@ class StatblockBuilder(object):
         merged_statblocks = self.merge_statblocks(statblock_parts)
 
         #Remove any flatblocks that are incomplete
-        return self.filter_statblocks(merged_statblocks)        
+        filtered_statblocks = self.filter_statblocks(merged_statblocks)        
 
-
+        return filtered_statblocks

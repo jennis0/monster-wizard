@@ -38,7 +38,7 @@ class CacheManager(object):
 
     def __write_index(self):
         with open(self.index_path, 'w') as f:
-                self.index = json.dump(self.index, f)
+                json.dump(self.index, f)
 
 
     def check_cache(self, filename: str) -> Optional[str]:

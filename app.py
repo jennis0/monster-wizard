@@ -1,4 +1,5 @@
 
+from data_loaders.pdf_loader import PDFLoader
 from outputs.pluto_writer import PlutoWriter
 from outputs.default_writer import DefaultWriter
 from extractor import StatblockExtractor
@@ -6,6 +7,7 @@ from utils.config import get_config, get_argparser
 from utils.logger import get_logger
 
 from data_loaders.textract_image_loader import TextractImageLoader
+from data_loaders.pdf_loader import PDFLoader
 
 from fifthedition.creature_printer import pretty_format_creature
 from fifthedition.creature_parser import CreatureParser
@@ -40,6 +42,7 @@ se = StatblockExtractor(config, logger)
 
 ### Register Input formats
 se.register_data_loader(TextractImageLoader)
+se.register_data_loader(PDFLoader)
 
 ### Register Output formats and select one
 se.register_output_writer(DefaultWriter, append=True)
@@ -62,9 +65,12 @@ for target in args.targets:
         exit()
     parsed_statblocks, statblocks = results
 
-    num_pages = len(statblocks.keys())
+    print(statblocks)
+
+    num_pages = len(parsed_statblocks.keys())
     logger.info("Found {} page{} of statblocks".format(num_pages, 's' if num_pages > 1 else ''))
     
+    print("\n")
     for page in parsed_statblocks:
         print("Page {}:".format(page))
         for creature in parsed_statblocks[page]:

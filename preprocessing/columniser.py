@@ -118,6 +118,7 @@ class Columniser(object):
             return candidates
 
         is_array_value = re.compile("^(\s*[0-9]+\s*|\s*\(\s*[+-][0-9]\s*\)\s*)+$")
+        is_array_title = re.compile("^\s*(?:(str|wis|con|int|dex|cha)\s*)+$", re.IGNORECASE)
 
         merged = []
         to_merge = [candidates[0]]
@@ -125,12 +126,12 @@ class Columniser(object):
             l = candidates[i]
 
             #Hack to avoid merging titles
-            array_title = len(l.text.strip()) == 3 and l.text.isalpha()
+            array_title = is_array_title.match(l.text.strip()) is not None
             array_value = is_array_value.match(l.text.strip()) is not None
 
             #Don't want to merge if line is already wide
-            too_wide = l.bound.width > self.max_horizontal_gap
-            
+            too_wide = False#l.bound.width > self.max_horizontal_gap
+        
             if not (array_title or array_value) or too_wide:
                 merged.append(Line.merge(to_merge))
                 merged.append(l)

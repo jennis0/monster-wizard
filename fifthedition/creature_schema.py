@@ -28,7 +28,8 @@ HPSchema = Or(AverageDiceSchema, Schema({"special":int}))
 CreatureTypeSchema = Schema(
     {
         "type": Or('any', enum_str(constants.CREATURE_TYPES)),
-        "swarm": bool
+        "swarm": bool,
+        "swarm_size": Or(enum_str(constants.SIZES), None)
     }
 )
 
@@ -52,7 +53,7 @@ SpeedSchema = Schema(
 
 SkillSchema = Schema(
     {
-        "skill": enum_str(constants.SKILLS),
+        "skill": Or(enum_str(constants.SKILLS), lambda x: x.strip().lower().endswith("tools")),
         "mod": int
     }
 )

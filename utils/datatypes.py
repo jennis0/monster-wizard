@@ -103,6 +103,9 @@ class Section:
         self.attributes = attributes if attributes else []
         self.sort_order = sort_order
 
+    def is_empty(self) -> bool:
+        '''Returns true if this section contains no lines'''
+        return len(self.lines) == 0
 
     def add_line(self, line: Line, sort: bool=True, sort_order: Section.SortOrder=None) -> None:
         '''Add a line to the section. Will dynamically update the bound'''

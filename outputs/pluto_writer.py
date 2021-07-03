@@ -25,8 +25,6 @@ class PlutoWriter(WriterInterface):
         self.config = config
         self.append = append
 
-        print(append)
-
     @staticmethod
     def get_long_name() -> str:
         '''Returns a human readable name for this output writer'''
@@ -48,8 +46,6 @@ class PlutoWriter(WriterInterface):
                 ### Apply configuration overrides
         if append is None:
             append = self.append
-
-        print("Append=", append)
 
         ### Ensure we're writing something with the correct filetype
         if not filename.endswith(PlutoWriter.get_filetype()):
@@ -123,14 +119,17 @@ class PlutoWriter(WriterInterface):
         to_remove = [":",";",",","?",".","/","\\", '"', "'"]
         json_title = source.name.replace(" ","_")
         for c in to_remove:
-            json_title = json_title.replace(c, " ")
+            json_title = json_title.replace(c, "_")
 
         ### Create Abbreviation
         stop_words = ["of","and","the","in","a","an"]
+
+        title = source.name.split("\\")[-1]
+
         data = {
             "json": json_title,
             "abbreviation":"".join(w[0].upper() for w in source.name.split() if w not in stop_words),
-            "full": source.name,
+            "full": title,
             "authors": source.authors,
             "url": source.url,
             "convertedBy":"StatblockParser",

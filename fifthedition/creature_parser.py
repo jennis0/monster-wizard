@@ -28,7 +28,6 @@ class CreatureParser():
         # Get first sentence from text to treat as a potential title
         parts = line.text.split('.')
         title = parts[0]
-
         has_colon = title.find(":")
         if has_colon > 0:
             title = title[:has_colon]
@@ -37,7 +36,9 @@ class CreatureParser():
         #Easy case, new block
         new_block = len(current_section.lines) == 0
         #Check first sentence is less than 6 words (not including anything in brackets) and starts with a capital
-        has_title = len(re.sub("\(.+?\)", "", title).split()) < 6  and title[0].isupper() and title.split()[0].lower() not in constants.enum_values(constants.ABILITIES)
+        has_title = len(re.sub("\(.+?\)", "", title).split()) < 6  and title[0].isupper()\
+             and title.split()[0].lower() not in constants.enum_values(constants.ABILITIES)\
+             and len(parts) > 1 and parts[1] != ''
 
 
         #Check if we're in a spell list
@@ -137,6 +138,9 @@ class CreatureParser():
                         current_section = Section()
 
             ### Check if line is simply an action block title
+            if len(line.text) == 0:
+                continue
+
             if line.text[0].isupper() and len(line.text.split()) < 3 and \
                 line.text.split()[0].lower().strip().removesuffix("s") in constants.enum_values(constants.ACTION_TYPES):
                 at = line.text.split()[0].lower().strip().removesuffix("s")
@@ -178,15 +182,16 @@ class CreatureParser():
 
                 if i == len(statblock.lines) - 1:
                     current_section.add_line(line)
-                if "array_title" in line.attributes:
+                if "array_title" in line.attributes or "array_values" in line.attributes:
                     cr.set_defence(current_section)
                     state = CreatureParser.ParserState.abilities
                     current_section = Section()
-                    continue
                 else:
                     current_section.add_line(line)
 
             if state == CreatureParser.ParserState.abilities:
+                if "array_title" in line.attributes:
+                    continue
                 if "array_values" in line.attributes:
                     cr.set_abilities(Section([line]))
                     state = CreatureParser.ParserState.traits    

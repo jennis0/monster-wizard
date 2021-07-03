@@ -198,4 +198,7 @@ class SectionAnnotator(object):
             if num_generic > 0.1 * len(c.lines):
                 c.attributes.append("sb_part_weak")
             
+        #Add some annotations to mark the start and end of each column
+        sections[0].attributes.append("col_start")
+        sections[-1].attributes.append("col_end")
         return sections
