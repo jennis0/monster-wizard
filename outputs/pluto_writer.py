@@ -1,5 +1,8 @@
+from fifthedition import constants
 import os
 import json
+import time
+
 from configparser import ConfigParser
 from logging import Logger
 from typing import Any, List
@@ -7,7 +10,11 @@ from typing import Any, List
 from utils.datatypes import Source
 from outputs.writer_interface import WriterInterface
 
-
+def int_to_add_string(i: int):
+    if i >= 0:
+        return "+{}".format(i)
+    else:
+        return str(i)
 
 class PlutoWriter(WriterInterface):
 
@@ -52,30 +59,38 @@ class PlutoWriter(WriterInterface):
 
         with open(filename, 'r') as f:
             if make_file:
-                data = []
+                data = {
+                    "_meta":{
+                        "sources":[],
+                        "dateAdded":int(time.time()),
+                        "dateLastModified":int(time.time())
+                    }
+                }
             else:
                 data = json.load(f)
 
-        written = False
-        for source_entry in data:
-            if source_entry["title"] == source.name:
-                source_entry["creatures"] += [self.__convert_creature(c) for c in creatures]
-                written = True
-                self.logger.debug("Appending creatures to existing source")
+        source_meta = self.__source_to_meta(source)
+
+        source_exists = False
+        for source_entry in data["_meta"]["sources"]:
+            if source_entry["json"] == source_meta["json"]:
+                source_exists = True
                 break
         
-        if not written:
+        if not source_exists:
             self.logger.debug("Making new source entry")
-            data.append(
-                {
-                    "title": source.name,
-                    "creatures": [self.__convert_creature(c.to_json()) for c in creatures]
-                }
-            )
-            if source.authors is not None:
-                data[-1]["authors"] = source.authors
-            if source.url is not None:
-                data[-1]["url"] = source.url
+            data["_meta"]["sources"].append(source_meta)
+        
+        if "monster" not in data:
+            data["monster"] = []
+
+        for creature in creatures:
+            data["monster"].append(self.__convert_creature(creature.to_json()))
+            data["monster"][-1]["source"] = source_meta["json"]
+
+        if make_file:
+            data["_meta"]["dateAdded"] = int(time.time())
+        data["_meta"]["dateLastModified"] = int(time.time())
 
         with open(filename, 'w') as f:
             json.dump(data, f)
@@ -83,12 +98,36 @@ class PlutoWriter(WriterInterface):
         return True
 
 
+    def __source_to_meta(self, source: Source) -> Any:
+        '''Create the metadata for the file'''
+
+        ### Create JSON-ified title
+        to_remove = [":",";",",","?",".","/","\\", '"', "'"]
+        json_title = source.name.replace(" ","_")
+        for c in to_remove:
+            json_title = json_title.replace(c, " ")
+
+        ### Create Abbreviation
+        stop_words = ["of","and","the","in","a","an"]
+        data = {
+            "json": json_title,
+            "abbreviation":"".join(w[0].upper() for w in source.name.split() if w not in stop_words),
+            "full": source.name,
+            "authors": source.authors,
+            "url": source.url,
+            "convertedBy":"StatblockParser",
+            "version":"1.0",
+            "targetSchema":"1.0.8"
+        }
+
+        return data
 
     def __convert_creature(self, creature: Any) -> Any:
         '''Converts a creature from the default format to the 5e tools format'''
 
         new_creature = {}
 
+        #### Header ####
         new_creature["name"] = creature["name"]
 
         if "size" in creature:
@@ -115,7 +154,69 @@ class PlutoWriter(WriterInterface):
         if "speed" in creature:
             new_creature["speed"] = self.__convert_speed(creature["speed"])
 
+
+        ### Traits ###
+        if "abilities" in creature:
+            for abl in creature["abilities"]:
+                new_creature[abl] = creature["abilities"][abl]
+
+        if "saves" in creature:
+            new_creature["save"] = {}
+            for save in creature["saves"]:
+                new_creature["save"] = int_to_add_string(creature["saves"][save])
+
+        if "skills" in creature:
+            new_creature["skill"] = {}
+            for s in creature["skills"]:
+                new_creature["skill"][s["skill"].lower()] = int_to_add_string(s["mod"])
+
+        if "senses" in creature:
+            new_creature["sense"] = []
+            new_creature["senseTags"] = []
+            for sense in creature["senses"]:
+                new_creature["sense"].append("{} {} {}.".format(sense["sense"].lower(), sense["distance"], sense["measure"]))
+                if sense["sense"] == constants.SENSES.truesight.value:
+                    new_creature["senseTags"].append('U')
+                else:
+                    new_creature["senseTags"].append(sense["sense"][0].upper())
+
+        if "passive" in creature:
+            new_creature["passive"] = creature["passive"]
+
+        if "resistances" in creature:
+            new_creature["resist"] = []
+            for r in creature["resistances"]:
+                new_creature["resist"].append(self.__format_pre_post_value(r, 'resist'))
+
+        if "vulnerabilities" in creature:
+            new_creature["vulnerable"] = []
+            for r in creature["vulnerabilities"]:
+                new_creature["vulnerable"].append(self.__format_pre_post_value(r, 'vulnerable'))
+
+        if "condition_immunities" in creature:
+            new_creature["conditionImmune"] = []
+            for r in creature["condition_immunities"]:
+                new_creature["conditionImmune"].append(self.__format_pre_post_value(r, 'conditionImmune'))
+
+        if "damage_immunities" in creature:
+            new_creature["immune"] = []
+            for r in creature["damage_immunities"]:
+                new_creature["immune"].append(self.__format_pre_post_value(r, 'immune'))
+    
+
+        if "languages" in creature:
+            new_creature["languages"] = creature["languages"]
+
+        
+
+
         return new_creature
+
+
+    ######################################################################################
+    ######################################  Header  ######################################
+    ######################################################################################
+
 
     def __format_from_ac_str(self, from_str: str) -> str:
         '''Handle special cases where ac is not from armour'''
@@ -189,3 +290,17 @@ class PlutoWriter(WriterInterface):
 
         return align
 
+    ######################################################################################
+    ######################################  Header  ######################################
+    ######################################################################################
+
+    def __format_pre_post_value(self, value: Any, title: str) -> Any:
+        new_v = {
+                title:value["type"],
+            }
+        if value["pre_text"].strip() != '':
+            new_v["note"] = value["pre_text"],
+        if value["post_text"].strip() != '':
+            new_v["postNote"] = value["post_text"]
+
+        return new_v

@@ -224,7 +224,6 @@ CreatureSchema = Schema(
         Optional("damage_immunities"):[DamageResistSchema],
         Optional("condition_immunities"):[ConditionResistSchema],
         Optional("vulnerabilities"):[DamageResistSchema],
-        Optional("senses"):[SenseSchema],
         Optional("languages"):[str],
         Optional("cr"):CRSchema,
         Optional("proficiency"):int,
