@@ -88,8 +88,13 @@ class PlutoWriter(WriterInterface):
             data["monster"] = []
 
         for creature in creatures:
-            cr = self.__convert_creature(creature.to_json())
-            cr["source"] = source_meta["json"]
+            try:
+                cr = self.__convert_creature(creature.to_json())
+                cr["source"] = source_meta["json"]
+            except Exception as e:
+                print(e)
+                print(creature.data)
+
 
             ### Replace monsters with the same name from the same source
             replaced=False
