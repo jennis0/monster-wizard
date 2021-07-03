@@ -44,7 +44,7 @@ class StatblockExtractor(object):
         self.statblock_colour = (200, 50, 50, 250) 
 
         self.override_title = config.get("source", "title", fallback=None)
-        self.override_author = config.get("source", "author", fallback=None)
+        self.override_authors = config.get("source", "authors", fallback=None).split(",")
         self.override_url = config.get("source", "url", fallback=None)
 
     def register_data_loader(self, data_loader : DataLoaderInterface) -> bool:
@@ -109,8 +109,8 @@ class StatblockExtractor(object):
         ### Override provided metadata with user input
         if self.override_title:
             data.name = self.override_title
-        if self.override_author:
-            data.author = self.override_author
+        if self.override_authors:
+            data.authors = self.override_authors
         if self.override_url:
             data.url = self.override_url
 

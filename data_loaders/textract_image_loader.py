@@ -49,7 +49,7 @@ class TextractImageLoader(DataLoaderInterface):
             pages=pages,
             images=images,
             num_pages=len(pages),
-            author=None,
+            authors=None,
             url=None
         )
         return source

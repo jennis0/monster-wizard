@@ -46,7 +46,7 @@ def get_argparser() -> argparse.ArgumentParser:
     )
     parser.add_argument("targets", type=str, nargs='+', help="Images or PDFs to search for monster statblocks")
     parser.add_argument("--source", "-s", type=str, help="Override source label for the statblocks processed")
-    parser.add_argument("--author", "-a", type=str, help="Override author label for the processed data")
+    parser.add_argument("--authors", "-a", nargs='*', help="Override author label for the processed data")
     parser.add_argument("--url", "-u", type=str, help="Override URL label for processed data")
     parser.add_argument("--output", "-o", type=str, help="Output JSON file containing statblocks", default=None)
     parser.add_argument("--output-format", '-f', type=str, help="Output format. Options are 'default'", default='default')

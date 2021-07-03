@@ -1,4 +1,5 @@
 
+from outputs.pluto_writer import PlutoWriter
 from outputs.default_writer import DefaultWriter
 from extractor import StatblockExtractor
 from utils.config import get_config, get_argparser
@@ -20,8 +21,11 @@ config = get_config(args.config)
 
 if not config.has_section("source"):
     config.add_section("source")
-if args.author:
-    config.set("source", "author", args.author)
+if args.authors:
+    authors = []
+    for a in args.authors:
+        authors += [v.strip() for v in a.split(",")]
+    config.set("source", "authors", ",".join(authors))
 if args.url:
     config.set("source", "url", args.url)
 if args.source:
@@ -31,16 +35,24 @@ if args.source:
 # Setup logger
 logger = get_logger(args.debug, args.logs)
 
-### Load 
+### Create Extractor
 se = StatblockExtractor(config, logger)
+
+### Register Input formats
 se.register_data_loader(TextractImageLoader)
+
+### Register Output formats and select one
 se.register_output_writer(DefaultWriter, append=True)
-se.select_writer(DefaultWriter.get_name())
+se.register_output_writer(PlutoWriter, append=True)
+if args.output_format:
+    se.select_writer(args.output_format)
+else:
+    se.select_writer(DefaultWriter.get_name())
+
+### Create Creature Parser
 cp = CreatureParser(config, logger)
 
-### Output writer
-
-### Load 
+### Run over provided targets 
 parsed_statblocks = []
 for target in args.targets:
     logger.info("Loading creatures from {}".format(target))

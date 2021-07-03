@@ -14,7 +14,7 @@ from outputs.writer_interface import WriterInterface
 OutSchema = Schema(
     [{
         "title": str,
-        Optional("author"): str,
+        Optional("authors"): [str],
         Optional("url"): str,
         "creatures": [CreatureSchema]
     }]
@@ -84,8 +84,8 @@ class DefaultWriter(WriterInterface):
                     "creatures": [c.to_json() for c in creatures]
                 }
             )
-            if source.author is not None:
-                data[-1]["author"] = source.author
+            if source.authors is not None:
+                data[-1]["authors"] = source.authors
             if source.url is not None:
                 data[-1]["url"] = source.url
 
