@@ -43,6 +43,10 @@ class StatblockExtractor(object):
         self.hierarchy_colour = (0, 0, 120, 120)
         self.statblock_colour = (200, 50, 50, 250) 
 
+        self.override_title = config.get("source", "title", fallback=None)
+        self.override_author = config.get("source", "author", fallback=None)
+        self.override_url = config.get("source", "url", fallback=None)
+
     def register_data_loader(self, data_loader : DataLoaderInterface) -> bool:
         '''Register this data loader. Returns True if registration is successful'''
         supported_file_types = data_loader.get_filetypes()
@@ -101,6 +105,15 @@ class StatblockExtractor(object):
         draw = draw_lines or draw_columns or draw_statblocks or draw_clusters
 
         data = self.load_data(filepath)
+
+        ### Override provided metadata with user input
+        if self.override_title:
+            data.name = self.override_title
+        if self.override_author:
+            data.author = self.override_author
+        if self.override_url:
+            data.url = self.override_url
+
         if not data:
             self.logger.error("Failed to load {}".format(filepath))
             return None

@@ -87,7 +87,7 @@ class DefaultWriter(WriterInterface):
             if source.author is not None:
                 data[-1]["author"] = source.author
             if source.url is not None:
-                data[-1]["url"] = source.author
+                data[-1]["url"] = source.url
 
         with open(filename, 'w') as f:
             json.dump(data, f)

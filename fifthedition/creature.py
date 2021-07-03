@@ -295,16 +295,17 @@ class Creature():
 
 
     def set_skills(self, line: Line):        
-        skill_matches = re.findall("[\s\.,;]({})\s+([+-])\s*([0-9]+)".format(
-            "|".join(constants.enum_values(constants.SKILLS))),
+        skill_matches = re.findall("[\s\.,;]([a-zA-Z'\s]+?)\s+([+-])\s*([0-9]+)",
             line.text,
             re.IGNORECASE
             )
 
+        print(skill_matches, "|".join(constants.enum_values(constants.SKILLS) + ["[a-zA-Z']\s+Tools"]))
+
         skills = []
         for skill in skill_matches:
             skills.append({
-                "skill": skill[0],
+                "skill": skill[0].strip(),
                 "mod": int(skill[2]) * (-1 if skill[1] == '-' else 1)
             })
 

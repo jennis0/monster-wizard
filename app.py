@@ -18,6 +18,16 @@ args = parser.parse_args()
 # Get config file
 config = get_config(args.config)
 
+if not config.has_section("source"):
+    config.add_section("source")
+if args.author:
+    config.set("source", "author", args.author)
+if args.url:
+    config.set("source", "url", args.url)
+if args.source:
+    config.set("source", "title", args.source)
+
+
 # Setup logger
 logger = get_logger(args.debug, args.logs)
 
@@ -27,7 +37,6 @@ se.register_data_loader(TextractImageLoader)
 se.register_output_writer(DefaultWriter, append=True)
 se.select_writer(DefaultWriter.get_name())
 cp = CreatureParser(config, logger)
-
 
 ### Output writer
 
