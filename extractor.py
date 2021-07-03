@@ -44,8 +44,11 @@ class StatblockExtractor(object):
         self.statblock_colour = (200, 50, 50, 250) 
 
         self.override_title = config.get("source", "title", fallback=None)
-        self.override_authors = config.get("source", "authors", fallback=None).split(",")
+        self.override_authors = config.get("source", "authors", fallback=None)
         self.override_url = config.get("source", "url", fallback=None)
+
+        if self.override_authors:
+            self.override_authors = self.override_authors.split(",")
 
     def register_data_loader(self, data_loader : DataLoaderInterface) -> bool:
         '''Register this data loader. Returns True if registration is successful'''

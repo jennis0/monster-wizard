@@ -144,6 +144,7 @@ class SPELL_FREQUENCIES(Enum):
     encounter = auto()
     daily = auto()
     rest = auto()
+    weekly = auto()
     cantrip = auto()
     levelled = auto()
 

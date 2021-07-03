@@ -1,5 +1,6 @@
-from fifthedition import constants
+
 import os
+import re
 import json
 import time
 
@@ -7,6 +8,7 @@ from configparser import ConfigParser
 from logging import Logger
 from typing import Any, List
 
+from fifthedition import constants
 from utils.datatypes import Source
 from outputs.writer_interface import WriterInterface
 
@@ -22,6 +24,8 @@ class PlutoWriter(WriterInterface):
         self.logger = logger.getChild("pluto_out")
         self.config = config
         self.append = append
+
+        print(append)
 
     @staticmethod
     def get_long_name() -> str:
@@ -45,28 +49,31 @@ class PlutoWriter(WriterInterface):
         if append is None:
             append = self.append
 
+        print("Append=", append)
 
         ### Ensure we're writing something with the correct filetype
         if not filename.endswith(PlutoWriter.get_filetype()):
             filename = ".".join(filename.split(".")[:-1]) + PlutoWriter.get_filetype()
 
-        if not os.path.exists(filename) or append:
+        make_file = False
+        if not os.path.exists(filename) or not append:
             make_file = True
             self.logger.debug("Writing new file")
         elif not os.path.isfile(filename):
             self.logger.error("Output file is a directory. Can't write")
             return False
 
-        with open(filename, 'r') as f:
-            if make_file:
-                data = {
-                    "_meta":{
-                        "sources":[],
-                        "dateAdded":int(time.time()),
-                        "dateLastModified":int(time.time())
-                    }
+        data = None
+        if make_file:
+            data = {
+                "_meta":{
+                    "sources":[],
+                    "dateAdded":int(time.time()),
+                    "dateLastModified":int(time.time())
                 }
-            else:
+            }
+        else:
+            with open(filename, 'r') as f:
                 data = json.load(f)
 
         source_meta = self.__source_to_meta(source)
@@ -85,8 +92,19 @@ class PlutoWriter(WriterInterface):
             data["monster"] = []
 
         for creature in creatures:
-            data["monster"].append(self.__convert_creature(creature.to_json()))
-            data["monster"][-1]["source"] = source_meta["json"]
+            cr = self.__convert_creature(creature.to_json())
+            cr["source"] = source_meta["json"]
+
+            ### Replace monsters with the same name from the same source
+            replaced=False
+            for i,monster in enumerate(data["monster"]):
+                if monster["name"] == cr["name"] and monster["source"] == source_meta["json"]:
+                    data["monster"][i] = cr
+                    replaced = True
+                    break
+            
+            if not replaced:
+                data["monster"].append(cr)
 
         if make_file:
             data["_meta"]["dateAdded"] = int(time.time())
@@ -144,15 +162,23 @@ class PlutoWriter(WriterInterface):
 
         if "alignment" in creature:
             new_creature["alignment"] = self.__convert_alignment(creature["alignment"])
+        else:
+            new_creature["alignment"] = ['U']
 
         if "ac" in creature:
             new_creature["ac"] = self.__convert_ac(creature["ac"])
+        else:
+            new_creature["ac"] = {"ac":0}
 
         if "hp" in creature:
             new_creature["hp"] = creature["hp"]
+        else:
+            new_creature["hp"] = {"special":0}
 
         if "speed" in creature:
             new_creature["speed"] = self.__convert_speed(creature["speed"])
+        else:
+            new_creature["speed"] = {}
 
 
         ### Traits ###
@@ -202,13 +228,112 @@ class PlutoWriter(WriterInterface):
             new_creature["immune"] = []
             for r in creature["damage_immunities"]:
                 new_creature["immune"].append(self.__format_pre_post_value(r, 'immune'))
-    
 
         if "languages" in creature:
             new_creature["languages"] = creature["languages"]
 
-        
+        if "cr" in creature:
+            if len(creature["cr"].keys()) == 1:
+                new_creature["cr"] = creature["cr"]["cr"]
+            else:
+                new_creature["cr"] = creature["cr"]
 
+        #### Features ###
+        if "features" in creature:
+            new_creature["trait"] = []
+            for feature in creature["features"]:
+                new_creature["trait"].append(
+                    {
+                        "name":feature["title"],
+                        "entries":[self.__format_text(feature["text"])]
+                    }
+                )
+
+        if "spellcasting" in creature:
+            new_creature["spellcasting"] = []
+            for feature in creature["spellcasting"]:
+                new_feat = {
+                    "name": feature["title"],
+                    "headerEntries": [feature["text"]],
+                    "ability":feature["mod"],
+                    "type":"spellcasting"
+                }
+                if "post_text" in feature:
+                    new_feat["footerEntries"] = [feature["post_text"]]
+
+                levelled_spells = {}
+                for level in feature["levels"]:
+                    spell_list = ["{@spell "+ spell + "}" for spell in level["spells"]]
+                    freq = level["frequency"]
+                    
+                    if freq in ["constant", "will"]:
+                        new_feat[freq] = spell_list
+
+                    if freq in ["daily", "rest", "weekly"]:
+                        title = "{}{}".format(level["slots"] if "slots" in level else 1, "e" if "each" in level and level["each"] else '')
+                        new_feat[freq] = {
+                            title: spell_list
+                        }
+
+                    elif freq == "levelled":
+                        if level["level"] == "cantrip":
+                            levelled_spells['0'] = {
+                                "spells": spell_list
+                            }
+                        else:
+                            levelled_spells[level["level"]] = {
+                                "spells": spell_list,
+                                "slots": level["slots"] if "slots" in level else 0
+                            }
+                if len(levelled_spells.keys()) > 0:
+                    new_feat["spells"] = levelled_spells
+                new_creature["spellcasting"].append(new_feat)
+
+
+
+        ### Actions ###
+        if "action" in creature:
+            new_creature["action"] = []
+            for action in creature["action"]:
+                new_creature["action"].append(
+                    {
+                        "name": action["title"],
+                        "entries": [self.__format_text(action["text"])]
+                    }
+                )
+
+        ### Legendary Actions ###
+        if "legendary" in creature:
+            new_creature["legendary"] = []
+            for legendary in creature["legendary"]:
+                new_creature["legendary"].append(
+                    {
+                        "name": legendary["title"],
+                        "entries": [self.__format_text(legendary["text"])]
+                    }
+                )
+
+        ### Bonus Actions ###
+        if "bonus" in creature:
+            new_creature["bonus"] = []
+            for bonus in creature["bonus"]:
+                new_creature["bonus"].append(
+                    {
+                        "name": bonus["title"],
+                        "entries": [self.__format_text(bonus["text"])]
+                    }
+                )
+
+        ### Lair Actions ###
+        if "lair" in creature:
+            new_creature["lair"] = []
+            for lair in creature["lair"]:
+                new_creature["lair"].append(
+                    {
+                        "name": lair["title"],
+                        "entries": [self.__format_text(lair["text"])]
+                    }
+                )
 
         return new_creature
 
@@ -291,10 +416,11 @@ class PlutoWriter(WriterInterface):
         return align
 
     ######################################################################################
-    ######################################  Header  ######################################
+    ####################################  Features  ######################################
     ######################################################################################
 
     def __format_pre_post_value(self, value: Any, title: str) -> Any:
+        # if value["pre_text"].strip() != '' or value["post_text"].strip() != '':
         new_v = {
                 title:value["type"],
             }
@@ -302,5 +428,33 @@ class PlutoWriter(WriterInterface):
             new_v["note"] = value["pre_text"],
         if value["post_text"].strip() != '':
             new_v["postNote"] = value["post_text"]
+        # else:
+        #     return value[]
 
         return new_v
+
+    def __replace_damage(self, text):
+        return re.sub("\s*([0-9]+\s)?(\()?((?:[+-]?\s*[0-9]+d[0-9]+\s*)+(?:[+-]?\s*[0-9]+)?)(\)?\s+)(({})\s+damage)".format("|".join(constants.enum_values(constants.DAMAGE_TYPES))),
+            " \g<1>\g<2>{@damage \g<3>}\g<4>\g<5>", text, flags=re.IGNORECASE)
+
+    def __replace_dcs(self, text):
+        return re.sub("\s+(dc)\s*([0-9]+)([()\s,])".format("|".join(constants.enum_values(constants.ABILITIES))), " {@dc \g<2>}\g<3>", text, flags=re.IGNORECASE)
+
+    def __replace_hit(self, text):
+        return re.sub("\s([+-]?[0-9]+)\s*to\s*hit", " {@hit \g<1>} to hit", text, flags=re.IGNORECASE)
+
+    def __replace_rolls(self, text):
+        return re.sub("(?<!damage\s)([0-9]+d[0-9]+)\s*([+-]\s*[0-9]+)?\s*([^}])", " {@dice \g<1>\g<2>} \g<3>", text)
+
+    def __format_text(self, text: str) -> str:
+
+        text = self.__replace_hit(text)
+        text = re.sub("Melee\s*or\s*Ranged\s*Weapon\s*Attack", "{@atk mw,rw}", text, re.IGNORECASE)
+        text = re.sub("Melee\s*Weapon\s*Attack:", "{@atk mw}", text, re.IGNORECASE)
+        text = re.sub("Ranged\s*Weapon\s*Attack:", "{@atk rw}", text, re.IGNORECASE)
+        text = self.__replace_damage(text)
+        text = re.sub("(?:Hit: )([0-9]+)\s", "{@h}\g<1> ", text, flags=re.IGNORECASE)
+        text = self.__replace_dcs(text)
+        text = self.__replace_rolls(text)
+        
+        return text
