@@ -26,6 +26,11 @@ class TextractImageLoader(DataLoaderInterface):
         self.cache = CacheManager(self.logger, config.get("default", "cache"), 'textract')
 
     @staticmethod
+    def get_name() -> str:
+        '''Returns a human readable name for this parser'''
+        return "Textract Loader"
+
+    @staticmethod
     def get_filetypes() -> List[str]:
         '''Returns list of file types accepted by this data loader'''
         return ["jpg", "png", "webp"]
@@ -43,7 +48,9 @@ class TextractImageLoader(DataLoaderInterface):
             name=filepath.split(os.pathsep)[-1],
             pages=pages,
             images=images,
-            num_pages=len(pages)
+            num_pages=len(pages),
+            author=None,
+            url=None
         )
         return source
         

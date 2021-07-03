@@ -1,10 +1,27 @@
+from numpy import ceil
+from fifthedition.creature_schema import ActionSchema
 from fifthedition import constants
-from re import M
-from typing import List
+from typing import List, Dict
+import ansiwrap
 
-from cv2 import data
-from numpy import fix
-from fifthedition.creature_2 import Creature2 as Creature
+from fifthedition.creature import Creature
+
+def to_fixed_width(width: int, indent: int, strs: List[str]) -> List[str]:
+    indent = " "*indent    
+    break_new_lines = []
+    for line in strs:
+        break_new_lines += line.split("\n")
+
+    new_lines = []
+    for line in break_new_lines:
+        if line == "":
+            new_lines.append("")
+            continue
+        new_lines += ansiwrap.wrap(line, width=width, initial_indent="", subsequent_indent=indent, 
+            break_long_words=False, drop_whitespace=True, break_on_hyphens=False, expand_tabs=True)
+        if line[-1] == "\n":
+            new_lines.append("")
+    return new_lines
 
 def format_type_alignment(creature: Creature) -> str:
     type_str = ""
@@ -33,8 +50,10 @@ def format_name(creature: Creature) -> str:
 def format_hp(creature: Creature) -> str:
     if "formula" in creature.data["hp"]:
         return "{average} ({formula})".format(**creature.data["hp"])
-    else:
+    elif "average" in creature.data["hp"]:
         return "{average}".format(**creature.data["hp"])
+    else:
+        return "{special}".format(**creature.data["hp"])
 
 def format_ac(creature: Creature) -> str:
     ac_strs = []
@@ -72,7 +91,7 @@ def format_abilities(creature: Creature) -> str:
     abs_str = []
     for k in {"str", "dex", "con", "int", "wis", "cha"}:
         abs_str.append("{:2d} ({:2s})".format(abs[k], mods[k]))
-    return  "\t".join(abs_str)
+    return  "   " + " ".join(abs_str)
 
 def format_saves(creature: Creature) -> str:
     saves = creature.data["saves"]
@@ -147,9 +166,7 @@ def format_cr(width: int, formats: List[str], creature: Creature) -> str:
 
 
 def format_header(width: int, formats: List[str], creature: Creature) -> str:
-        text = [
-"{big_break}\n\
-{bold}{name}{plain}\n\
+        text = ["{bold}{name}{plain}\n\
 {italics}{type}{plain}\n\
 {small_break}".format(**formats, name=format_name(creature), type=format_type_alignment(creature))
         ]
@@ -165,74 +182,182 @@ def format_header(width: int, formats: List[str], creature: Creature) -> str:
 
         text.append("{small_break}".format(**formats))
 
-        return "\n".join(text)
+        return "\n".join(to_fixed_width(width, 4, text))
 
 
 def format_traits(width: int, formats: List[str], creature: Creature) -> str:
     
-    trait_str = []
+    trait_strs = []
     if "skills" in creature.data:
-        trait_str.append("{bold}Skills{plain} {skills}".format(**formats, skills=format_skills(creature)))
+        trait_strs.append("{bold}Skills{plain} {skills}".format(**formats, skills=format_skills(creature)))
 
     if "saves" in creature.data:
-        trait_str.append("{bold}Saving Throws{plain} {saves}".format(**formats, saves=format_saves(creature)))
+        trait_strs.append("{bold}Saving Throws{plain} {saves}".format(**formats, saves=format_saves(creature)))
     #if "skills",
     if "resistances" in creature.data:
-        trait_str.append("{bold}Damage Resistances{plain} {res}".format(
+        trait_strs.append("{bold}Damage Resistances{plain} {res}".format(
             **formats, 
             res=format_resistances(creature, "resistances")
             )
         )
     if "damage_immunities" in creature.data:
-        trait_str.append("{bold}Damage Immunities{plain} {res}".format(
+        trait_strs.append("{bold}Damage Immunities{plain} {res}".format(
             **formats, 
             res=format_resistances(creature, "damage_immunities")
             )
         )
     if "condition_immunities" in creature.data:
-        trait_str.append("{bold}Condition Immunities{plain} {res}".format(
+        trait_strs.append("{bold}Condition Immunities{plain} {res}".format(
             **formats, 
             res=format_resistances(creature, "condition_immunities")
             )
         )
     if "vulnerabilities" in creature.data:
-        trait_str.append("{bold}Damage Vulnerabilities{plain} {res}".format(
+        trait_strs.append("{bold}Damage Vulnerabilities{plain} {res}".format(
             **formats, 
             res=format_resistances(creature, "vulnerabilities")
             )
         )
     if "senses" in creature.data:
-        trait_str.append("{bold}Senses{plain} {senses}".format(**formats, senses=format_senses(creature)))
+        trait_strs.append("{bold}Senses{plain} {senses}".format(**formats, senses=format_senses(creature)))
 
     if "languages" in creature.data:
-        trait_str.append("{bold}Languages{plain} {lang}".format(**formats, lang=format_languages(creature)))
+        trait_strs.append("{bold}Languages{plain} {lang}".format(**formats, lang=format_languages(creature)))
 
     if "cr" in creature.data:
-        trait_str.append("{bold}Challenge{plain} {cr}".format(**formats, cr=format_cr(width, formats, creature)))
+        trait_strs.append("{bold}Challenge{plain} {cr}".format(**formats, cr=format_cr(width, formats, creature)))
 
-    fixed_width_trait_strs = []
-    for t in trait_str:
-        while len(t) > width:
-            parts = t.split()
-            first_line_parts = []
-            for i, p in enumerate(parts):
-                first_line = " ".join(first_line_parts)
-                if len(first_line) + len(p) + 1 > width:
-                    fixed_width_trait_strs.append(first_line)
-                    first_line_parts = []
-                    t = " "*4 + " ".join(parts[i:])
-                    break
-                first_line_parts.append(p)
-        fixed_width_trait_strs.append(t)
+    trait_strs = to_fixed_width(width, 4, trait_strs)
 
-    return "\n".join(fixed_width_trait_strs)
+    return "\n".join(trait_strs)
 
+def format_features(width: int, formats: Dict[str, str], creature: Creature) -> str:
+    lines = []
 
+    ### Handle normal features
+
+    if "features" not in creature.data and "spellcasting" not in creature.data:
+        return ""
+
+    if "features" in creature.data:
+        for feature in creature.data["features"]:
+            lines.append("{bold}{title}.{plain} {text}".format(**formats, **feature))
+            lines.append("")
+
+    if "spellcasting" not in creature.data:
+        return "\n".join(to_fixed_width(width, 0, lines))
+
+    ### Handle Spellcasting features
+
+    spellcast_proper_titles = {
+        "cantrip": "Cantrip",
+        "will":"At will",
+        "daily":"day",
+        "rest":"rest",
+        "weekly":"week",
+        "levelled":"",
+        "constant":"Constant",
+        '1':"1st level",
+        '2':"2nd level",
+        '3':"3rd level",
+        '4':"4th level",
+        '5':"5th level",
+        '6':"6th level",
+        '7':"7th level",
+        '8':"8th level",
+        '9':"9th level"
+    }
+
+    for s in creature.data["spellcasting"]:
+        lines.append("{bold}{title}.{plain} {text}".format(**formats, **s))
+        lines.append("")
+        for freq in ["will", "constant"]:
+            for level in s["levels"]:
+                if level["frequency"] == freq:
+                    freq_long = spellcast_proper_titles[level["frequency"]]
+                    formatted_spells = ", ".join(level["spells"])
+                    lines.append("{freq_long}: {italics}{format_spells}{plain}".format(**formats, 
+                        freq_long=freq_long, 
+                        format_spells=formatted_spells))
+
+        for freq in ["daily","rest","weekly"]:
+            for level in s["levels"]:
+                if level["frequency"] == freq:
+                    freq_long = spellcast_proper_titles[level["frequency"]]
+                    if "slots" in level:
+                        freq_long = "{}/".format(level["slots"]) + freq_long
+                    if "each" in level and level["each"]:
+                        freq_long += " each"
+                    formatted_spells = ", ".join(level["spells"])
+                    lines.append("{freq_long}: {italics}{format_spells}{plain}".format(**formats, 
+                        freq_long=freq_long, 
+                        format_spells=formatted_spells))
+
+        for level in s["levels"]:
+            if level["frequency"] == 'levelled':
+                formatted_spells = ", ".join(level["spells"])
+                if level["level"] == "cantrip":
+                    freq_long = "Cantrips (at will)"
+                else:
+                    freq_long = "{lev} ({slots} slots{each})".format(
+                        lev=spellcast_proper_titles[level["level"]],
+                        slots=level["slots"] if "slots" in level else "?",
+                        each=" each" if "each" in level and level["each"] else ""
+                    )
+                lines.append("{freq_long}: {italics}{format_spells}{plain}".format(**formats, 
+                    freq_long=freq_long, 
+                    format_spells=formatted_spells))
+        if "post_text" in s:
+            lines.append(s["post_text"] + "\n")
+        else:
+            lines.append("")
+
+    return "\n".join(to_fixed_width(width, 0, lines))
+
+def _action_group_to_text(formats: Dict[str, str], action_type: str, actions: List[Dict], creature: Creature):
+
+    action_type_names = {
+        "action": "Actions",
+        "bonus": "Bonus Actions",
+        "free": "Free Actions",
+        "reaction": "Reactions",
+        "legendary": "Legendary Actions",
+        "mythic": "Mythic Actions"
+    }
+
+    lines = []
+    lines.append("{bold}{type}{plain}".format(**formats, type=action_type_names[action_type]))
+
+    if action_type == "legendary":
+        lines.append(creature.data["legendary_block"] + "\n")
+    else:
+        lines.append("")
+    
+    for action in actions:
+        lines.append(
+            "{bold}{title}{plain}. {text}".format(**formats, **action)
+        )
+        lines.append("")
+
+    lines.append(formats["small_break"])
+    return lines
+
+def format_actions(width: int, formats: Dict[str, str], creature: Creature):
+    lines = []
+
+    for at in constants.ACTION_TYPES:
+        if at.name in creature.data:
+            lines += _action_group_to_text(formats, at.name, creature.data[at.name], creature)
+
+    #Ignore last line as it's an unnecessary break
+    return "\n".join(to_fixed_width(width, 0, lines[:-1]))
 
 ################# Main Function ##########################
 
 def pretty_format_creature(creature: Creature) -> str:
-    width = 75
+    width = 55
+    columns = True
+    separator = 2
 
     formats = {
         "bold":'\033[1m',
@@ -247,7 +372,7 @@ def pretty_format_creature(creature: Creature) -> str:
 
     if "abilities" in creature.data:
         text +=\
-"{bold}  STR     DEX     CON     INT     WIS     CHA{plain}\n\
+"{bold}     STR     DEX     CON     INT     WIS     CHA{plain}\n\
 {abilities}\n\
 {small_break}\n".format(
         **formats,
@@ -256,10 +381,47 @@ def pretty_format_creature(creature: Creature) -> str:
 
     text +=\
 "{traits}\n\
-{small_break}\n\
-{big_break}\n".format(
+{small_break}\n".format(
         **formats,
         traits = format_traits(width, formats, creature)
     )
+
+    text +=\
+"{features}\n\
+{small_break}\n".format(
+        **formats,
+        features = format_features(width, formats, creature)
+    )
+
+    text +=\
+"{actions}\n".format(
+        **formats,
+        actions = format_actions(width, formats, creature)
+    )
+
+    lines = text.split("\n")
+    if len(lines) > 40 and columns:
+        lines_per_col = int(ceil(len(lines) / 2))
+        sep = " " * separator
+        new_lines = ["="*(2*width+separator)]
+
+        for i in range(lines_per_col):
+            j = i + lines_per_col
+            l1 = lines[i].rstrip()
+            if ansiwrap.ansilen(l1) < width:
+                l1 += " "*(width-ansiwrap.ansilen(l1))
+            if ansiwrap.ansilen(lines) > j:
+                l2 = lines[j].strip()
+                if len(l2) < width:
+                    l2 += " "*(width-ansiwrap.ansilen(l2))
+                new_line = "{l1}{s}{l2}".format(l1=l1, s=sep, l2=l2)
+            else:
+                new_line = l1 + sep + " "*width
+            new_lines.append(new_line)
+
+        new_lines.append(new_lines[0])
+        text = "\n".join(new_lines)
+    else:
+        text = "="*width + "\n" + text + "="*width
 
     return text

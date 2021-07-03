@@ -23,6 +23,8 @@ AverageDiceSchema = Schema(
     }
 )
 
+HPSchema = Or(AverageDiceSchema, Schema({"special":int}))
+
 CreatureTypeSchema = Schema(
     {
         "type": Or('any', enum_str(constants.CREATURE_TYPES)),
@@ -154,7 +156,7 @@ ActionSchema = Schema(
     {
         "title":str,
         "text":str,
-        "type": Or("action", "legendary", "mythic", "bonus", "lair", "reaction"),
+        "type": enum_str(constants.ACTION_TYPES),
         Optional("attack"): AttackSchema,
         Optional("effect"): EffectSchema,
         Optional("cost"): int,
@@ -167,6 +169,7 @@ SpellLevelSchema = Schema(
     {
         "frequency": enum_str(constants.SPELL_FREQUENCIES),
         "spells": [str],
+        Optional("level"): Or('cantrip','1','2','3','4','5','6','7','8','9'),
         Optional("each"): bool,
         Optional("slots"): int
     }
@@ -174,13 +177,12 @@ SpellLevelSchema = Schema(
 
 SpellcastingSchema = Schema(
     {
+        "title": str,
         "mod": enum_str(constants.SHORT_ABILITIES),
-        "save":int,
         "text":str,
-        "post_text":str,
-        "levels": {
-            enum_str(constants.SPELL_FREQUENCIES): SpellLevelSchema
-        }
+        "levels": [SpellLevelSchema],
+        Optional("save"):int,
+        Optional("post_text"):str
     }
 )
 
@@ -192,7 +194,7 @@ CreatureSchema = Schema(
         "creature_type": CreatureTypeSchema,
         "alignment":str,
         "ac": [ACSchema],
-        "hp": AverageDiceSchema,
+        "hp": HPSchema,
         "speed": [SpeedSchema],
 
         ### Abilities
@@ -232,13 +234,15 @@ CreatureSchema = Schema(
         Optional("spellcasting"): [SpellcastingSchema],
 
         ### Actions
-        Optional("actions"): [ActionSchema],
-
-        ### Bonus Actions
+        Optional("action"): [ActionSchema],
         Optional("bonus"): [ActionSchema],
+        Optional("legendary"): [ActionSchema],
+        Optional("mythic"): [ActionSchema],
+        Optional("reaction"): [ActionSchema],
+        Optional("lair"): [ActionSchema],
 
-        ### Legendary Actions
-        Optional("legendary"): [ActionSchema]
+        #Descriptive block for legendary actions
+        Optional("legendary_block"): str
 
     }
 )

@@ -1,13 +1,12 @@
-from typing import List, Union
+from fifthedition.creature_schema import CreatureSchema
 from preprocessing.columniser import Columniser
 from data_loaders.data_loader_interface import DataLoaderInterface
-import matplotlib.pyplot as plt
-import cv2
 
 from configparser import ConfigParser
 from logging import Logger
+from typing import Tuple, Union, Dict, List, Any
 
-from utils.datatypes import Section
+from utils.datatypes import Section, Source
 from utils.drawing import drawBoundingBoxes
 
 from preprocessing.columniser import Columniser
@@ -15,6 +14,9 @@ from preprocessing.clusterer import Clusterer
 
 from fifthedition.annotators import LineAnnotator, SectionAnnotator
 from fifthedition.statblock_builder import StatblockBuilder
+from fifthedition.creature_parser import CreatureParser
+
+from outputs.writer_interface import WriterInterface
          
 class StatblockExtractor(object):
 
@@ -24,6 +26,8 @@ class StatblockExtractor(object):
         self.logger = logger
 
         self.loaders_by_filetype = {}
+        self.writers_by_name = {}
+        self.writer = ''
 
         self.columniser = Columniser(config, logger)
         self.line_annotator = LineAnnotator(config, logger)
@@ -54,36 +58,58 @@ class StatblockExtractor(object):
             self.loaders_by_filetype[ft] = dl
         return True
 
-    def load_data(self, filepath: str) -> bool:
-        '''Attempt to load the file in the pass path. Returns true if data is loaded'''
+    def register_output_writer(self, writer: WriterInterface, **kwargs) -> bool:
+        '''Registers an output writer. Passes kwargs through to the writer'''
+        self.writers_by_name[writer.get_name()] = writer(self.config, self.logger, **kwargs)
+
+    def select_writer(self, writer: str) -> bool:
+        '''Select an output writer, returns True if successful'''
+        if writer not in self.writers_by_name:
+            self.logger.error("No Output Writer named {} registered".format(writer))
+            return False
+
+        self.writer = writer
+
+    def load_data(self, filepath: str) -> Union[Source, None]:
+        '''Attempt to load the file in the pass path. Returns the data if loaded'''
         ft = filepath.split(".")[-1]
 
         if ft not in self.loaders_by_filetype:
             self.logger.error("No data loader implemented for filetype '{}'. Failed to load {}".format(ft, filepath))
-            return False
+            return None
 
         try:
             loader = self.loaders_by_filetype[ft]
             source = loader.load_data_from_file(filepath)
             self.logger.info("Loaded file {}".format(filepath))
-            self.data = source
+            data = source
         except Exception as e:
             self.logger.exception(e)
             self.logger.error("Failed to load file {}")
-            return False
+            return None
 
-        return True
+        return data
 
     def get_loaded_files(self):
         return [list(self.data.keys())]
 
-    def parse(self, draw_lines=False, draw_columns=False, draw_statblocks=False, draw_clusters=False, draw_final_columns=False):
+    def parse(self, filepath: str, output_file: str=None, draw_lines=False, draw_columns=False, draw_statblocks=False, draw_clusters=False, draw_final_columns=False) \
+            -> Tuple[Dict[int, List[Any]], Dict[int, List[Section]]]:
+        '''Load data from the file and try to find the statblocks. Use the draw options to show individual parts of the statblock discovery pipeline. Set output file
+        to a filename to write using the selected writer.'''
 
         draw = draw_lines or draw_columns or draw_statblocks or draw_clusters
 
-        self.logger.info("Loading {}".format(self.data.name))
+        data = self.load_data(filepath)
+        if not data:
+            self.logger.error("Failed to load {}".format(filepath))
+            return None
+        cp = CreatureParser(self.config, self.logger)
+
+        self.logger.info("Loading {}".format(data.name))
         statblocks = {}
-        for i, page_data in enumerate(self.data.pages):
+        parsed_statblocks = {}
+        for i, page_data in enumerate(data.pages):
 
             boxes = []
             colours = []
@@ -141,7 +167,24 @@ class StatblockExtractor(object):
             statblocks[i] = columned_statblocks
 
             if draw:
-                print(len(self.data.images))
-                drawBoundingBoxes(self.data.images[i], boxes, colours)
+                drawBoundingBoxes(data.images[i], boxes, colours)
 
-        return statblocks
+            # Parse the creatures
+            if len(columned_statblocks) > 0:
+                parsed_statblocks[i] = []
+                for sb in columned_statblocks:
+                    parsed_statblocks[i].append(cp.statblock_to_creature(sb))
+
+        # Write data to file
+        if output_file is not None:
+            self.logger.info("Writing to file {}".format(output_file))
+            creatures = []
+            for page in parsed_statblocks:
+                creatures += parsed_statblocks[page]
+
+            writer = self.writers_by_name[self.writer]
+            writer.write(output_file, data, creatures)
+        else:
+            self.logger.info("Not writing as no output file specified")
+
+        return parsed_statblocks, statblocks

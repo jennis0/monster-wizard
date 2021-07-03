@@ -114,7 +114,7 @@ class SKILLS(Enum):
     nature = auto()
     perception = auto()
     performance = auto()
-    persuation = auto()
+    persuasion = auto()
     religion = auto()
     sleight_of_hand = auto()
     stealth = auto()
@@ -142,7 +142,7 @@ class TIME_MEASURES(Enum):
 class SPELL_FREQUENCIES(Enum):
     will = auto()
     encounter = auto()
-    day = auto()
+    daily = auto()
     rest = auto()
     cantrip = auto()
     levelled = auto()
@@ -150,10 +150,11 @@ class SPELL_FREQUENCIES(Enum):
 class ACTION_TYPES(Enum):
     action = auto()
     bonus = auto()
-    legendary = auto()
-    mythic = auto()
     reaction = auto()
     free = auto()
+    legendary = auto()
+    mythic = auto()
+
 
 class ALIGNMENTS(Enum):
     lawful = auto()

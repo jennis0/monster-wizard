@@ -1,9 +1,10 @@
 from configparser import ConfigParser
 from logging import Logger
+import re
 
 from utils.datatypes import Section, Line
 from fifthedition import constants
-from fifthedition.creature_2 import Creature2
+from fifthedition.creature import Creature
 from fifthedition.annotators import LineAnnotationTypes
 
 from enum import IntEnum
@@ -23,13 +24,95 @@ class CreatureParser():
         self.logger = logger.getChild("parser")
 
 
-    def statblock_to_creature(self, statblock: Section) -> Creature2:
+    def __update_feature_block(self, creature: Creature, current_section : Section, line: Line, is_end=False):
+        # Get first sentence from text to treat as a potential title
+        parts = line.text.split('.')
+        title = parts[0]
 
-        cr = Creature2(self.config, self.logger)
+        has_colon = title.find(":")
+        if has_colon > 0:
+            title = title[:has_colon]
+
+        ### Conditions for starting a new block
+        #Easy case, new block
+        new_block = len(current_section.lines) == 0
+        #Check first sentence is less than 6 words (not including anything in brackets) and starts with a capital
+        has_title = len(re.sub("\(.+?\)", "", title).split()) < 6  and title[0].isupper() and title.split()[0].lower() not in constants.enum_values(constants.ABILITIES)
+
+
+        #Check if we're in a spell list
+        spell_list = False
+        if len(current_section.lines) > 0 and "spellcasting" in current_section.lines[0].text.lower():
+            if re.match("(at will|rest|daily|cantrip|1st|2nd|3rd|[4-9]th)", line.text, re.IGNORECASE):
+                spell_list = True
+
+        #Does the line finish early (aka end of paragraph). Ignore this for spell blocks
+        #is_short = len(current_section.lines) > 0 and (line.bound.width < current_section.bound.width * 0.8) and not spell_list
+        #print(line.text, spell_list, new_block, has_title, is_end)
+
+        #Check if we're at the start of a new feature
+        if not spell_list and (new_block or has_title or is_end):
+            if len(current_section.lines) > 0:
+                creature.add_feature(current_section)
+                current_section = Section()
+            current_section = Section([line])
+        else:
+            current_section.add_line(line)
+            # if is_short:
+            #     creature.add_feature(current_section)
+            #     current_section = Section()
+
+        return current_section
+
+
+    def __update_action_block(self, creature: Creature, current_section: Section, line: Line, 
+                                    action_type: constants.ACTION_TYPES, handled_action_block: bool):
+
+        parts = line.text.split('.')
+        title = parts[0]
+
+        has_colon = title.find(":")
+        if has_colon > 0:
+            title = title[:has_colon]
+
+        ### Conditions for starting a new block
+        #Easy case, new block
+        new_block = len(current_section.lines) == 0 
+        #Check first sentence is less than 6 words (not including anything in brackets) and starts with a capital
+        has_title = len(re.sub("\(.+?\)", "", title).split()) < 6  and title[0].isupper() and title.split()[0].lower() not in constants.enum_values(constants.ABILITIES)
+
+        #Is the start of an attack
+        is_attack_start = "melee_attack" in line.attributes or "ranged_attack" in line.attributes
+
+        #Handle a rare case where actions contain a table
+        is_table = len(line.text) > 0 and line.text[0].isnumeric()
+
+        #Check if we're at the start of a new feature
+        if not is_table and (new_block or has_title or is_attack_start):
+            if len(current_section.lines) > 0:
+                if handled_action_block or action_type != constants.ACTION_TYPES.legendary:
+                    creature.add_action(current_section, action_type)
+                else:
+                    creature.add_legendary_block(current_section)
+                    handled_action_block = True
+                current_section = Section()
+        else:
+            if is_table:
+                current_section.lines[-1].text += "\n"
+        
+        current_section.add_line(line)
+
+        return current_section, handled_action_block
+
+
+    def statblock_to_creature(self, statblock: Section) -> Creature:
+
+        cr = Creature(self.config, self.logger)
         state = CreatureParser.ParserState.title
 
         current_section = Section()
         current_action_type = None
+        handled_action_block=False
 
         i = -1
         while i < len(statblock.lines) - 1:
@@ -40,15 +123,37 @@ class CreatureParser():
             if state < CreatureParser.ParserState.actions:
                 if any(attr in LineAnnotationTypes.action_annotations for attr in line.attributes):
                     state = CreatureParser.ParserState.actions
-                    
+
                     if len(current_section.lines) > 0:
-                        cr.set_traits(current_section)
+                        cr.add_feature(current_section)
                         current_section = Section([line])
 
+                    if "action_header" in line.attributes:
+                        current_action_type = constants.ACTION_TYPES.action
+                        current_section = Section()
+                        continue
+                    elif "legendary_header" in line.attributes:
+                        current_action_type = constants.ACTION_TYPES.legendary
+                        current_section = Section()
 
+            ### Check if line is simply an action block title
+            if line.text[0].isupper() and len(line.text.split()) < 3 and \
+                line.text.split()[0].lower().strip().removesuffix("s") in constants.enum_values(constants.ACTION_TYPES):
+                at = line.text.split()[0].lower().strip().removesuffix("s")
 
-            if line.text.lower() in constants.enum_values(constants.ACTION_TYPES):
-                current_action_type = constants.ACTION_TYPES[line.text.lower()]
+                if state == CreatureParser.ParserState.features:
+                    if len(current_section.lines) > 0:
+                        cr.add_feature(current_section)
+                        current_section = Section()
+                    state = CreatureParser.ParserState.actions
+                
+                elif state == CreatureParser.ParserState.actions:
+                    if len(current_section.lines) > 0:
+                        cr.add_action(current_section, current_action_type)
+                        current_section = Section()
+                current_action_type = constants.ACTION_TYPES[at]
+                handled_action_block = False
+                continue
 
             if state == CreatureParser.ParserState.title:
                 if "statblock_title" in line.attributes:
@@ -71,23 +176,17 @@ class CreatureParser():
                     j += 1
                 i += j - 1
 
-                # Wait until line is not a defence attribute before parsing whole block
-                is_defence = any([attr in LineAnnotationTypes.defence_annotations for attr in line.attributes])
                 if i == len(statblock.lines) - 1:
                     current_section.add_line(line)
-                    is_defence = False
-                if not is_defence:
+                if "array_title" in line.attributes:
                     cr.set_defence(current_section)
                     state = CreatureParser.ParserState.abilities
-                    current_section = Section([line])
+                    current_section = Section()
+                    continue
                 else:
                     current_section.add_line(line)
 
             if state == CreatureParser.ParserState.abilities:
-                if "array_title" in line.attributes:
-                    current_section = Section()
-                    continue
-
                 if "array_values" in line.attributes:
                     cr.set_abilities(Section([line]))
                     state = CreatureParser.ParserState.traits    
@@ -102,7 +201,9 @@ class CreatureParser():
                     cr.set_traits(current_section)
                     state = CreatureParser.ParserState.features
                     current_section = Section()
-                current_section.add_line(line)
+                else:
+                    #Don't want to add line if moving into features as that get's handled by the parser
+                    current_section.add_line(line)
 
             if state == CreatureParser.ParserState.features:
                 # We have to manually check for proficiency as it tends to come after the CR
@@ -111,10 +212,17 @@ class CreatureParser():
                     current_section = Section([line])
                     continue
 
-            #     current_section, state = self.__update_feature_block(current_section, line)
+                current_section = self.__update_feature_block(cr, current_section, line)
 
-            # if state == CreatureParser.ParserState.actions:
-            #     current_section, state = self.__update_action_block(current_section, line)
+            if state == CreatureParser.ParserState.actions:
+                current_section, handled_action_block = self.__update_action_block(cr, current_section, line, 
+                    current_action_type, handled_action_block)
+
+        if len(current_section.lines) > 0 and state == CreatureParser.ParserState.defence:
+            cr.set_defence(current_section)
+
+        if len(current_section.lines) > 0 and current_action_type is not None:
+            cr.add_action(current_section, current_action_type)
 
         return cr
 

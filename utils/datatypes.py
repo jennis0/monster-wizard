@@ -11,6 +11,8 @@ class Source:
     num_pages: int
     pages: List[Section]
     images: List[Any]
+    author: str
+    url: str
 
 @dataclasses.dataclass
 class Bound:
