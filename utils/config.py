@@ -53,7 +53,7 @@ def get_argparser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Extract 5e statblocks from images and PDFs"
     )
-    parser.add_argument("targets", type=str, nargs='+', help="Images or PDFs to search for monster statblocks")
+    parser.add_argument("target", type=str, help="Image or PDF to search for monster statblocks")
     parser.add_argument("--source", "-s", type=str, help="Override source label for the statblocks processed")
     parser.add_argument("--authors", "-a", nargs='*', help="Override author label for the processed data")
     parser.add_argument("--url", "-u", type=str, help="Override URL label for processed data")
@@ -64,4 +64,5 @@ def get_argparser() -> argparse.ArgumentParser:
     parser.add_argument("--logs", "-l", type=str, default=None, help="Optional output log file")
     parser.add_argument("--debug", action='store_true', default=False, help="Print debug logging")
     parser.add_argument("--notebook", action='store_true', default=False, help="Turn off logging to stdout for notebook use")
+    parser.add_argument("--pages", type=str, default=None, help="Comma separated list of pages to process. Load all if left blank")
     return parser

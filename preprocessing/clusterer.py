@@ -9,7 +9,7 @@ class Clusterer(object):
 
     def __init__(self, config: ConfigParser, logger: Logger):
         
-        self.fuzzyness = config.getfloat("clusterer", "fuzzyness", fallback=3.0)
+        self.fuzzyness = config.getfloat("clusterer", "fuzzyness", fallback=3.)
         self.min_gap = config.getfloat("clusterer", "min_gap", fallback=0.)
         self.max_gap = config.getfloat("clusterer", "max_gap", fallback=1.)
 

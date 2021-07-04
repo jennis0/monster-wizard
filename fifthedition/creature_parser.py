@@ -120,7 +120,7 @@ class CreatureParser():
             i += 1
             line = statblock.lines[i]
 
-            self.logger.debug(line.text, state)
+            self.logger.debug("{} - {}".format(line.text, state))
 
             ### Advance state if we miss we have left our current state
             if state < CreatureParser.ParserState.actions:

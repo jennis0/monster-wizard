@@ -57,26 +57,30 @@ cp = CreatureParser(config, logger)
 
 ### Run over provided targets 
 parsed_statblocks = []
-for target in args.targets:
-    logger.info("Loading creatures from {}".format(target))
-    
-    results = se.parse(target, args.output)
-    if not results:
-        exit()
-    parsed_statblocks, statblocks = results
+logger.info("Loading creatures from {}".format(args.target))
 
-    print(statblocks)
+if args.pages:
+    pages = [int(p) for p in args.pages.split(",")]
+else:
+    pages = None
 
-    num_pages = len(parsed_statblocks.keys())
-    logger.info("Found {} page{} of statblocks".format(num_pages, 's' if num_pages > 1 else ''))
-    
-    print("\n")
-    for page in parsed_statblocks:
-        print("Page {}:".format(page))
-        for creature in parsed_statblocks[page]:
-            print()
-            print(pretty_format_creature(creature))
-            print()
+results = se.parse(args.target, args.output, pages=pages)
+if not results:
+    exit()
+parsed_statblocks, statblocks = results
+
+print(statblocks)
+
+num_pages = len(parsed_statblocks.keys())
+logger.info("Found {} page{} of statblocks".format(num_pages, 's' if num_pages > 1 else ''))
+
+print("\n")
+for page in parsed_statblocks:
+    print("Page {}:".format(page))
+    for creature in parsed_statblocks[page]:
+        print()
+        print(pretty_format_creature(creature))
+        print()
 
 
         
