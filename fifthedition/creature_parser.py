@@ -120,14 +120,21 @@ class CreatureParser():
             i += 1
             line = statblock.lines[i]
 
+            self.logger.debug(line.text, state)
+
             ### Advance state if we miss we have left our current state
             if state < CreatureParser.ParserState.actions:
                 if any(attr in LineAnnotationTypes.action_annotations for attr in line.attributes):
-                    state = CreatureParser.ParserState.actions
 
+                    ### Finish up our current block
                     if len(current_section.lines) > 0:
-                        cr.add_feature(current_section)
+                        if state == CreatureParser.ParserState.traits:
+                            cr.set_traits(current_section)
+                        elif state == CreatureParser.ParserState.features:
+                            cr.add_feature(current_section)
                         current_section = Section([line])
+
+                    state = CreatureParser.ParserState.actions
 
                     if "action_header" in line.attributes:
                         current_action_type = constants.ACTION_TYPES.action
@@ -225,6 +232,9 @@ class CreatureParser():
 
         if len(current_section.lines) > 0 and state == CreatureParser.ParserState.defence:
             cr.set_defence(current_section)
+
+        if not current_section.is_empty() and state == CreatureParser.ParserState.traits:
+            cr.set_traits(current_section)
 
         if len(current_section.lines) > 0 and current_action_type is not None:
             cr.add_action(current_section, current_action_type)

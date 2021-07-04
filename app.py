@@ -19,7 +19,7 @@ parser = get_argparser()
 args = parser.parse_args()
 
 # Get config file
-config = get_config(args.config)
+config = get_config(args)
 
 if not config.has_section("source"):
     config.add_section("source")

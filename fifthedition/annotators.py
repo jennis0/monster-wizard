@@ -56,6 +56,8 @@ class LineAnnotator(object):
                 ("^Saves\s+", "saves"),
                 ("^Saving Throws\s+", "saves"),
                 ("^Senses\s+", "senses"),
+                ("^(1st|2nd|3rd|[4-9]th)\s*level\s*\([0-9]+\s*slots\)?:", "spellcasting"),
+                ("^Cantrip (\(at will\))?", "spellcasting"),
                 ("Proficiency Bonus", "proficiency"),
                 ("Hit Dice", "hitdice"),
                 ("^Actions$", "action_header"),
@@ -87,8 +89,8 @@ class LineAnnotator(object):
             for r, tag in self.signatures:
                 
                 matches = r.findall(line.text.strip())
-                if "saves" in line.text.strip().lower():
-                    print(tag, matches)
+                if len(matches) > 0:
+                    line.attributes.append(tag)
 
             if "." in line.text and line.text[0].isupper() and len(line.text.split('.')[0].split()) < 5:
                 line.attributes.append("block_title")
@@ -137,6 +139,7 @@ class LineAnnotationTypes:
         "check",
         "recharge",
         "counter",
+        "spellcasting"
     ]
 
     weak_generic_annotations = [

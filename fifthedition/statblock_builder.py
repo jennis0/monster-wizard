@@ -144,7 +144,9 @@ class StatblockBuilder(object):
 
             for cluster in col:
                 sb_parts = [a for a in cluster.attributes if a.startswith("sb_")]
-                
+
+                self.logger.debug(cluster.lines[0], cluster.attributes)
+
                 #No statblock tags, so finish current statblock part, excluding this cluster
                 if len(sb_parts) == 0:
 
