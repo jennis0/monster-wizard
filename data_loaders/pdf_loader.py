@@ -6,9 +6,7 @@ import io
 from pdfminer.pdfparser import PDFParser
 from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdfpage import PDFPage
-# From PDFInterpreter import both PDFResourceManager and PDFPageInterpreter
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
-# Import this to raise exception whenever text extraction from PDF is not allowed
 from pdfminer.pdfpage import PDFTextExtractionNotAllowed
 from pdfminer.layout import LAParams, LTTextBox, LTTextLine, LTChar
 from pdfminer.converter import PDFPageAggregator
@@ -22,21 +20,19 @@ import numpy as np
 
 from data_loaders.data_loader_interface import DataLoaderInterface
 from utils.datatypes import Line, Bound, Source, Section
-from utils.cache import CacheManager
 
-from typing import List, Union, Any, Optional
-
+from typing import List, Union, Any
 
 class PDFLoader(DataLoaderInterface):
 
 	def __init__(self, config: configparser.ConfigParser, logger: logging.Logger):
 		self.config = config
 		self.logger = logger.getChild("pdf_loader")
-		self.cache = CacheManager(self.logger, config.get("default", "cache"), 'pdf')
 
+	def get_name(self) -> str:
+		return 'pdf_loader'
 
-	@staticmethod
-	def get_filetypes() -> List[str]:
+	def get_filetypes(self) -> List[str]:
 		'''Returns a list of file types supported by this data loader'''
 		return ["pdf"]
 
@@ -46,12 +42,6 @@ class PDFLoader(DataLoaderInterface):
 		if not os.path.exists(filepath):
 			self.logger.error("File {} does not exist".format(filepath))
 			return None
-
-		# Check if we've processed this image before
-		cached_response = self.__load_from_cache(filepath)
-		if cached_response:
-			self.logger.info("Retrieving cached result for {}".format(filepath))
-			return cached_response
 
 		with open(filepath, 'rb') as f:
 			parser = PDFParser(f)
@@ -68,15 +58,12 @@ class PDFLoader(DataLoaderInterface):
 
 			line_id = 0
 
-			# Ok now that we have everything to process a pdf document, lets process it page by page
 			pages = []
 			for page in PDFPage.create_pages(document):
 				page_text = Section()
-				# As the interpreter processes the page stored in PDFDocument object
 				interpreter.process_page(page)
 				y_size = page.mediabox[3]
 				x_size = page.mediabox[2]
-				# The device renders the layout from interpreter
 				layout = device.get_result()
 
 				lines = []
@@ -107,8 +94,6 @@ class PDFLoader(DataLoaderInterface):
 				authors = None,
 				url = None
 			)
-
-			self.__cache_result(source)
 			
 			return source
 
@@ -138,12 +123,12 @@ class PDFLoader(DataLoaderInterface):
 			bound = Bound(lt.bbox[0] / x_size, (y_size - lt.bbox[1]) / y_size, 
 						(lt.bbox[2] - lt.bbox[0]) / x_size, (lt.bbox[3] - lt.bbox[1])/y_size)
 
-
-			text = unicodedata.normalize('NFD', lt.get_text().strip())
+			text = unicodedata.normalize('NFKD', lt.get_text().strip())
 			### Hack to deal with some title being weirdly encoded
 			escaped_text = ""
 			for t in text:
 				if repr(t).find("\\uf") >= 0:
+					print(t, repr(t))
 					escaped_text += bytearray.fromhex(repr(t)[5:-1]).decode()
 				else:
 					escaped_text += t
@@ -151,17 +136,3 @@ class PDFLoader(DataLoaderInterface):
 			lines.append(Line(line_id, escaped_text, bound, []))
 		
 		return lines
-
-	def __load_from_cache(self, filepath: str) -> Optional[Source]:
-		'''Loads the parsed data from the cache folder'''
-		if self.cache.check_cache(filepath):
-			self.logger.info("Loading PDF {} from cache".format(filepath))
-			byte_data, json_data = self.cache.read(filepath)
-			source = Source.deserialise(byte_data, json_data)
-			return source
-		return None
-			
-
-	def __cache_result(self, source: Source):
-		byte_data, json_data = source.serialise()
-		self.cache.write(source.filepath, byte_data, json_data)

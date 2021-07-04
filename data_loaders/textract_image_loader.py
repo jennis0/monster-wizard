@@ -7,12 +7,10 @@ from typing import List, Any
 import cv2
 from utils.datatypes import Line, Bound, Section, Source
 from utils.aws import get_authenticated_client
-from utils.cache import CacheManager
 
 from data_loaders.data_loader_interface import DataLoaderInterface
 
 import os
-import json
 
 from utils.aws import get_authenticated_client
 
@@ -23,15 +21,12 @@ class TextractImageLoader(DataLoaderInterface):
         '''Creates a TextractImageLoader using the passed configurationa and logger'''
         self.config = config
         self.logger = logger.getChild("txloader")
-        self.cache = CacheManager(self.logger, config.get("default", "cache"), 'textract')
 
-    @staticmethod
-    def get_name() -> str:
+    def get_name(self) -> str:
         '''Returns a human readable name for this parser'''
-        return "Textract Loader"
+        return "textract"
 
-    @staticmethod
-    def get_filetypes() -> List[str]:
+    def get_filetypes(self) -> List[str]:
         '''Returns list of file types accepted by this data loader'''
         return ["jpg", "png", "webp"]
 
@@ -52,6 +47,7 @@ class TextractImageLoader(DataLoaderInterface):
             authors=None,
             url=None
         )
+
         return source
         
     def load_images_from_file(self, filepath: str) -> List[Any]:
@@ -85,20 +81,8 @@ class TextractImageLoader(DataLoaderInterface):
 
         return pages
 
-
-    def __load_from_directory(self, response_path: str) -> List[List[Line]]:
-        with open(os.path.join(response_path, 'response.json'), 'r') as f:
-            return json.load(f)
-
-
     def __call_textract(self, filepath: str) -> Any:
-        '''Call AWS Textract services, or return cached response if it exists'''
-
-        # Check if we've processed this image before
-        cached_response = self.cache.check_cache(filepath)
-        if cached_response:
-            self.logger.info("Retrieving cached result for {}".format(filepath))
-            return self.__load_from_directory(cached_response)
+        '''Call AWS Textract services'''
         
         # Read image
         with open(filepath, 'rb') as f:
@@ -119,7 +103,6 @@ class TextractImageLoader(DataLoaderInterface):
             return []
         self.logger.debug("Received Textract response")
 
-        self.cache.write_to_cache(filepath, image, response)
         return response
 
         

@@ -1,3 +1,4 @@
+from data_loaders.cached_loader_wrapper import CachedLoaderWrapper
 from fifthedition.creature_schema import CreatureSchema
 from preprocessing.columniser import Columniser
 from data_loaders.data_loader_interface import DataLoaderInterface
@@ -52,8 +53,10 @@ class StatblockExtractor(object):
 
     def register_data_loader(self, data_loader : DataLoaderInterface) -> bool:
         '''Register this data loader. Returns True if registration is successful'''
-        supported_file_types = data_loader.get_filetypes()
-        dl = data_loader(self.config, self.logger)
+
+        dl = CachedLoaderWrapper(self.config, self.logger, data_loader)
+
+        supported_file_types = dl.get_filetypes()
 
         for ft in supported_file_types:
             if ft in self.loaders_by_filetype:
@@ -128,7 +131,7 @@ class StatblockExtractor(object):
         for i, page_data in enumerate(data.pages):
             if pages and i not in pages:
                 continue
-
+            
             boxes = []
             colours = []
 

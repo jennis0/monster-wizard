@@ -5,6 +5,11 @@ from utils.datatypes import Source
 
 class DataLoaderInterface(object):
 
+    @abc.abstractmethod
+    def get_name() -> str:
+        '''Returns an internal name for this loader'''
+        raise NotImplementedError("users must define a name for this loader")
+
     @staticmethod
     @abc.abstractmethod
     def get_filetypes() -> List[str]:
