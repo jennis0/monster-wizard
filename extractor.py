@@ -126,12 +126,16 @@ class StatblockExtractor(object):
         cp = CreatureParser(self.config, self.logger)
 
         self.logger.info("Loading {}".format(data.name))
+        self.logger.debug("Found {} page{}".format(data.num_pages, 's' if data.num_pages > 1 else ''))
+        
         statblocks = {}
         parsed_statblocks = {}
         for i, page_data in enumerate(data.pages):
             if pages and i not in pages:
                 continue
             
+            self.logger.debug("Processing {} lines".format(len(page_data.lines)))
+
             boxes = []
             colours = []
 
