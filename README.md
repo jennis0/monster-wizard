@@ -11,5 +11,11 @@ The PDF import makes use of functionality from poppler, so this must be installe
 
 Once setup, MW can be used from either the command line, or from within a jupyter notebook
 
+## Python Setup
+pip install -f requirements.txt
+
 ## Command Line Use
-python app.py [file] 
+`python app.py [input_file] --output [output_file] --output-format [5et|default]`
+
+If you want to add proper metadata to the output file you can use
+`--author [authors,] --source [proper name of document]`
