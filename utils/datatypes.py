@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Optional
 from enum import Enum
+import io
+import numpy as np
 
 @dataclasses.dataclass
 class Source:
@@ -13,6 +15,48 @@ class Source:
     images: List[Any]
     authors: str
     url: str
+
+    def serialise(self) -> Tuple[bytes, Any]:
+        '''Serialise the Source data into a tuple of raw byte data and structured json'''
+        meta = {
+			"source": self.name,
+			"authors": self.authors,
+			"url": self.url,
+			"filepath": self.filepath,
+			"num_pages": self.num_pages,
+			"pages": [s.to_tuple() for s in self.pages]
+		}
+
+		### Write images to a compressed bytestream
+        ims = {}
+        for i,im in enumerate(self.images):
+            ims[str(i)] = im
+        stream = io.BytesIO()
+        np.savez_compressed(stream, **ims)
+        stream.seek(0)
+        return [stream.read(), meta]
+
+    @staticmethod
+    def deserialise(images: bytes, data: Any) -> Source:
+        '''Convert serialised data back into a source'''
+
+        ### Load images and make sure we order them correctly
+        stream = io.BytesIO(images)
+        image_dict = np.load(stream)
+        page_ids = [int(k) for k in image_dict.keys()]
+        page_ids.sort()
+        images = [image_dict[str(i)] for i in page_ids]
+
+        s = Source(
+            name=data["source"],
+            authors=data["authors"],
+            url=data["url"],
+            filepath=data["filepath"],
+            num_pages = data["num_pages"],
+            pages=[Section.from_tuple(s) for s in data["pages"]],
+            images=images
+        )
+
 
 @dataclasses.dataclass
 class Bound:
@@ -96,10 +140,12 @@ class Section:
         Vertical = 1
         Horizontal = 2
 
-    def __init__(self, lines: List[Line] = None, attributes: List[str] = None, sort_order: Section.SortOrder=SortOrder.Vertical):
+    def __init__(self, lines: List[Line] = None, attributes: List[str] = None, 
+            sort_order: Section.SortOrder=SortOrder.Vertical, 
+            bound: Optional[Bound]=None, ids: Optiona[List[str]]=None):
         self.lines = lines if lines else []
-        self.ids = {l.id: l for l in self.lines}
-        self.bound = Bound.merge(l.bound for l in self.lines)
+        self.ids = ids if ids else {l.id: l for l in self.lines}
+        self.bound = bound if bound else Bound.merge(l.bound for l in self.lines)
         self.attributes = attributes if attributes else []
         self.sort_order = sort_order
 
@@ -170,3 +216,19 @@ class Section:
     def __len__(self) -> int:
         return len(self.lines)
 
+    def to_tuple(self) -> List[Any]:
+        lines = [l.to_tuple() for l in self.lines]
+        bound = self.bound.to_dict()
+        return [lines, bound, self.attributes, self.sort_order.value]
+
+    @staticmethod
+    def from_tuple(data: Any) -> Section:
+        lines = [Line.from_tuple(l) for l in data[0]]
+        ids = [l.id for l in lines]
+        return Section(
+            lines=lines,
+            ids=ids,
+            bound=Bound.from_dict(data[1]),
+            attributes=data[2],
+            sort_order=data[3]
+        )

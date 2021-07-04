@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, Any
+from typing import Optional, Any, Tuple
 import os
 import json
 import logging
@@ -40,19 +40,25 @@ class CacheManager(object):
         with open(self.index_path, 'w') as f:
                 json.dump(self.index, f)
 
-
-    def check_cache(self, filename: str) -> Optional[str]:
-        '''Checks if a request has previously been made for this file. Returns
-        a path to the stored response if found, otherwise returns None'''
+    def __get_cache_path(self, filename: str) -> Optional[str]:
+        '''Get the path where this file is cached'''
         id = self.__filename_to_id(filename)
         if id in self.index:
             return self.index[id]
-
         else:
             return None
 
-    def write_to_cache(self, filename: str, request: bytes, response: Any):
-        '''Writes the request and response into a local cache'''
+    def check_cache(self, filename: str) -> bool:
+        '''Checks if a request has previously been made for this file. Returns
+        true if found'''
+        return self.__get_cache_path(filename) is not None
+
+    def write(self, filename: str, data: Optional[bytes]=None, json_data: Optional[Any]=None):
+        '''Writes a bytestream and json data into a local cache'''
+
+        if not data and not json_data:
+            self.logger.warning("Must have at least some data to cache")
+            return
 
         # Make a folder in the cache
         id = self.__filename_to_id(filename)
@@ -62,16 +68,45 @@ class CacheManager(object):
         if not os.path.exists(path):
             os.makedirs(path)
 
-        ending = filename.split(".")[-1]
+        # Write the byte data
+        if data:
+            with open(os.path.join(path, "data.cache"), 'wb') as f:
+                f.write(data)
 
-        # Write the request
-        with open(os.path.join(path, "file.{}".format(ending)), 'wb') as f:
-            f.write(request)
-
-        #Write the response
-        with open(os.path.join(path, "response.json"), 'w') as f:
-            json.dump(response, f)
+        #Write the structured data
+        if json_data:
+            with open(os.path.join(path, "json.cache"), 'w') as f:
+                json.dump(json_data, f)
 
         self.index[id] = path
         self.__write_index()
+
+    def read(self, filename: str) -> Tuple[bytes, Any]:
+        '''Returns the stored byte file and json file for the cached file'''
+        cache_dir = self.__get_cache_path(filename)
+        if not cache_dir:
+            self.logger.warning("Tried to read non-existant cache entry for {}".format(filename))
+
+        data_path = os.path.join(cache_dir, "data.cache")
+        json_path = os.path.join(cache_dir, "json.cache")
+
+        if os.path.exists(data_path):
+            with open(data_path, 'rb') as f:
+                bytes_data = f.read()
+        else:
+            bytes_data = None
+
+        if os.path.exists(json_path):
+            with open(os.path.join(cache_dir, "json.cache"), 'r') as f:
+                json_data = json.load(f)
+        else:
+            json_data = None
+
+        if not bytes_data and not json_data:
+            self.logger.warning("Cache directory for {} exists but contains no data.".format(filename))
+            return None
+
+        return bytes_data, json_data
+
+        
         

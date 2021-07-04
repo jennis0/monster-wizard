@@ -1,6 +1,7 @@
 import configparser
 import logging
 import os
+import io
 
 from pdfminer.pdfparser import PDFParser
 from pdfminer.pdfdocument import PDFDocument
@@ -21,8 +22,9 @@ import numpy as np
 
 from data_loaders.data_loader_interface import DataLoaderInterface
 from utils.datatypes import Line, Bound, Source, Section
+from utils.cache import CacheManager
 
-from typing import List, Union, Any
+from typing import List, Union, Any, Optional
 
 
 class PDFLoader(DataLoaderInterface):
@@ -30,6 +32,8 @@ class PDFLoader(DataLoaderInterface):
 	def __init__(self, config: configparser.ConfigParser, logger: logging.Logger):
 		self.config = config
 		self.logger = logger.getChild("pdf_loader")
+		self.cache = CacheManager(self.logger, config.get("default", "cache"), 'pdf')
+
 
 	@staticmethod
 	def get_filetypes() -> List[str]:
@@ -42,6 +46,12 @@ class PDFLoader(DataLoaderInterface):
 		if not os.path.exists(filepath):
 			self.logger.error("File {} does not exist".format(filepath))
 			return None
+
+		# Check if we've processed this image before
+		cached_response = self.__load_from_cache(filepath)
+		if cached_response:
+			self.logger.info("Retrieving cached result for {}".format(filepath))
+			return cached_response
 
 		with open(filepath, 'rb') as f:
 			parser = PDFParser(f)
@@ -97,6 +107,8 @@ class PDFLoader(DataLoaderInterface):
 				authors = None,
 				url = None
 			)
+
+			self.__cache_result(source)
 			
 			return source
 
@@ -127,7 +139,7 @@ class PDFLoader(DataLoaderInterface):
 						(lt.bbox[2] - lt.bbox[0]) / x_size, (lt.bbox[3] - lt.bbox[1])/y_size)
 
 
-			text = unicodedata.normalize('NFC', lt.get_text().strip())
+			text = unicodedata.normalize('NFD', lt.get_text().strip())
 			### Hack to deal with some title being weirdly encoded
 			escaped_text = ""
 			for t in text:
@@ -139,3 +151,17 @@ class PDFLoader(DataLoaderInterface):
 			lines.append(Line(line_id, escaped_text, bound, []))
 		
 		return lines
+
+	def __load_from_cache(self, filepath: str) -> Optional[Source]:
+		'''Loads the parsed data from the cache folder'''
+		if self.cache.check_cache(filepath):
+			self.logger.info("Loading PDF {} from cache".format(filepath))
+			byte_data, json_data = self.cache.read(filepath)
+			source = Source.deserialise(byte_data, json_data)
+			return source
+		return None
+			
+
+	def __cache_result(self, source: Source):
+		byte_data, json_data = source.serialise()
+		self.cache.write(source.filepath, byte_data, json_data)
