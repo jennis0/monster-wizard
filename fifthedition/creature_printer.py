@@ -28,10 +28,13 @@ def format_type_alignment(creature: Creature) -> str:
     type = creature.data["creature_type"]["type"] if "creature_type" in creature.data else ""
     size = creature.data["size"] if "size" in creature.data else ""
     if creature.data["creature_type"]["swarm"]:
-        if size is not None:
-            type_str = "Swarm of {size} {type}".format(type)
+        s = creature.data["creature_type"]["swarm_size"]
+        if s is None:
+            s = creature.data["size"]
+        if s is not None:
+            type_str = "Swarm of {size} {type}".format(size=size, type=type)
         else:
-            type_str = "Swarm of {type}".format(type)
+            type_str = "Swarm of {type}".format(type=type)
 
     else:
         type_str = "{} {}".format(size, type).strip()

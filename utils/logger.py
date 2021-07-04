@@ -10,10 +10,11 @@ def get_logger(debug: bool, no_stdout: bool, log_path: str=None) -> logging.Logg
     logger = logging.getLogger('sbp')
     logger.setLevel(log_level)
 
-    if no_stdout:
-        for hdl in logger.handlers:
-            logger.removeHandler(hdl)
-    else:
+    ## Ensure we don't double handlers in a notebook environment
+    for hdl in logger.handlers:
+        logger.removeHandler(hdl)
+
+    if not no_stdout:
         logger.addHandler(logging.StreamHandler(sys.stdout))
         
     if log_path:

@@ -16,6 +16,9 @@ class Source:
     authors: str
     url: str
 
+    def __str__(self):
+        return "<Source file={}, num_pages={}, num_images={}>".format(self.name, len(self.pages), len(self.images))
+
     def serialise(self) -> Tuple[bytes, Any]:
         '''Serialise the Source data into a tuple of raw byte data and structured json'''
         meta = {
@@ -56,6 +59,7 @@ class Source:
             pages=[Section.from_tuple(s) for s in data["pages"]],
             images=images
         )
+        return s
 
 
 @dataclasses.dataclass
@@ -128,10 +132,10 @@ class Line:
 
     @staticmethod
     def from_tuple(tuple: List[Any]) -> Line:
-        return Line(id="aaaaaaaaaaaaaaaaaaaa", text=tuple[0], bound=Bound.from_dict(tuple[1]), attributes=tuple[2])
+        return Line(id=str(tuple[0]), text=tuple[1], bound=Bound.from_dict(tuple[2]), attributes=tuple[3])
 
     def to_tuple(self) -> List[Any]:
-        return [self.text, self.bound.to_dict(), self.attributes]
+        return [self.id, self.text, self.bound.to_dict(), self.attributes]
 
 class Section:
     '''Container holding multiple lines with a single bounding box'''

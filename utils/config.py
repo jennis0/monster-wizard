@@ -24,17 +24,26 @@ def create_new_config() -> configparser.ConfigParser:
 
     return config
 
-def get_config(config_path: str) -> configparser.ConfigParser:
+def get_config(args : Dict[str, str]) -> configparser.ConfigParser:
     '''Load a config file from the given path or generate a new one if it does not exists'''
     #If config doesn't exist, make one!
-    if not os.path.exists(config_path):
+    if not os.path.exists(args.config):
         config = create_new_config()
-        with open(config_path, 'w') as f:
+        with open(args.config, 'w') as f:
             config.write(f)
     else:
         #Otherwise just read it in
         config = configparser.ConfigParser()
-        config.read(config_path)
+        config.read(args.config)
+
+    if not config.has_section("default"):
+        config.add_section("default")
+
+    if args.cache:
+        config.set("default", "cache", args.cache)
+    
+    if args.logs:
+        config.set("default", "logdir", args.logs)
     
     return config
 

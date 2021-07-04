@@ -129,6 +129,8 @@ class Columniser(object):
             array_title = is_array_title.match(l.text.strip()) is not None
             array_value = is_array_value.match(l.text.strip()) is not None
 
+            
+
             #Don't want to merge if line is already wide
             too_wide = False#l.bound.width > self.max_horizontal_gap
         

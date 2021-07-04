@@ -27,14 +27,14 @@ from typing import List, Union, Any
 FONT_OVERRIDES = {
 	"Calibri": {
 		332:"ft",
-		415:"t",
+		415:"ti",
 		425:"t",
 		427:"t",
 		976:'f'
 	},
 	"Cambria": {
 		332:"ft",
-		415:"t",
+		415:"ti",
 		425:"t",
 		427:"t",
 		976:'f'

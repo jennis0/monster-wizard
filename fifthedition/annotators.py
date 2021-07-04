@@ -53,6 +53,7 @@ class LineAnnotator(object):
                 ("^STR\s+DEX\s+CON\s+INT\s+WIS\s+CHA", "array_title"),
                 ("^(\d+\s\([+-]?\d+\)\s+)+", "array_values"),
                 ("Language", "languages"),
+                ("^Saves\s+", "saves"),
                 ("^Saving Throws\s+", "saves"),
                 ("^Senses\s+", "senses"),
                 ("Proficiency Bonus", "proficiency"),
@@ -84,9 +85,10 @@ class LineAnnotator(object):
                         j -= 1
 
             for r, tag in self.signatures:
+                
                 matches = r.findall(line.text.strip())
-                if len(matches) > 0:
-                    line.attributes.append(tag)
+                if "saves" in line.text.strip().lower():
+                    print(tag, matches)
 
             if "." in line.text and line.text[0].isupper() and len(line.text.split('.')[0].split()) < 5:
                 line.attributes.append("block_title")
@@ -192,8 +194,8 @@ class SectionAnnotator(object):
                     c.attributes.append("sb_part")
 
             num_generic = 0
-            for gf in LineAnnotationTypes.weak_generic_annotations:
-                if gf in line_annotations:
+            for la in line_annotations:
+                if la in LineAnnotationTypes.weak_generic_annotations:
                     num_generic += 1
             if num_generic > 0.1 * len(c.lines):
                 c.attributes.append("sb_part_weak")
