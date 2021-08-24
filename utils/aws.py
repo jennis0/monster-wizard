@@ -2,12 +2,13 @@ import boto3
 import configparser
 import logging
 from typing import Dict
+from utils.interacter import get_input
 
 def setup_aws_config() -> Dict[str, str]:
 
-        access_key = input("AWS_ACCESS_KEY=").strip()
-        secret_key = input("AWS_SECRET_KEY=").strip()
-        region = input("AWS_REGION=").strip()
+        access_key = get_input("AWS ACCESS KEY", "Access key for an AWS role authorised to use Textract").strip()
+        secret_key = get_input("AWS SECRET KEY", "Secret key for the authorised AWS role").strip()
+        region = get_input("AWS REGION", "Default AWS Region").strip()
 
         config = {
             "access_key":access_key,

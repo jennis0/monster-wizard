@@ -6,6 +6,7 @@ from logging import Logger
 from utils.datatypes import Line, Section
 
 class Clusterer(object):
+    '''Take a set of text lines and try to figure out how they are structured in sections and paragraphs'''
 
     def __init__(self, config: ConfigParser, logger: Logger):
         

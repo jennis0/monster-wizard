@@ -6,7 +6,7 @@ from logging import Logger
 from typing import Any, List
 
 from utils.datatypes import Source
-from fifthedition.creature_schema import CreatureSchema
+from extractor.creature_schema import CreatureSchema
 from outputs.writer_interface import WriterInterface
 
 

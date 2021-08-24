@@ -12,7 +12,8 @@ class Source:
     name: str
     num_pages: int
     pages: List[Section]
-    images: List[Any]
+    images: List[List[Any]]
+    page_images: List[Any]
     authors: str
     url: str
 
@@ -27,13 +28,18 @@ class Source:
 			"url": self.url,
 			"filepath": self.filepath,
 			"num_pages": self.num_pages,
-			"pages": [s.to_tuple() for s in self.pages]
+			"pages": [s.to_tuple() for s in self.pages],
 		}
 
 		### Write images to a compressed bytestream
         ims = {}
-        for i,im in enumerate(self.images):
-            ims[str(i)] = im
+        for i,im in enumerate(self.page_images):
+            ims["page_{}".format(i)] = im
+
+        for i,images in enumerate(self.images):
+            for j,im in enumerate(images):
+                ims["page_{}_image_{}".format(i, j)] = im
+
         stream = io.BytesIO()
         np.savez_compressed(stream, **ims)
         stream.seek(0)
@@ -46,10 +52,24 @@ class Source:
         ### Load images and make sure we order them correctly
         stream = io.BytesIO(images)
         image_dict = np.load(stream)
-        page_ids = [int(k) for k in image_dict.keys()]
-        page_ids.sort()
-        images = [image_dict[str(i)] for i in page_ids]
 
+        page_images = [None for i in range(int(data["num_pages"]))]
+        loaded_images = [[] for i in range(int(data["num_pages"]))]
+
+        for k in image_dict.keys():
+            if "image" in k:
+                parts = k.split("_")
+                page = int(parts[1])
+                image_num = int(parts[3])
+
+                while len(loaded_images[page]) <= image_num:
+                    loaded_images[page].append(None)
+                
+                loaded_images[page][image_num] = image_dict[k]
+            else:
+                page_images[int(k[5:])] = image_dict[k]
+
+        ### Load 
         s = Source(
             name=data["source"],
             authors=data["authors"],
@@ -57,7 +77,8 @@ class Source:
             filepath=data["filepath"],
             num_pages = data["num_pages"],
             pages=[Section.from_tuple(s) for s in data["pages"]],
-            images=images
+            page_images = page_images,
+            images=loaded_images
         )
         return s
 
@@ -126,6 +147,9 @@ class Line:
         text = join_char.join(l.text for l in lines)
         bound = Bound.merge(l.bound for l in lines)
         attrib = []
+        # Sort lines
+        lines.sort(key=lambda l: l.bound.left)
+
         for l in lines:
             attrib += l.attributes
         return Line(id = lines[0].id, text=text, bound=bound, attributes=attrib)
@@ -199,9 +223,12 @@ class Section:
         elif sort_order == Section.SortOrder.Horizontal:
             self.lines.sort(key=lambda x: x.bound.left)
 
-    def get_line_by_id(self, line_id: str) -> Line:
+    def get_line_by_id(self, line_id: str) -> Optional[Line]:
         '''Returns a line by the line id'''
-        return self.ids[line_id]
+        if line_id in self.ids:
+            return self.ids[line_id]
+        else:
+            return None
 
     def get_line_attributes(self) -> List[str]:
         '''Returns a list of all attributes attached to these lines'''
@@ -212,7 +239,13 @@ class Section:
 
     def get_section_text(self, join_char="\n") -> str:
         '''Returns the total section text'''
-        return join_char.join(l.text for l in self.lines)
+        text = ""
+        for i in range(len(self.lines)):
+            if self.lines[i].text[-1] == "-":
+                text += self.lines[i].text[:-1]
+            else:
+                text += self.lines[i].text + join_char
+        return text
 
     def __contains__(self, line: Line) -> bool:
         return line.id in self.ids

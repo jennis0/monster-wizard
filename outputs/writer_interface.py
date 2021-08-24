@@ -1,7 +1,7 @@
 import abc
 from typing import List, Any
 
-from fifthedition.creature_schema import CreatureSchema
+from extractor.creature_schema import CreatureSchema
 from utils.datatypes import Source
 
 class WriterInterface(object):

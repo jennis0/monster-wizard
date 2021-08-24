@@ -8,8 +8,9 @@ from configparser import ConfigParser
 from logging import Logger
 from typing import Any, List
 
-from fifthedition import constants
+from extractor import constants
 from utils.datatypes import Source
+from utils.interacter import get_input
 from outputs.writer_interface import WriterInterface
 
 def int_to_add_string(i: int):
@@ -43,7 +44,7 @@ class PlutoWriter(WriterInterface):
     def write(self, filename: str, source: Source, creatures: List[Any], append: bool=None) -> bool:
         '''Writes the creatures to the specified file. If append is set to true, creatures will be inserted into the existing file. Returns True if write is successful'''
 
-                ### Apply configuration overrides
+        ### Apply configuration overrides
         if append is None:
             append = self.append
 
@@ -78,7 +79,16 @@ class PlutoWriter(WriterInterface):
         for source_entry in data["_meta"]["sources"]:
             if source_entry["json"] == source_meta["json"]:
                 source_exists = True
+                source_meta = source_entry
                 break
+
+        ### Get additional information
+        print()
+        source_meta["full"] = get_input("Source Title", "Title for this source", source_meta["full"])
+        source_meta["abbreviation"] = get_input("Source Abbreviation", "Abbreviation for this source", source_meta['abbreviation'])
+        source_meta["authors"] = get_input("Authors", "Comma-delimited list of authors", source_meta["authors"], is_list=True)
+        source_meta["convertedBy"] = get_input("Converters", "Comma-delimited list of converters", source_meta["convertedBy"], is_list=True) 
+        print()
         
         if not source_exists:
             self.logger.debug("Making new source entry")
@@ -92,8 +102,7 @@ class PlutoWriter(WriterInterface):
                 cr = self.__convert_creature(creature.to_json())
                 cr["source"] = source_meta["json"]
             except Exception as e:
-                print(e)
-                print(creature.data)
+                self.logger.error(e)
 
 
             ### Replace monsters with the same name from the same source
@@ -137,7 +146,7 @@ class PlutoWriter(WriterInterface):
             "full": title,
             "authors": source.authors,
             "url": source.url,
-            "convertedBy":"StatblockParser",
+            "convertedBy":["StatblockParser"],
             "version":"1.0",
             "targetSchema":"1.0.8"
         }
@@ -172,7 +181,7 @@ class PlutoWriter(WriterInterface):
         if "ac" in creature:
             new_creature["ac"] = self.__convert_ac(creature["ac"])
         else:
-            new_creature["ac"] = {"ac":0}
+            new_creature["ac"] = [{"ac":0}]
 
         if "hp" in creature:
             new_creature["hp"] = creature["hp"]
@@ -339,6 +348,11 @@ class PlutoWriter(WriterInterface):
                     }
                 )
 
+        ### Fluff ###
+        if "background" in creature:
+            new_creature["fluff"] = {}
+            new_creature["fluff"]["entries"] = creature["background"]
+
         return new_creature
 
 
@@ -360,6 +374,7 @@ class PlutoWriter(WriterInterface):
     def __convert_ac(self, ac : Any) -> Any:
         '''Convert AC schema'''
         new_ac = []
+
         for entry in ac:
             new_ac.append({
                 "ac": entry["ac"],

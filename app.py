@@ -2,15 +2,15 @@
 from data_loaders.pdf_loader import PDFLoader
 from outputs.pluto_writer import PlutoWriter
 from outputs.default_writer import DefaultWriter
-from extractor import StatblockExtractor
+
 from utils.config import get_config, get_argparser
 from utils.logger import get_logger
 
 from data_loaders.textract_image_loader import TextractImageLoader
 from data_loaders.pdf_loader import PDFLoader
 
-from fifthedition.creature_printer import pretty_format_creature
-from fifthedition.creature_parser import CreatureParser
+from extractor.extractor import StatblockExtractor
+from extractor.creature_printer import pretty_format_creature
 
 
 
@@ -51,9 +51,6 @@ if args.output_format:
     se.select_writer(args.output_format)
 else:
     se.select_writer(DefaultWriter.get_name())
-
-### Create Creature Parser
-cp = CreatureParser(config, logger)
 
 ### Run over provided targets 
 parsed_statblocks = []

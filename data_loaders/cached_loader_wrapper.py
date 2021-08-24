@@ -12,6 +12,7 @@ class CachedLoaderWrapper(DataLoaderInterface):
 
     def __init__(self, config: ConfigParser, logger: Logger, loader: DataLoaderInterface):
         self.use_cache = config.getboolean("default", "use_cache", fallback=True)
+        self.flush_cache = config.getboolean("default", "flush_cache", fallback=False)
         self.logger = logger.getChild("loader_cache")
         self.loader = loader(config, logger)
         self.cache = CacheManager(logger, config.get("default", "cache", fallback='.cache'), name=self.loader.get_name())
@@ -25,7 +26,7 @@ class CachedLoaderWrapper(DataLoaderInterface):
 
     def load_data_from_file(self, filepath: str) -> Source:
         '''Reads file and extracts lines of texts. Returns one section per page'''
-        if not self.use_cache:
+        if self.flush_cache or not self.use_cache:
             return self.loader.load_data_from_file(filepath)
 
         if self.cache.check_cache(filepath):
@@ -38,7 +39,8 @@ class CachedLoaderWrapper(DataLoaderInterface):
         source = self.loader.load_data_from_file(filepath)
 
         self.logger.debug("Writing {} to cache".format(filepath))
-        self.cache.write(filepath, *source.serialise())
+        if self.flush_cache or self.use_cache:
+            self.cache.write(filepath, *source.serialise())
 
         return source
         

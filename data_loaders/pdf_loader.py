@@ -1,16 +1,16 @@
 import configparser
 import logging
 import os
-import io
+from tqdm import tqdm
 
 from pdfminer.pdfparser import PDFParser
 from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFTextExtractionNotAllowed
-from pdfminer.layout import LAParams, LTTextBox, LTTextLine, LTChar
+from pdfminer.layout import LAParams, LTImage, LTTextBox, LTTextLine, LTChar
 from pdfminer.converter import PDFPageAggregator
-from pdfminer.pdffont import PDFUnicodeNotDefined
+from pdfminer.pdffont import PDFCIDFont, PDFUnicodeNotDefined, PDFTrueTypeFont
 
 from pdf2image import convert_from_path
 
@@ -18,11 +18,23 @@ import unicodedata
 
 import cv2
 import numpy as np
+from binascii import b2a_hex
+
 
 from data_loaders.data_loader_interface import DataLoaderInterface
 from utils.datatypes import Line, Bound, Source, Section
 
 from typing import List, Union, Any
+
+LIGATURE_MAP = {
+	"\ufb00": "ff",
+	"\ufb01": "fi",
+	"\ufb02": "fl",
+	"\ufb03": "ffi",
+	"\ufb04": "ffl",
+	"\ufb05": "ft",
+	"\ufb06": "st",
+}
 
 FONT_OVERRIDES = {
 	"Calibri": {
@@ -30,15 +42,17 @@ FONT_OVERRIDES = {
 		415:"ti",
 		425:"t",
 		427:"t",
-		976:'f'
+		976:'f',
+		980:"st",
 	},
 	"Cambria": {
 		332:"ft",
 		415:"ti",
 		425:"t",
 		427:"t",
-		976:'f'
-	}
+		976:'f',
+		980:"st",
+	},
 }
 
 ### PDFMiner has been found to have some issues with rendering ligatures in at least one 
@@ -54,20 +68,52 @@ def override_render_char(self, matrix, font, fontsize, scaling, rise, cid, ncs,
 		textwidth = font.char_width(cid)
 		textdisp = font.char_disp(cid)
 
-		font_title = font.basefont.split("-")[0]
+		if isinstance(font, PDFTrueTypeFont) or isinstance(font, PDFCIDFont):
+			font_title = font.basefont.split("-")[0]
 
-		if text == "\x00":
-			if font_title in FONT_OVERRIDES and cid in FONT_OVERRIDES[font_title]:
-				#print("Override {} for font {}".format(cid, font.basefont))
-				text = FONT_OVERRIDES[font_title][cid]
-			else:
-				print("Failed to override {} for font {}".format(cid, font))
+			if text == "\x00":
+				if font_title in FONT_OVERRIDES and cid in FONT_OVERRIDES[font_title]:
+					#print("Override {} for font {}".format(cid, font.basefont))
+					text = FONT_OVERRIDES[font_title][cid]
+				else:
+					print("Failed to override {} for font {}".format(cid, font))
+
+		else:
+			if "\x00" in text:
+				print("WARNING: Non tt font ", font, "failed to parse")
+
+		if text in LIGATURE_MAP:
+			print("Swapping for", LIGATURE_MAP[text])
+			text = LIGATURE_MAP[text]
+
+		if '\x00' in text:
+			print("Found missing character", cid)
 
 		item = LTChar(matrix, font, fontsize, scaling, rise, text, textwidth,
 					  textdisp, ncs, graphicstate)
 		self.cur_item.add(item)
 
 		return item.adv
+
+
+def determine_image_type (stream):
+	"""Find out the image file type based on the magic number comparison of the first 4 (or 2) bytes"""
+	stream_first_4_bytes = stream[:4]
+	file_type = None
+	bytes_as_hex = b2a_hex(stream_first_4_bytes).decode()
+	if bytes_as_hex.startswith('ffd8'):
+		file_type = 'jpeg'
+	elif bytes_as_hex == '89504e47':
+		file_type = 'png'
+	elif bytes_as_hex == '47494638':
+		file_type = 'gif'
+	elif bytes_as_hex.startswith('424d'):
+		file_type = 'bmp'
+	elif bytes_as_hex.startswith("4949") or bytes_as_hex.startswith("4d4d"):
+		file_type = "tiff"
+	else:
+		file_type = "unknown"
+	return file_type
 
 class PDFLoader(DataLoaderInterface):
 
@@ -100,17 +146,18 @@ class PDFLoader(DataLoaderInterface):
 			laparams = LAParams(all_texts=True)
 
 			device = PDFPageAggregator(rsrcmgr, laparams=laparams)
+
 			### Hacky monkey patching
 			device.render_char = lambda *args, **kwargs: override_render_char(device, *args, **kwargs)
 
 			interpreter = PDFPageInterpreter(rsrcmgr, device)   
 			
-
-
 			line_id = 0
+			name=os.path.basename(filepath).split(".")[0]
 
 			pages = []
-			for page in PDFPage.create_pages(document):
+			all_images = []
+			for j, page in enumerate(tqdm(PDFPage.create_pages(document))):
 				page_text = Section()
 				interpreter.process_page(page)
 
@@ -119,8 +166,24 @@ class PDFLoader(DataLoaderInterface):
 				layout = device.get_result()
 
 				lines = []
+				images = []
+				possible_images = []
 				for lt in layout:
-					lines += self.__recursive_filter_to_lines(lt)
+					ls, ims = self.__recursive_filter_to_lines_and_images(lt)
+					lines += ls
+					possible_images += ims
+
+				for im in possible_images:
+					try:
+						data = im.stream.get_data()
+						type = determine_image_type(data)
+						if type != 'unknown':
+							images.append(data)
+					except:
+						self.logger.debug("Failed to load image on page {}".format(j))
+
+				all_images.append(images)
+						
 
 				for l in lines:
 					new_lines = self.__layout_to_line(line_id, l, x_size, y_size)
@@ -132,41 +195,59 @@ class PDFLoader(DataLoaderInterface):
 				page_text.sort()
 				pages.append(page_text)
 						
-			#get pages as images
-			images = convert_from_path(filepath)
-			#convert to cv2
-			images = [cv2.cvtColor(np.asarray(im), cv2.COLOR_RGB2BGR) for im in images]
+			#if debug get pages as images
+			if self.config.getboolean('default', 'debug'):
+				page_images = convert_from_path(filepath)
+				#convert to cv2
+				page_images = [cv2.cvtColor(np.asarray(im), cv2.COLOR_RGB2BGR) for im in images]
+			else:
+				page_images = []
 			
 			source = Source(
 				filepath=filepath,
-				name=filepath.split(os.pathsep)[-1],
+				name=name,
 				num_pages = len(pages),
 				pages = pages,
-				images = images,
+				page_images = page_images,
+				images = all_images,
 				authors = None,
 				url = None
 			)
 			
 			return source
 
-	def __recursive_filter_to_lines(self, lt: Any) -> List[LTTextLine]:
+	def __recursive_filter_to_lines_and_images(self, lt: Any) -> List[LTTextLine]:
 		lines = []
+		images = []
 		if isinstance(lt, LTChar):
-			return []
+			return [], []
 
 		if isinstance(lt, LTTextLine):
 			lines.append(lt)
+		elif isinstance(lt, LTImage):
+			images.append(lt)
+
 		else:
 			if hasattr(lt, "_objs"):
 				for o in lt._objs:
-					lines += self.__recursive_filter_to_lines(o)
-		return lines
+					ls, ims = self.__recursive_filter_to_lines_and_images(o)
+
+					### Handle duplicate lines caused by (e.g.) outlines
+					for l in ls:
+						if len(lines) == 0 or l.get_text() != lines[-1].get_text():
+							lines.append(l)
+
+						
+
+					images += ims
+		return lines, images
 
 	def __layout_to_line(self, line_id: str, lt: Union[LTTextBox, LTTextLine], x_size: int, y_size: int) -> List[Line]:
 		'''Split TextBoxes into TextLines'''
 		lines = []
 		if isinstance(lt, LTTextBox):
 			for obj in lt._objs:
+				self.logger.debug("\t {}".format(obj))
 				if isinstance(obj, LTTextLine):
 					lines += self.__layout_to_line(line_id, obj, x_size, y_size)
 					line_id += 1
@@ -175,21 +256,42 @@ class PDFLoader(DataLoaderInterface):
 			bound = Bound(lt.bbox[0] / x_size, (y_size - lt.bbox[1]) / y_size, 
 						(lt.bbox[2] - lt.bbox[0]) / x_size, (lt.bbox[3] - lt.bbox[1])/y_size)
 
-			# if lt.get_text().startswith("Art"):
-			# 	print(lt)
-			# 	for o in lt._objs:
-			# 		print(repr(o))
+			annotations = []
 
-			text = unicodedata.normalize('NFKD', lt.get_text().strip())
+			### Remove very small text
+			skip = False
+			for o in lt._objs:
+				if isinstance(o, LTChar):
+					if o.size < 6.1:
+						skip = True
+					elif o.size > 20:
+						annotations.append("very_large")
+					elif o.size > 12:
+						annotations.append("large")
+					break
+					
+			if skip:
+				return lines
+
+			text = unicodedata.normalize('NFC', lt.get_text().strip())
 			### Hack to deal with some title being weirdly encoded
 			escaped_text = ""
 			for t in text:
-				if repr(t).find("\\uf") >= 0:
-					print(t, repr(t))
+				if repr(t) in LIGATURE_MAP:
+					escaped_text += LIGATURE_MAP[repr(t)]
+				elif repr(t).find("\\uf") >= 0:
 					escaped_text += bytearray.fromhex(repr(t)[5:-1]).decode()
 				else:
 					escaped_text += t
 
-			lines.append(Line(line_id, escaped_text, bound, []))
+			self.logger.debug("{} ESCAPED={}".format(text, escaped_text))
+
+			### Sometimes the text will get duplicated within a single line. Check for this
+			if len(escaped_text.strip()) % 2 == 0:
+				split = int(len(escaped_text.strip()) / 2)
+				if escaped_text.strip()[:split] == escaped_text.strip()[split:]:
+					escaped_text = escaped_text.strip()[:split]
+
+			lines.append(Line(line_id, escaped_text, bound, annotations))
 		
 		return lines

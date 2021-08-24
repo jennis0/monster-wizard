@@ -7,6 +7,8 @@ from typing import List
 from utils.datatypes import Line, Bound, Section
 
 class Columniser(object):
+    '''Take a set of text lines and try to figure out whether they should be arranged in columns'''
+    
     def __init__(self, config: configparser.ConfigParser, logger: logging.Logger):
         self.left_offset_leeway = config.get("columniser", "left_leeway", fallback=0.01)
         self.right_offset_leeway = config.get("columniser", "right_leeway", fallback=0.1)
@@ -129,12 +131,7 @@ class Columniser(object):
             array_title = is_array_title.match(l.text.strip()) is not None
             array_value = is_array_value.match(l.text.strip()) is not None
 
-            
-
-            #Don't want to merge if line is already wide
-            too_wide = False#l.bound.width > self.max_horizontal_gap
-        
-            if not (array_title or array_value) or too_wide:
+            if not (array_title or array_value):
                 merged.append(Line.merge(to_merge))
                 merged.append(l)
                 if i+1 < len(candidates):

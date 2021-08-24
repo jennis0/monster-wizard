@@ -42,7 +42,8 @@ class TextractImageLoader(DataLoaderInterface):
             filepath=filepath, 
             name=filepath.split(os.pathsep)[-1],
             pages=pages,
-            images=images,
+            page_images=images,
+            images = None,
             num_pages=len(pages),
             authors=None,
             url=None
