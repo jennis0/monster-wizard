@@ -18,3 +18,5 @@ poppler-*
 
 .ipynb_checkpoints/
 
+*.conf
+
