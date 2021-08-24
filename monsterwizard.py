@@ -45,8 +45,8 @@ se.register_data_loader(TextractImageLoader)
 se.register_data_loader(PDFLoader)
 
 ### Register Output formats and select one
-se.register_output_writer(DefaultWriter, append=True)
-se.register_output_writer(PlutoWriter, append=True)
+se.register_output_writer(DefaultWriter, append=not args.overwrite)
+se.register_output_writer(PlutoWriter, append=not args.overwrite)
 if args.output_format:
     se.select_writer(args.output_format)
 else:
@@ -65,8 +65,6 @@ results = se.parse(args.target, args.output, pages=pages)
 if not results:
     exit()
 parsed_statblocks, statblocks = results
-
-print(statblocks)
 
 num_pages = len(parsed_statblocks.keys())
 logger.info("Found {} page{} of statblocks".format(num_pages, 's' if num_pages > 1 else ''))

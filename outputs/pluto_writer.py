@@ -50,7 +50,9 @@ class PlutoWriter(WriterInterface):
 
         ### Ensure we're writing something with the correct filetype
         if not filename.endswith(PlutoWriter.get_filetype()):
-            filename = ".".join(filename.split(".")[:-1]) + PlutoWriter.get_filetype()
+            if len(filename.split(".")) > 1:
+                filename = ".".join(filename.split(".")[:-1])
+            filename += PlutoWriter.get_filetype()
 
         make_file = False
         if not os.path.exists(filename) or not append:
@@ -138,11 +140,11 @@ class PlutoWriter(WriterInterface):
         ### Create Abbreviation
         stop_words = ["of","and","the","in","a","an"]
 
-        title = source.name.split("\\")[-1]
+        title = source.name.split("\\")[-1].replace("_", " ")
 
         data = {
             "json": json_title,
-            "abbreviation":"".join(w[0].upper() for w in source.name.split() if w not in stop_words),
+            "abbreviation":"".join(w[0].upper() for w in title.split() if w not in stop_words),
             "full": title,
             "authors": source.authors,
             "url": source.url,

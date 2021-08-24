@@ -33,12 +33,14 @@ class Source:
 
 		### Write images to a compressed bytestream
         ims = {}
-        for i,im in enumerate(self.page_images):
-            ims["page_{}".format(i)] = im
+        if self.page_images:
+            for i,im in enumerate(self.page_images):
+                ims["page_{}".format(i)] = im
 
-        for i,images in enumerate(self.images):
-            for j,im in enumerate(images):
-                ims["page_{}_image_{}".format(i, j)] = im
+        if self.images:
+            for i,images in enumerate(self.images):
+                for j,im in enumerate(images):
+                    ims["page_{}_image_{}".format(i, j)] = im
 
         stream = io.BytesIO()
         np.savez_compressed(stream, **ims)
