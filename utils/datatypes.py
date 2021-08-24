@@ -170,7 +170,7 @@ class Section:
 
     def __init__(self, lines: List[Line] = None, attributes: List[str] = None, 
             sort_order: Section.SortOrder=SortOrder.Vertical, 
-            bound: Optional[Bound]=None, ids: Optiona[List[str]]=None):
+            bound: Optional[Bound]=None, ids: Optional[List[str]]=None):
         self.lines = lines if lines else []
         self.ids = ids if ids else {l.id: l for l in self.lines}
         self.bound = bound if bound else Bound.merge(l.bound for l in self.lines)
