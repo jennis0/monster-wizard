@@ -106,7 +106,7 @@ class Creature():
         matches = re.findall("({})\s+swarm\s+of\s+({})\s+({})".format(
             "|".join(constants.enum_values(constants.SIZES)),
             "|".join(constants.enum_values(constants.SIZES)),
-            "|".join(constants.enum_values(constants.CREATURE_TYPES))
+            "|".join(constants.enum_values(constants.CREATURE_TYPES) + constants.enum_values(constants.CREATURE_TYPE_PLURALS))
         ), text, re.IGNORECASE)
         if len(matches) == 1:
             self.data["size"] = matches[0][0]

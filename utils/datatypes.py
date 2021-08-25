@@ -243,7 +243,7 @@ class Section:
         '''Returns the total section text'''
         text = ""
         for i in range(len(self.lines)):
-            if self.lines[i].text[-1] == "-":
+            if len(self.lines[i].text) > 0 and self.lines[i].text[-1] == "-":
                 text += self.lines[i].text[:-1]
             else:
                 text += self.lines[i].text + join_char

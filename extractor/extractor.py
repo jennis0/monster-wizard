@@ -203,6 +203,8 @@ class StatblockExtractor(object):
                         cr.add_background(background)
                         parsed_statblocks[i].append(cr)
 
+        self.logger.info("Found {} statblocks".format(sum(len(parsed_statblocks[k]) for k in parsed_statblocks)))
+
         # Write data to file
         if output_file is not None:
             self.logger.info("Writing to file {}".format(output_file))

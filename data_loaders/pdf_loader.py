@@ -83,7 +83,7 @@ def override_render_char(self, matrix, font, fontsize, scaling, rise, cid, ncs,
 				print("WARNING: Non tt font ", font, "failed to parse")
 
 		if text in LIGATURE_MAP:
-			print("Swapping for", LIGATURE_MAP[text])
+			#print("Swapping for", LIGATURE_MAP[text])
 			text = LIGATURE_MAP[text]
 
 		if '\x00' in text:

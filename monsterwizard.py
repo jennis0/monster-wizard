@@ -69,13 +69,14 @@ parsed_statblocks, statblocks = results
 num_pages = len(parsed_statblocks.keys())
 logger.info("Found {} page{} of statblocks".format(num_pages, 's' if num_pages > 1 else ''))
 
-print("\n")
-for page in parsed_statblocks:
-    print("Page {}:".format(page))
-    for creature in parsed_statblocks[page]:
-        print()
-        print(pretty_format_creature(creature))
-        print()
+if num_pages < 5:
+    print("\n")
+    for page in parsed_statblocks:
+        print("Page {}:".format(page))
+        for creature in parsed_statblocks[page]:
+            print()
+            print(pretty_format_creature(creature))
+            print()
 
 
         

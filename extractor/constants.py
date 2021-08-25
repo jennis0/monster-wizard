@@ -1,6 +1,6 @@
 from enum import Enum, auto
 import re
-from typing import List
+from typing import Any, List
 
 def is_in_enum(candidate: str, enum: Enum) -> bool:
     '''Helper function to check membership of string in enum'''
@@ -70,6 +70,32 @@ class CREATURE_TYPES(Enum):
     plant = auto()
     undead = auto()
     swarm = auto()
+
+class CREATURE_TYPE_PLURALS(Enum):
+    aberrations = auto()
+    beasts = auto()
+    celestials = auto()
+    constructs = auto()
+    dragons = auto()
+    elementals = auto()
+    fey = auto()
+    fiends = auto()
+    giants = auto()
+    humanoids = auto()
+    monstrosities = auto()
+    oozes = auto()
+    plants = auto()
+    undead = auto()
+
+    def to_singular(self) -> CREATURE_TYPES:
+        if self == CREATURE_TYPE_PLURALS.monstrosities:
+            return CREATURE_TYPES.monstrosity
+        elif self == CREATURE_TYPE_PLURALS.fey:
+            return CREATURE_TYPES.fey
+        elif self == CREATURE_TYPE_PLURALS.undead:
+            return CREATURE_TYPES.undead
+        
+        return CREATURE_TYPES[self.name[:-1]]
 
 class ABILITIES(Enum):
     strength = auto()
