@@ -22,6 +22,8 @@ If you want to add proper metadata to the output file you can use
 
 Any additional metadata required by the output format will be requested in the command line.
 
+By default, the program will append additional monsters to an existing file, use the `--overwrite` argument to create a new file from scratch.
+
 ## Output Formats
 Currently we only support output in a MonsterWizard native JSON format and the 5eTools/Plutonium format, primarily as this is currently the only format which can be imported into FoundryVTT with relative ease. We intend to build native export of FoundryVTT compendiums into the app in the near future.
 
