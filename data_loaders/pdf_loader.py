@@ -19,6 +19,7 @@ import unicodedata
 import cv2
 import numpy as np
 from binascii import b2a_hex
+import functools
 
 
 from data_loaders.data_loader_interface import DataLoaderInterface
@@ -59,7 +60,7 @@ FONT_OVERRIDES = {
 ### pdf I tested. Here we manually override the character processing function so we can
 ### easily inject our own stuff - without having to modify the base library
 def override_render_char(self, matrix, font, fontsize, scaling, rise, cid, ncs,
-					graphicstate):
+					graphicstate, logger):
 		try:
 			text = font.to_unichr(cid)
 			assert isinstance(text, str), str(type(text))
@@ -73,28 +74,27 @@ def override_render_char(self, matrix, font, fontsize, scaling, rise, cid, ncs,
 
 			if text == "\x00":
 				if font_title in FONT_OVERRIDES and cid in FONT_OVERRIDES[font_title]:
-					#print("Override {} for font {}".format(cid, font.basefont))
+					logger.debug("Override {} for font {}".format(cid, font.basefont))
 					text = FONT_OVERRIDES[font_title][cid]
 				else:
-					print("Failed to override {} for font {}".format(cid, font))
+					logger.error("Failed to override {} for font {}".format(cid, font))
 
 		else:
 			if "\x00" in text:
-				print("WARNING: Non tt font ", font, "failed to parse")
+				logger.warning("Non tt font {} failed to parse".format(font))
 
 		if text in LIGATURE_MAP:
-			#print("Swapping for", LIGATURE_MAP[text])
+			logger.debug("Swapping for {}".format(LIGATURE_MAP[text]))
 			text = LIGATURE_MAP[text]
 
 		if '\x00' in text:
-			print("Found missing character", cid)
+			logger.error("Found missing character {}".format(cid))
 
 		item = LTChar(matrix, font, fontsize, scaling, rise, text, textwidth,
 					  textdisp, ncs, graphicstate)
 		self.cur_item.add(item)
 
 		return item.adv
-
 
 def determine_image_type (stream):
 	"""Find out the image file type based on the magic number comparison of the first 4 (or 2) bytes"""
@@ -147,8 +147,8 @@ class PDFLoader(DataLoaderInterface):
 
 			device = PDFPageAggregator(rsrcmgr, laparams=laparams)
 
-			### Hacky monkey patching
-			device.render_char = lambda *args, **kwargs: override_render_char(device, *args, **kwargs)
+			### Hacky monkey patching to handle missing CID entries for various fonts
+			device.render_char = lambda *args, **kwargs: override_render_char(device, *args, **kwargs, logger=self.logger)
 
 			interpreter = PDFPageInterpreter(rsrcmgr, device)   
 			
@@ -199,7 +199,7 @@ class PDFLoader(DataLoaderInterface):
 			if self.config.getboolean('default', 'debug'):
 				page_images = convert_from_path(filepath)
 				#convert to cv2
-				page_images = [cv2.cvtColor(np.asarray(im), cv2.COLOR_RGB2BGR) for im in images]
+				page_images = [cv2.cvtColor(np.asarray(im), cv2.COLOR_RGB2BGR) for im in page_images]
 			else:
 				page_images = []
 			
@@ -280,7 +280,13 @@ class PDFLoader(DataLoaderInterface):
 				if repr(t) in LIGATURE_MAP:
 					escaped_text += LIGATURE_MAP[repr(t)]
 				elif repr(t).find("\\uf") >= 0:
-					escaped_text += bytearray.fromhex(repr(t)[5:-1]).decode()
+					try:
+						escaped_text += bytearray.fromhex(repr(t)[5:-1]).decode()
+					except:
+						try:
+							escaped_text += bytearray.fromhex(repr(t)[5:-1]).decode('windows-1252')
+						except Exception as e:
+							self.logger.error("Exception:", e)
 				else:
 					escaped_text += t
 
@@ -291,6 +297,10 @@ class PDFLoader(DataLoaderInterface):
 				split = int(len(escaped_text.strip()) / 2)
 				if escaped_text.strip()[:split] == escaped_text.strip()[split:]:
 					escaped_text = escaped_text.strip()[:split]
+
+			if escaped_text.strip() == "":
+				self.logger.debug("Empty Text: ", lt)
+				return lines
 
 			lines.append(Line(line_id, escaped_text, bound, annotations))
 		

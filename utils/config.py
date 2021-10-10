@@ -38,6 +38,8 @@ def get_config(args : Dict[str, str]) -> configparser.ConfigParser:
 
     if not config.has_section("default"):
         config.add_section("default")
+    if not config.has_section("meta"):
+        config.add_section("meta")
 
     if args.cache:
         config.set("default", "cache", args.cache)
@@ -50,6 +52,8 @@ def get_config(args : Dict[str, str]) -> configparser.ConfigParser:
     
     if args.logs:
         config.set("default", "logdir", args.logs)
+
+    config.set("default", "use_defaults", "true" if args.yes else 'false')
 
     if args.source:
         config.set("meta", "source", args.source)
@@ -80,4 +84,5 @@ def get_argparser() -> argparse.ArgumentParser:
     parser.add_argument("--pages", type=str, default=None, help="Comma separated list of pages to process. Load all if left blank")
     parser.add_argument("--no-cache", "-N", action='store_true', help="Don't use a cache to save the result (useful when debugging the data loader")
     parser.add_argument("--flush-cache", "-F", action="store_true", help="Dont check the local cache but do save the result.")
+    parser.add_argument("--yes", '-y', action='store_true', default=False, help="Auto accept defaults")
     return parser

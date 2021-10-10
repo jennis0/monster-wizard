@@ -85,12 +85,13 @@ class PlutoWriter(WriterInterface):
                 break
 
         ### Get additional information
-        print()
-        source_meta["full"] = get_input("Source Title", "Title for this source", source_meta["full"])
-        source_meta["abbreviation"] = get_input("Source Abbreviation", "Abbreviation for this source", source_meta['abbreviation'])
-        source_meta["authors"] = get_input("Authors", "Comma-delimited list of authors", source_meta["authors"], is_list=True)
-        source_meta["convertedBy"] = get_input("Converters", "Comma-delimited list of converters", source_meta["convertedBy"], is_list=True) 
-        print()
+        if not self.config.getboolean("default", "use_defaults"):
+            print()
+            source_meta["full"] = get_input("Source Title", "Title for this source", source_meta["full"])
+            source_meta["abbreviation"] = get_input("Source Abbreviation", "Abbreviation for this source", source_meta['abbreviation'])
+            source_meta["authors"] = get_input("Authors", "Comma-delimited list of authors", source_meta["authors"], is_list=True)
+            source_meta["convertedBy"] = get_input("Converters", "Comma-delimited list of converters", source_meta["convertedBy"], is_list=True) 
+            print()
         
         if not source_exists:
             self.logger.debug("Making new source entry")
@@ -169,11 +170,11 @@ class PlutoWriter(WriterInterface):
         if "creature_type" in creature:
             if creature["creature_type"]["swarm"]:
                 new_creature["type"] = {
-                    "type":creature["creature_type"],
+                    "type":creature["creature_type"]["type"][0],
                     "swarmSize":new_creature["size"]
                 }
             else:
-                new_creature["type"] = creature["creature_type"]["type"]
+                new_creature["type"] = creature["creature_type"]["type"][0]
 
         if "alignment" in creature:
             new_creature["alignment"] = self.__convert_alignment(creature["alignment"])

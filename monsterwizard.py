@@ -66,6 +66,8 @@ if not results:
     exit()
 parsed_statblocks, statblocks = results
 
+exit()
+
 num_pages = len(parsed_statblocks.keys())
 logger.info("Found {} page{} of statblocks".format(num_pages, 's' if num_pages > 1 else ''))
 

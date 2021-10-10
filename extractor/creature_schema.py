@@ -27,13 +27,13 @@ HPSchema = Or(AverageDiceSchema, Schema({"special":int}))
 
 CreatureTypeSchema = Schema(
     {
-        "type": Or('any', enum_str(constants.CREATURE_TYPES)),
+        "type": [Or('any', enum_str(constants.CREATURE_TYPES))],
         "swarm": bool,
         "swarm_size": Or(enum_str(constants.SIZES), None)
     }
 )
 
-SizeSchema = enum_str(constants.SIZES)
+SizeSchema = [enum_str(constants.SIZES)]
 
 ACSchema = Schema(
     {

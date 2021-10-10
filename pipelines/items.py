@@ -1,62 +1,42 @@
-import configparser
-import re
-import numpy as np
-import logging
-import configparser
+from configparser import ConfigParser
+from logging import Logger
+
+from utils.datatypes import Line
 from typing import List
 
-import extractor.constants as constants
-from utils.datatypes import Line, Section
+import re
+from enum import Enum, auto
 
-class LineAnnotator(object):
-    '''The LineAnnotator is pretty self-explantatory, we apply relatively noisy labels to individual lines that can 
-    then be used by later processing stages to assign traits to paragraphs/line collections'''
+class ItemTypes (Enum):
+    Armor = auto()
+    Potion = auto()
+    Ring = auto()
+    Rod = auto()
+    Scroll = auto()
+    Staff = auto()
+    Wand = auto()
+    Weapon = auto()
+    Wondrous = auto()
 
-    def __init__(self, config: configparser.ConfigParser, logger: logging.Logger):
+class ItemRarities (Enum):
+    Common = auto()
+    Uncommon = auto()
+    Rare = auto()
+    Very_Rare = auto()
+    Legendary = auto()
+    Artifact = auto()
+    Varies = auto()
+    Unknown = auto()
+
+
+class ItemAnnotator(object):
+    '''Annotates lines with attributes used when parsing items'''
+
+    def __init__(self, config: ConfigParser, logger: Logger):
         self.config = config
-        self.logger = logger.getChild("lineanno")
-        # self.standard_height = config.getfloat("line_annotator", "line_height", fallback=0.04)
-
-        # self.logger.debug("Configured LineAnnotator with config:")
-        # self.logger.debug("\tStandard Height={}".format(self.standard_height))
+        self.logger = logger.getChild("itemanno")
 
         self.__compile_regexes()
-
-    banned_words = [
-        "town",
-        "settlement",
-        "stone fort",
-        "cave system",
-        "true form",
-        "prone",
-        "restrained"
-    ]
-
-    def __is_race_type_string(self, line: Line) -> bool:
-           
-        race_type_match = self.race_type_regex.findall(line.text.strip())
-
-        # Must have at least size
-        if len(race_type_match) == 0 or race_type_match[0] == '':
-            return False
-
-        # First word must be capitilised
-        if line.text.strip()[0] != line.text.strip()[0].upper():
-            return False
-
-        # Size must be capitilised
-        if race_type_match[0][0][0] != race_type_match[0][0][0].upper():
-            return False
-
-        # It should either be short 
-        if len(line.text.split(" ")) < 6 and not (len(race_type_match) < 2 or race_type_match[0][1] != '' or race_type_match[0][2] != ''): #Either short text or it contains at least on of creature type or alignment
-            return False
-
-        for b in LineAnnotator.banned_words:
-            if b in line.text.lower():
-                return False
-
-        return True
 
     def __compile_regexes(self):
         '''Pregenerate regexes used for annotating lines'''

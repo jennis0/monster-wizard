@@ -115,7 +115,7 @@ class CreatureFactory():
         state = CreatureFactory.ParserState.title
 
         current_section = Section()
-        current_action_type = None
+        current_action_type = constants.ACTION_TYPES.action
         handled_action_block= {
             constants.ACTION_TYPES.legendary: False,
             constants.ACTION_TYPES.lair: False
@@ -186,7 +186,7 @@ class CreatureFactory():
                 try:
                     name = cr.data["name"]
                 except:
-                    self.logger.warning("Failed to parse name in", current_section)
+                    self.logger.warning("Failed to parse name in {}".format(current_section.get_section_text()))
                     return None
                 current_section = Section()
                 state = CreatureFactory.ParserState.defence

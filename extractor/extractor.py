@@ -1,3 +1,5 @@
+import os
+
 from data_loaders.cached_loader_wrapper import CachedLoaderWrapper
 from extractor.creature_schema import CreatureSchema
 from preprocessing.columniser import Columniser
@@ -5,7 +7,7 @@ from data_loaders.data_loader_interface import DataLoaderInterface
 
 from configparser import ConfigParser
 from logging import Logger
-from typing import Tuple, Union, Dict, List, Any
+from typing import Tuple, Dict, List, Any
 
 from utils.datatypes import Section, Source
 from utils.drawing import drawBoundingBoxes
@@ -80,25 +82,34 @@ class StatblockExtractor(object):
 
         self.writer = writer
 
-    def load_data(self, filepath: str) -> Union[Source, None]:
-        '''Attempt to load the file in the pass path. Returns the data if loaded'''
-        ft = filepath.split(".")[-1]
+    def load_data(self, filepath: str) -> List[Source]:
+        '''Attempt to load the files in the passed path. Returns the data if loaded'''
 
-        if ft not in self.loaders_by_filetype:
-            self.logger.error("No data loader implemented for filetype '{}'. Failed to load {}".format(ft, filepath))
-            return None
+        files_to_process = [filepath]
+        sources = []
+        while len(files_to_process) > 0:
+            f = files_to_process.pop(0)
+            if os.path.isdir(f):
+                files_to_process += [os.path.join(f, fp) for fp in os.listdir(f)]
+                continue
 
-        try:
-            loader = self.loaders_by_filetype[ft]
-            source = loader.load_data_from_file(filepath)
-            self.logger.info("Loaded file {}".format(filepath))
-            data = source
-        except Exception as e:
-            self.logger.exception(e)
-            self.logger.error("Failed to load file {}")
-            return None
+            ft = f.split(".")[-1]
 
-        return data
+            if ft not in self.loaders_by_filetype:
+                self.logger.error("No data loader implemented for filetype '{}'. Failed to load {}".format(ft, f))
+                return None
+
+            try:
+                loader = self.loaders_by_filetype[ft]
+                source = loader.load_data_from_file(f)
+                self.logger.info("Loaded file {}".format(f))
+                sources.append(source)
+            except Exception as e:
+                self.logger.exception(e)
+                self.logger.error("Failed to load file {}")
+                return None
+
+        return sources
 
     def get_loaded_files(self):
         return [list(self.data.keys())]
@@ -110,112 +121,120 @@ class StatblockExtractor(object):
 
         draw = draw_lines or draw_columns or draw_statblocks or draw_clusters
 
-        data = self.load_data(filepath)
+        sources = self.load_data(filepath)
 
-        ### Override provided metadata with user input
-        if self.override_title:
-            data.name = self.override_title
-        if self.override_authors:
-            data.authors = self.override_authors
-        if self.override_url:
-            data.url = self.override_url
+        finished_ps = []
+        finished_sb = []
+        for source in sources:
 
-        if not data:
-            self.logger.error("Failed to load {}".format(filepath))
-            return None
-        cp = CreatureFactory(self.config, self.logger)
+            if not source:
+                self.logger.error("Failed to load {}".format(filepath))
+                return None
+            cp = CreatureFactory(self.config, self.logger)
 
-        self.logger.info("Loading {}".format(data.name))
-        self.logger.debug("Found {} page{}".format(data.num_pages, 's' if data.num_pages > 1 else ''))
-        
-        statblocks = {}
-        parsed_statblocks = {}
-        for i, page_data in enumerate(data.pages):
-            if pages and i not in pages:
-                continue
+            self.logger.info("Loading {}".format(source.name))
+            self.logger.debug("Found {} page{}".format(source.num_pages, 's' if source.num_pages > 1 else ''))
+
+            ### Override provided metadata with user input
+            if self.override_title:
+                source.name = self.override_title
+            if self.override_authors:
+                source.authors = self.override_authors
+            if self.override_url:
+                source.url = self.override_url
             
-            self.logger.debug("Processing {} lines".format(len(page_data.lines)))
+            statblocks = {}
+            parsed_statblocks = {}
+            for i, page_data in enumerate(source.pages):
+                if pages and i not in pages:
+                    continue
+                
+                self.logger.debug("Processing {} lines".format(len(page_data.lines)))
 
-            boxes = []
-            colours = []
+                boxes = []
+                colours = []
 
-            if draw_lines:
-                boxes += [x for x in page_data.lines]
-                colours += [self.line_colour for i in range(len(page_data.lines))]
+                if draw_lines:
+                    boxes += [x for x in page_data.lines]
+                    colours += [self.line_colour for i in range(len(page_data.lines))]
 
-                ### Parse data into sections
-            columns = self.columniser.find_columns(page_data.lines)
+                    ### Parse data into sections
+                columns = self.columniser.find_columns(page_data.lines)
 
-            if draw_columns:
-                boxes += [x for x in columns]
-                colours += [self.column_colour for i in range(len(columns))]
+                if draw_columns:
+                    boxes += [x for x in columns]
+                    colours += [self.column_colour for i in range(len(columns))]
 
-            ### Generate line annotations
-            for col in columns:
-                self.line_annotator.annotate(col.lines)
+                ### Generate line annotations
+                for col in columns:
+                    self.line_annotator.annotate(col.lines)
 
-            ### Combine lines into clusters
-            clusters = []
-            for col in columns:
-                clusters.append(self.clusterer.cluster(col.lines))
+                ### Combine lines into clusters
+                clusters = []
+                for col in columns:
+                    clusters.append(self.clusterer.cluster(col.lines))
 
-            if draw_clusters:
+                if draw_clusters:
+                    for col in clusters:
+                        boxes += [x for x in col]
+                        colours += [self.hierarchy_colour for i in range(len(col))]
+
+                ### Combine line annotations into cluster annotations
                 for col in clusters:
-                    boxes += [x for x in col]
-                    colours += [self.hierarchy_colour for i in range(len(col))]
+                    self.cluster_annotator.annotate(col)
 
-            ### Combine line annotations into cluster annotations
-            for col in clusters:
-                self.cluster_annotator.annotate(col)
+                ### Generate statblocks from clusters
+                statblocks[i],background = self.statblock_generator.create_statblocks(clusters)
+                
+                if draw_statblocks:
+                    boxes += [s for s in statblocks[i]]
+                    colours += [self.statblock_colour for i in range(len(statblocks[i]))]
+                
+                # ### Recalculate columns within statblocks
+                columned_statblocks = []
+                if len(statblocks) > 0:
+                    for sb in statblocks[i]:
+                        new_sb = Section()
+                        cols = self.columniser.find_columns(sb.lines)
+                        for c in cols:
+                            new_sb.add_section(c, sort=False)
+                        columned_statblocks.append(new_sb)
 
-            ### Generate statblocks from clusters
-            statblocks[i],background = self.statblock_generator.create_statblocks(clusters)
-            
-            if draw_statblocks:
-                boxes += [s for s in statblocks[i]]
-                colours += [self.statblock_colour for i in range(len(statblocks[i]))]
-            
-            # ### Recalculate columns within statblocks
-            columned_statblocks = []
-            if len(statblocks) > 0:
-                for sb in statblocks[i]:
-                    new_sb = Section()
-                    cols = self.columniser.find_columns(sb.lines)
-                    for c in cols:
-                        new_sb.add_section(c, sort=False)
-                    columned_statblocks.append(new_sb)
+                        if draw_final_columns:
+                            boxes += [x for x in cols]
+                            colours += [self.column_colour for i in range(len(cols))]
 
-                    if draw_final_columns:
-                        boxes += [x for x in cols]
-                        colours += [self.column_colour for i in range(len(cols))]
+                statblocks[i] = columned_statblocks
 
-            statblocks[i] = columned_statblocks
+                if draw:
+                    drawBoundingBoxes(source.page_images[i], boxes, colours)
 
-            if draw:
-                drawBoundingBoxes(data.images[i], boxes, colours)
+                # Parse the creatures
+                if len(statblocks[i]) > 0:
+                    parsed_statblocks[i] = []
+                    for sb in statblocks[i]:
+                        cr = cp.statblock_to_creature(sb)
+                        if cr:
+                            cr.add_background(background)
+                            parsed_statblocks[i].append(cr)
 
-            # Parse the creatures
-            if len(statblocks[i]) > 0:
-                parsed_statblocks[i] = []
-                for sb in statblocks[i]:
-                    cr = cp.statblock_to_creature(sb)
-                    if cr:
-                        cr.add_background(background)
-                        parsed_statblocks[i].append(cr)
+            self.logger.info("Found {} statblocks".format(sum(len(parsed_statblocks[k]) for k in parsed_statblocks)))
 
-        self.logger.info("Found {} statblocks".format(sum(len(parsed_statblocks[k]) for k in parsed_statblocks)))
+            # Write data to file
+            if output_file is not None:
+                self.logger.info("Writing to file {}".format(output_file))
+                creatures = []
+                for page in parsed_statblocks:
+                    creatures += parsed_statblocks[page]
 
-        # Write data to file
-        if output_file is not None:
-            self.logger.info("Writing to file {}".format(output_file))
-            creatures = []
-            for page in parsed_statblocks:
-                creatures += parsed_statblocks[page]
+                writer = self.writers_by_name[self.writer]
+                writer.write(output_file, source, creatures)
+                writer.append = True #Always append any additional creatures after the first
+            else:
+                self.logger.info("Not writing as no output file specified")
 
-            writer = self.writers_by_name[self.writer]
-            writer.write(output_file, data, creatures)
-        else:
-            self.logger.info("Not writing as no output file specified")
+            finished_ps.append(parsed_statblocks)
+            finished_sb.append(statblocks)
 
-        return parsed_statblocks, statblocks
+        return finished_ps, finished_sb
 

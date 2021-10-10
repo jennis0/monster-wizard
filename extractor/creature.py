@@ -100,49 +100,55 @@ class Creature():
 
     def set_race_type_size(self, text: str):
         '''Set the race, type, and size of the monster'''
-        parts = text.split(",")
+        parts = text.strip().split(",")
 
         ### Check for complex swarm case
         matches = re.findall("({})\s+swarm\s+of\s+({})\s+({})".format(
             "|".join(constants.enum_values(constants.SIZES)),
             "|".join(constants.enum_values(constants.SIZES)),
             "|".join(constants.enum_values(constants.CREATURE_TYPES) + constants.enum_values(constants.CREATURE_TYPE_PLURALS))
-        ), text, re.IGNORECASE)
+        ), text.strip(), re.IGNORECASE)
         if len(matches) == 1:
-            self.data["size"] = matches[0][0]
-            self.data["creature_type"] = {
+            self.data["size"] = [matches[0][0]]
+            self.data["creature_type"] = [{
                 "type": matches[0][1],
                 "swarm": True,
                 "swarm_size": matches[0][2]
-            }
+            }]
         else:
             ### Find size by pattern matching
-            size = self.__basic_pattern_match(parts[0], constants.SIZES)
-            if len(size) > 0:
-                self.data["size"] = size[0].lower()
+            sizes = self.__basic_pattern_match(parts[0], constants.SIZES)
+            if len(sizes) > 0:
+                self.data["size"] = []
+                for s in sizes:
+                    self.data["size"].append(s.lower())
                 self.__validate_part("size")
 
             ### Find creature type, and whether they are a swarm
-            type = self.__basic_pattern_match(parts[0], constants.CREATURE_TYPES)
-            if len(type) > 0:
-                type = type[0].lower()
-            else:
-                type = ''
-            swarm = "swarm" in parts[0]
-            swarm_size = self.data["size"] if swarm else None
-            self.data["creature_type"] = {
-                "type": type, "swarm": swarm, "swarm_size": swarm_size
-            }
-            self.__validate_part("creature_type")
+            types = self.__basic_pattern_match(parts[0], constants.CREATURE_TYPES)
+            if len(types) > 0:
+                ts = []
+                for t in types:
+                    if len(t) > 0:
+                        ts.append(t.lower())
+                if len(ts) == '':
+                    ts = ["unknown"]
+                    
+                swarm = "swarm" in parts[0]
+                swarm_size = self.data["size"] if swarm else None
+                self.data["creature_type"] = {
+                    "type": ts, "swarm": swarm, "swarm_size": swarm_size
+                }
+                self.__validate_part("creature_type")
 
         if len(parts) > 1:
             self.data["alignment"] = ",".join(parts[1:]).strip()
             self.__validate_part("alignment")
         else:
             #If we fail to get it from a comma, try to guess
-            words = text.split()
+            words = text.strip().split()
             for i,word in enumerate(words):
-                if word.lower() == type.lower() and i < len(words):
+                if "creature_type" in self.data and word.lower() == self.data["creature_type"]["type"][-1].lower() and i < len(words):
                     self.data["alignment"] =  " ".join(words[i+1:])
                     self.__validate_part("alignment")
             
@@ -652,6 +658,13 @@ class Creature():
         
         self.logger.debug("Adding action {}".format(title))
         
+        if not self.data:
+            self.logger.error("Data object does not exist")
+            self.logger.error(section.get_section_text())
+            self.logger.error(section.attributes)
+            self.logger.error(action_type)
+            return
+
         if not action_type.name in self.data:
             self.data[action_type.name] = []
 
