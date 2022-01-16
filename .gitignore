@@ -11,10 +11,13 @@ package-lock.json
 
 *.png
 
+
 data/
 
 *.json
 *.db
+*.mw
+*.html
 poppler-*
 
 .ipynb_checkpoints/
