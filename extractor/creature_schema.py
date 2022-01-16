@@ -23,7 +23,7 @@ AverageDiceSchema = Schema(
     }
 )
 
-HPSchema = Or(AverageDiceSchema, Schema({"special":int}))
+HPSchema = Or(AverageDiceSchema, Schema({"special":str}))
 
 CreatureTypeSchema = Schema(
     {
@@ -170,7 +170,7 @@ SpellLevelSchema = Schema(
     {
         "frequency": enum_str(constants.SPELL_FREQUENCIES),
         "spells": [str],
-        Optional("level"): Or('cantrip','1','2','3','4','5','6','7','8','9'),
+        "level": Or('unlevelled','cantrip','1','2','3','4','5','6','7','8','9'),
         Optional("each"): bool,
         Optional("slots"): int
     }

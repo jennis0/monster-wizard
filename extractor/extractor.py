@@ -1,3 +1,4 @@
+from ast import parse
 import os
 
 from data_loaders.cached_loader_wrapper import CachedLoaderWrapper
@@ -80,7 +81,8 @@ class StatblockExtractor(object):
             self.logger.error("No Output Writer named {} registered".format(writer))
             return False
 
-        self.writer = writer
+        self.writer = self.writers_by_name[writer]
+
 
     def load_data(self, filepath: str) -> List[Source]:
         '''Attempt to load the files in the passed path. Returns the data if loaded'''
@@ -106,7 +108,7 @@ class StatblockExtractor(object):
                 sources.append(source)
             except Exception as e:
                 self.logger.exception(e)
-                self.logger.error("Failed to load file {}")
+                self.logger.error(f"Failed to load file {f}")
                 return None
 
         return sources
@@ -114,22 +116,24 @@ class StatblockExtractor(object):
     def get_loaded_files(self):
         return [list(self.data.keys())]
 
-    def parse(self, filepath: str, output_file: str=None, pages: List[int]=None, draw_lines=False, draw_columns=False, draw_statblocks=False, draw_clusters=False, draw_final_columns=False) \
-            -> Tuple[Dict[int, List[Any]], Dict[int, List[Section]]]:
+    def parse(self, filepaths: List[str], pages: List[int]=None, draw_lines=False, draw_columns=False, draw_statblocks=False, draw_clusters=False, draw_final_columns=False) \
+            -> Tuple[Dict[str, Tuple[Source, Dict[str, List[Any]]]], Dict[int, List[Section]]]:
         '''Load data from the file and try to find the statblocks. Use the draw options to show individual parts of the statblock discovery pipeline. Set output file
         to a filename to write using the selected writer.'''
 
         draw = draw_lines or draw_columns or draw_statblocks or draw_clusters
 
-        sources = self.load_data(filepath)
+        sources = []
+        for f in filepaths:
+            s = self.load_data(f)
+            if not s:
+                self.logger.error("Failed to load {}".format(f))
+            else:
+                sources += s
 
-        finished_ps = []
-        finished_sb = []
+        finished_ps = {}
+        finished_sb = {}
         for source in sources:
-
-            if not source:
-                self.logger.error("Failed to load {}".format(filepath))
-                return None
             cp = CreatureFactory(self.config, self.logger)
 
             self.logger.info("Loading {}".format(source.name))
@@ -146,7 +150,7 @@ class StatblockExtractor(object):
             statblocks = {}
             parsed_statblocks = {}
             for i, page_data in enumerate(source.pages):
-                if pages and i not in pages:
+                if pages and i+1 not in pages:
                     continue
                 
                 self.logger.debug("Processing {} lines".format(len(page_data.lines)))
@@ -190,11 +194,12 @@ class StatblockExtractor(object):
                     boxes += [s for s in statblocks[i]]
                     colours += [self.statblock_colour for i in range(len(statblocks[i]))]
                 
-                # ### Recalculate columns within statblocks
+                ### Recalculate columns within statblocks
                 columned_statblocks = []
                 if len(statblocks) > 0:
                     for sb in statblocks[i]:
                         new_sb = Section()
+                        self.logger.debug(sb.lines)
                         cols = self.columniser.find_columns(sb.lines)
                         for c in cols:
                             new_sb.add_section(c, sort=False)
@@ -216,25 +221,24 @@ class StatblockExtractor(object):
                         cr = cp.statblock_to_creature(sb)
                         if cr:
                             cr.add_background(background)
+                            cr.set_source(source.name, i+1)
                             parsed_statblocks[i].append(cr)
 
             self.logger.info("Found {} statblocks".format(sum(len(parsed_statblocks[k]) for k in parsed_statblocks)))
 
-            # Write data to file
-            if output_file is not None:
-                self.logger.info("Writing to file {}".format(output_file))
-                creatures = []
-                for page in parsed_statblocks:
-                    creatures += parsed_statblocks[page]
-
-                writer = self.writers_by_name[self.writer]
-                writer.write(output_file, source, creatures)
-                writer.append = True #Always append any additional creatures after the first
-            else:
-                self.logger.info("Not writing as no output file specified")
-
-            finished_ps.append(parsed_statblocks)
-            finished_sb.append(statblocks)
+            finished_ps[source.name] = (source, parsed_statblocks)
+            finished_sb[source.name] = statblocks
 
         return finished_ps, finished_sb
 
+
+    def write_to_file(self, output_file: str, source: Source, parsed_statblocks: Dict[str, List[Any]]):
+            # Write data to file
+            self.logger.info("Writing to file {}".format(output_file))
+            creatures = []
+
+            for page in parsed_statblocks:
+                creatures += parsed_statblocks[page]
+            
+            self.writer.write(output_file, source, creatures)
+            self.writer.append = True #Always append any additional creatures after the first

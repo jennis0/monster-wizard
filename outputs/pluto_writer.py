@@ -39,7 +39,7 @@ class PlutoWriter(WriterInterface):
     @staticmethod
     def get_filetype() -> str:
         '''Returns the output filetype of this writer'''
-        return ".json"
+        return "json"
 
     def write(self, filename: str, source: Source, creatures: List[Any], append: bool=None) -> bool:
         '''Writes the creatures to the specified file. If append is set to true, creatures will be inserted into the existing file. Returns True if write is successful'''
@@ -52,7 +52,7 @@ class PlutoWriter(WriterInterface):
         if not filename.endswith(PlutoWriter.get_filetype()):
             if len(filename.split(".")) > 1:
                 filename = ".".join(filename.split(".")[:-1])
-            filename += PlutoWriter.get_filetype()
+            filename += "." + PlutoWriter.get_filetype()
 
         make_file = False
         if not os.path.exists(filename) or not append:
@@ -103,9 +103,13 @@ class PlutoWriter(WriterInterface):
         for creature in creatures:
             try:
                 cr = self.__convert_creature(creature.to_json())
+                if cr is None: 
+                    self.logger.error("Failed to convert {}".format(creature['name']))
+                    continue
                 cr["source"] = source_meta["json"]
             except Exception as e:
                 self.logger.error(e)
+                continue
 
 
             ### Replace monsters with the same name from the same source
@@ -175,6 +179,9 @@ class PlutoWriter(WriterInterface):
                 }
             else:
                 new_creature["type"] = creature["creature_type"]["type"][0]
+        else:
+            self.logger.error("No type found for creature {}".format(creature['name']))
+            return None
 
         if "alignment" in creature:
             new_creature["alignment"] = self.__convert_alignment(creature["alignment"])
@@ -205,7 +212,7 @@ class PlutoWriter(WriterInterface):
         if "saves" in creature:
             new_creature["save"] = {}
             for save in creature["saves"]:
-                new_creature["save"] = int_to_add_string(creature["saves"][save])
+                new_creature["save"][save] = int_to_add_string(creature["saves"][save])
 
         if "skills" in creature:
             new_creature["skill"] = {}
@@ -213,10 +220,10 @@ class PlutoWriter(WriterInterface):
                 new_creature["skill"][s["skill"].lower()] = int_to_add_string(s["mod"])
 
         if "senses" in creature:
-            new_creature["sense"] = []
+            new_creature["senses"] = []
             new_creature["senseTags"] = []
             for sense in creature["senses"]:
-                new_creature["sense"].append("{} {} {}.".format(sense["sense"].lower(), sense["distance"], sense["measure"]))
+                new_creature["senses"].append("{} {} {}.".format(sense["sense"].lower(), sense["distance"], sense["measure"]))
                 if sense["sense"] == constants.SENSES.truesight.value:
                     new_creature["senseTags"].append('U')
                 else:
@@ -355,6 +362,10 @@ class PlutoWriter(WriterInterface):
         if "background" in creature:
             new_creature["fluff"] = {}
             new_creature["fluff"]["entries"] = creature["background"]
+
+        if "source" in creature:
+            if "page" in creature['source']:
+                new_creature['page'] = creature['source']['page']
 
         return new_creature
 

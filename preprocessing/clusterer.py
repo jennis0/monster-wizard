@@ -10,7 +10,7 @@ class Clusterer(object):
 
     def __init__(self, config: ConfigParser, logger: Logger):
         
-        self.fuzzyness = config.getfloat("clusterer", "fuzzyness", fallback=3.)
+        self.fuzzyness = config.getfloat("clusterer", "fuzzyness", fallback=3.0)
         self.min_gap = config.getfloat("clusterer", "min_gap", fallback=0.)
         self.max_gap = config.getfloat("clusterer", "max_gap", fallback=1.)
 
@@ -46,7 +46,7 @@ class Clusterer(object):
         current_cluster = Section([lines[0]], [])
         for line,gap in zip(lines[1:], gaps):
             #Gap is large so start a new cluster
-            if gap < -0.1 or gap > threshold or "statblock_title" in line.attributes:
+            if gap < -0.1 or gap > threshold or "statblock_title" in line.attributes or "text_title" in line.attributes:
                 clusters.append(current_cluster)
                 current_cluster = Section([line], [])
             else:

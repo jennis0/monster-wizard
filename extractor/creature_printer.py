@@ -25,8 +25,8 @@ def to_fixed_width(width: int, indent: int, strs: List[str]) -> List[str]:
 
 def format_type_alignment(creature: Creature) -> str:
     type_str = ""
-    type = creature.data["creature_type"]["type"] if "creature_type" in creature.data else ""
-    size = creature.data["size"] if "size" in creature.data else ""
+    type = " or ".join(creature.data["creature_type"]["type"]) if "creature_type" in creature.data else ""
+    size = " or ".join(creature.data["size"]) if "size" in creature.data else ""
     if creature.data["creature_type"]["swarm"]:
         s = creature.data["creature_type"]["swarm_size"]
         if s is None:

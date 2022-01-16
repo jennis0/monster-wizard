@@ -46,7 +46,7 @@ class CreatureFactory():
         #Check if we're in a spell list
         spell_list = False
         if len(current_section.lines) > 0 and "spellcasting" in current_section.lines[0].text.lower():
-            if re.match("(at will|rest|daily|cantrip|1st|2nd|3rd|[4-9]th)", line.text, re.IGNORECASE):
+            if re.search("^\s*(at will|rest|daily|cantrip|1st|2nd|3rd|[4-9]th|[1-9]+\s*/\s*(day|long rest|short rest|encounter))", line.text, re.IGNORECASE) is not None:
                 spell_list = True
 
         #Check if we're at the start of a new feature
@@ -74,6 +74,8 @@ class CreatureFactory():
         if has_colon > 0:
             title = title[:has_colon]
 
+        in_brackets = "(" in current_section.get_section_text() and ")" not in current_section.get_section_text()
+
         ### Conditions for starting a new block
         #Easy case, new block
         new_block = len(current_section.lines) == 0 
@@ -85,11 +87,14 @@ class CreatureFactory():
         #Is the start of an attack
         is_attack_start = "melee_attack" in line.attributes or "ranged_attack" in line.attributes
 
+        #Handle recharges
+        is_recharge = "recharge" in line.attributes
+
         #Handle a rare case where actions contain a table
         is_table = len(line.text) > 0 and line.text[0].isnumeric()
 
         #Check if we're at the start of a new feature
-        if not is_table and (new_block or has_title or is_attack_start):
+        if not is_table and not in_brackets and (new_block or has_title or is_attack_start or is_recharge):
             if len(current_section.lines) > 0:
                 if not action_type in handled_action_block or handled_action_block[action_type]:
                     creature.add_action(current_section, action_type)
@@ -157,9 +162,8 @@ class CreatureFactory():
             if len(line.text) == 0:
                 continue
 
-            if line.text[0].isupper() and len(line.text.split()) < 3 and \
-                line.text.split()[0].lower().strip().removesuffix("s") in constants.enum_values(constants.ACTION_TYPES):
-                at = line.text.split()[0].lower().strip().removesuffix("s")
+            action_regex = re.compile("^({})\s+actions?$".format(constants.enum_values(constants.ACTION_TYPES)), re.IGNORECASE)
+            if line.text[0].isupper() and action_regex.match(line.text[0]):
 
                 if state == CreatureFactory.ParserState.features:
                     if len(current_section.lines) > 0:
@@ -266,5 +270,9 @@ class CreatureFactory():
                         cr.add_legendary_block(current_section)
                     if current_action_type == constants.ACTION_TYPES.lair:
                         cr.add_lair_block(current_section)
+
+        if not cr.is_valid():
+            return None
+
         return cr
 

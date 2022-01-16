@@ -83,27 +83,34 @@ class Columniser(object):
         new_column = Section([])
         candidate_lines = [column.lines[0]]
 
+        is_array_value = re.compile("^([0-9]+\s*|\s*\(\s*[+-][0-9]\s*\)\s*){1,12}$", re.IGNORECASE)
+        is_array_title = re.compile("^(?:\s?(str|wis|con|int|dex|cha)\s\s?){1,6}$", re.IGNORECASE)
+        
+        in_value = False
+        in_title = False
         for i in range(1, len(column.lines)):
             line = column.lines[i]
             first_bottom = candidate_lines[0].bound.bottom()
             first_top = candidate_lines[0].bound.top
+            first_height = candidate_lines[0].bound.height
             candidate_bottom = line.bound.bottom()
             candidate_top = line.bound.top
 
             # Is the tested line aligned with the first
             if (candidate_top >= first_top - self.fuzzyness):
                 if (candidate_bottom <= first_bottom + self.fuzzyness):
-                    candidate_lines.append(line)
-                    # Continue looking for more aligned lines
-                    continue
+                    if (abs(line.bound.height - first_height)/first_height < 0.1):
+                        candidate_lines.append(line)
+                        # Continue looking for more aligned lines
+                        continue
 
             # Current line is not aligned so merge previous ones
             for l in self.__attempt_to_merge_lines(candidate_lines):
                 new_column.add_line(l)
-                
+
             candidate_lines = [column.lines[i]]
 
-                # Current line is not aligned so merge previous ones
+        # Handle final iteration of loop
         for l in self.__attempt_to_merge_lines(candidate_lines):
             new_column.add_line(l)
 
@@ -119,11 +126,13 @@ class Columniser(object):
         if len(candidates) == 1:
             return candidates
 
-        is_array_value = re.compile("^(\s*[0-9]+\s*|\s*\(\s*[+-][0-9]\s*\)\s*)+$")
-        is_array_title = re.compile("^\s*(?:(str|wis|con|int|dex|cha)\s*)+$", re.IGNORECASE)
+        is_array_value = re.compile("^([0-9]+\s*|\s*\(\s*[+-][0-9]\)\s*){1,12}$", re.IGNORECASE)
+        is_array_title = re.compile("^((?:(str|wis|con|int|dex|cha)\s*){1,6})$", re.IGNORECASE)
 
         merged = []
         to_merge = [candidates[0]]
+        in_title = is_array_title.match(candidates[0].text.strip()) is not None
+        in_value = is_array_value.match(candidates[0].text.strip()) is not None
         for i in range(1, len(candidates)):
             l = candidates[i]
 
@@ -131,15 +140,25 @@ class Columniser(object):
             array_title = is_array_title.match(l.text.strip()) is not None
             array_value = is_array_value.match(l.text.strip()) is not None
 
-            if not (array_title or array_value):
+            #Entering a title or value string so merge anything remaining
+            if not in_title and not in_value and (array_title or array_value):
                 merged.append(Line.merge(to_merge))
-                merged.append(l)
-                if i+1 < len(candidates):
-                    to_merge = [candidates[i+1]]
-                    i+=1
-                continue          
-
-
+                to_merge = [l]
+                in_title = array_title
+                in_value = array_value
+                continue
+            #Still within a title or value string
+            elif (in_title and array_title) or (in_value and array_value):
+                to_merge.append(l)
+                continue
+            #Exiting a title or value string
+            elif (in_title and not array_title) or (in_value and not array_value):
+                merged.append(Line.merge(to_merge))
+                to_merge = [l]
+                in_title = array_title
+                in_value = array_value
+                continue
+     
             #Don't want to merge if there is a large horizontal gap between the lines (could be missed columns)
             if l.bound.left - to_merge[-1].bound.right() > self.max_horizontal_gap:
                 merged.append(Line.merge(to_merge))
@@ -163,6 +182,7 @@ class Columniser(object):
                 self.logger.debug("\tCol {}: Length {}".format(i, len(c)))
 
         columns = self.__merge_contained_columns(columns)
+
         self.logger.debug("{} columns remain after column merging".format(len(columns)))
 
         #Merge lines on the same line

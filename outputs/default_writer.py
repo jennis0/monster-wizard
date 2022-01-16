@@ -41,7 +41,19 @@ class DefaultWriter(WriterInterface):
     @staticmethod
     def get_filetype() -> str:
         '''Returns the output filetype of this writer'''
-        return ".json"
+        return "mw"
+
+    @staticmethod
+    def prettify_name(s: str) -> str:
+        '''Turn a filepath into a nicer name'''
+        file = os.path.basename(s).split('.')[0]
+        file.replace("_", " ")
+        words = file.split(" ")
+        stop_words = ["of","and","the","in","a","an"]
+
+        capped_words = [w[0].upper() + w[1:] for w in words if w not in stop_words and len(w) > 1]
+        capped_words[0] = capped_words[0][0].upper() + capped_words[0][1:]
+        return " ".join(capped_words)
 
     def write(self, filename: str, source: Source, creatures: List[Any], append: bool=None) -> bool:
         '''Writes the creatures to the specified file. If append is set to true, creatures will be inserted into the existing file. Returns True if write is successful'''
@@ -55,7 +67,8 @@ class DefaultWriter(WriterInterface):
         if not filename.endswith(DefaultWriter.get_filetype()):
             filename = ".".join(filename.split(".")[:-1]) + DefaultWriter.get_filetype()
 
-        if not os.path.exists(filename) or append:
+        make_file = False
+        if not os.path.exists(filename) or not append:
             make_file = True
             self.logger.debug("Writing new file")
         elif not os.path.isfile(filename):
@@ -69,10 +82,12 @@ class DefaultWriter(WriterInterface):
             with open(filename, 'r') as f:
                 data = json.load(f)
 
+        pretty_name = DefaultWriter.prettify_name(source.name)
+
         written = False
         for source_entry in data:
-            if source_entry["title"] == source.name:
-                source_entry["creatures"] += creatures
+            if source_entry["title"] == pretty_name:
+                source_entry["creatures"] += [c.to_json() for c in creatures]
                 written = True
                 self.logger.debug("Appending creatures to existing source")
                 break
@@ -81,7 +96,7 @@ class DefaultWriter(WriterInterface):
             self.logger.debug("Making new source entry")
             data.append(
                 {
-                    "title": source.name,
+                    "title": pretty_name,
                     "creatures": [c.to_json() for c in creatures]
                 }
             )
@@ -91,7 +106,7 @@ class DefaultWriter(WriterInterface):
                 data[-1]["url"] = source.url
 
         with open(filename, 'w') as f:
-            json.dump(data, f)
+            json.dump(data, f, indent=4)
 
         return True
 

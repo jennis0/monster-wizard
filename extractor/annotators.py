@@ -49,7 +49,7 @@ class LineAnnotator(object):
             return False
 
         # It should either be short 
-        if len(line.text.split(" ")) < 6 and not (len(race_type_match) < 2 or race_type_match[0][1] != '' or race_type_match[0][2] != ''): #Either short text or it contains at least on of creature type or alignment
+        if len(line.text.split(" ")) < 6 and not (len(race_type_match) < 2 or race_type_match[0][1] != '' or race_type_match[0][2] != ''): #Either short text or it contains at least one of creature type or alignment
             return False
 
         for b in LineAnnotator.banned_words:
@@ -88,6 +88,7 @@ class LineAnnotator(object):
                 ("^Actions", "action_title"),
                 ("Costs \d+ actions", "legendary_action_cost"),
                 ("Recharge \d+-\d+", "recharge"),
+                ("[Rr]echarges?\s*after\s*a\s*([sS]hort|[sS]hort or [Ll]ong|[lL]ong)\s*(?:[Rr]est)?", 'recharge'),
                 ("^STR\s+DEX\s+CON\s+INT\s+WIS\s+CHA", "array_title"),
                 ("(\d+\s*\([+-]?\d+\)\s+){2,6}", "array_values"),
                 ("^Languages?", "languages"),
@@ -118,8 +119,10 @@ class LineAnnotator(object):
                 while j >= 0:
                     if lines[j].text.strip() != "":
                         if abs(lines[j].bound.left - lines[i].bound.left) < 0.05:
-                            if lines[j].bound.bottom() - lines[i].bound.top < 0.05:
+                            if abs(lines[j].bound.top - lines[i].bound.top) < 0.1:
                                 lines[j].attributes.append("statblock_title")
+                                if 'text_title' in lines[j].attributes:
+                                    lines[j].attributes.remove('text_title')
                                 break
                     j -= 1
                 
@@ -135,8 +138,6 @@ class LineAnnotator(object):
             # to skip it. Note this attribute comes from the text loading stage
             if line.attributes == ["very_large"]:
                 line.attributes.append("text_title")
-
-            print(line, line.attributes)
 
         return lines
 
@@ -250,7 +251,7 @@ class SectionAnnotator(object):
 
             for gf in LineAnnotationTypes.anti_annotations:
                 if gf in line_annotations:
-                    c.attributes.append("skip")
+                    c.attributes.append("sb_skip")
 
             num_generic = 0
             for la in line_annotations:

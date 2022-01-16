@@ -15,7 +15,7 @@ class StatblockBuilder(object):
         '''Check whether the statblock would make logical sense if we combined the two candidate statblocks 
         based on their contained parts'''
 
-        if 'skip' in new_tags:
+        if 'sb_skip' in new_tags:
             return False
 
         current_tags = [t for t in current_tags if t.startswith("sb_")]
@@ -136,7 +136,12 @@ class StatblockBuilder(object):
             for cluster in col:
                 sb_parts = [a for a in cluster.attributes if a.startswith("sb_")]
 
-                self.logger.debug("{} - {}".format(cluster.lines[0], cluster.attributes))
+                self.logger.debug("Lines - {}".format(" || ".join([l.text for l in cluster.lines])))
+                self.logger.debug("L0 Attributes, Bound - {}, {}".format(cluster.lines[0].attributes, cluster.lines[0].bound))
+                self.logger.debug("Attributes - {}".format(cluster.attributes))
+
+                if 'sb_skip' in sb_parts:
+                    continue
 
                 #No statblock tags, so finish current statblock part, excluding this cluster
                 if len(sb_parts) == 0:

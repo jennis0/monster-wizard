@@ -20,8 +20,23 @@ class Creature():
         self.config = config
         self.logger = logger
 
+    def is_valid(self):
+        required = ['size', 'creature_type', 'hp', 'ac', 'speed']
+        for r in required:
+            if r not in self.data:
+                self.logger.info(f"Rejecting {self.data['name']} due to lack of {r}")
+                return False
+        return True
+
     def to_json(self) -> Any:
         return self.data
+
+    def set_source(self, source_title: str, page: int=-1):
+        self.data['source'] = {
+            'title': source_title,
+        }
+        if page >= 0:
+            self.data['source']['page'] = page
     
     def __basic_pattern_match(self, text: str, options: Enum, expected: int=1) -> List[str]:
         '''Find words matching the enum within this string'''
@@ -196,17 +211,18 @@ class Creature():
         if groups[0] == None:
             self.logger.warning("Failed to parse HP string = {}".format(text))
             return None
-        
-        if groups[1] != None and groups[2] != None:
+       
+        if groups[1] != None:
             formula = groups[1]
-            formula += "".join(groups[2].split())
+            if groups[2] != None:
+                formula += f"{''.join(groups[2].split())}"
             hp = {
                 "formula": formula,
                 "average": int(groups[0])
             }
         else:
             hp = {
-                "special": int(groups[0])
+                "special": groups[0]
             }
 
         self.data["hp"] = hp
@@ -386,9 +402,9 @@ class Creature():
         text = [text] + [l.text for l in section.lines[1:]]
         starts = [["^(constant):","constant"], 
                   ["^(at will):","will"], 
-                  ["^([0-9]*)/(day|rest|week)\s+(each)?","x"],
+                  ["^([0-9]+)/(day|rest|week)\s*(each)?","x"],
                   ["^cantrips\s*(?:\(at will\))?:", "s0"],
-                  ["^([0-9])(?:st|nd|rd|th)\s*level \(([0-9]+)\s*slots\s*\)", "sx"]
+                  ["^([0-9])(?:st|nd|rd|th)\s*-?\s*level \(([0-9]+)\s*slots?\s*\)", "sx"]
         ]
 
         header_types = {
@@ -443,6 +459,7 @@ class Creature():
                 abilities = ability_re.findall(line)
                 if len(abilities) == 0:
                     self.logger.warning("No spellcasting ability found")
+                    results['mod'] = None
                 elif len(abilities) > 1:
                     self.logger.warning("Conflicting spellcasting abilities")
                 else:
@@ -463,7 +480,8 @@ class Creature():
             # Handle constant and at will spells
             elif sb[0] == 'constant' or sb[0] == "will":
                 spell_level = {
-                    "frequency": sb[0].lower()
+                    "frequency": sb[0].lower(),
+                    'level':'unlevelled'
                 }
                 spells_names = " ".join(sb[2]).split(":")[1].split(",")
                 spell_level['spells'] = [
@@ -478,6 +496,7 @@ class Creature():
 
                 # Handle fixed frequency spells (daily, per rest, etc)
                 if sb[0] == 'x':
+                    spell_level['level'] = 'unlevelled'
                     spell_level["frequency"] = header_types[sb[1][1].lower()] 
                     spell_level["each"] = sb[1][2] != ''
                     if sb[1][0] != '':
