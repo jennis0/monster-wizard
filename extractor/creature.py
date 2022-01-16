@@ -21,11 +21,17 @@ class Creature():
         self.logger = logger
 
     def is_valid(self):
+        fails = 0
         required = ['size', 'creature_type', 'hp', 'ac', 'speed']
         for r in required:
             if r not in self.data:
-                self.logger.info(f"Rejecting {self.data['name']} due to lack of {r}")
-                return False
+                self.logger.warn(f"{self.data['name']} missing {r}")
+                fails += 1
+
+        if fails > 1:
+            self.logger.warn(f'Rejecting {self.data["name"]} as it is missing too many core stats')
+            return False
+
         return True
 
     def to_json(self) -> Any:
@@ -349,12 +355,12 @@ class Creature():
         self.__validate_part("skills")
 
     def set_cr(self, line: Line):
-        cr_matches = re.findall("^Challenge\s+([0-9]+/?[0-9]*)\s+\(.*?XP\s*\)", line.text, re.IGNORECASE)
+        cr_matches = re.findall("^Challenge\s+([0-9]+/?[0-9]*)\s*\(?([0-9,]+)?(?:XP)?\s*\)?", line.text, re.IGNORECASE)
         if len(cr_matches) == 0:
             self.logger.warning("Failed to find challenge rating")
             return
 
-        cr = {"cr":cr_matches[0]}
+        cr = {"cr":cr_matches[0][0]}
         if "lair" in line.text:
             cr["lair"] = cr_matches[1]
         elif "coven" in line.text:
@@ -402,7 +408,7 @@ class Creature():
         text = [text] + [l.text for l in section.lines[1:]]
         starts = [["^(constant):","constant"], 
                   ["^(at will):","will"], 
-                  ["^([0-9]+)/(day|rest|week)\s*(each)?","x"],
+                  ["^([0-9]+)/(day|rest|week)\s*(each)?-?","x"],
                   ["^cantrips\s*(?:\(at will\))?:", "s0"],
                   ["^([0-9])(?:st|nd|rd|th)\s*-?\s*level \(([0-9]+)\s*slots?\s*\)", "sx"]
         ]
@@ -444,11 +450,12 @@ class Creature():
         for sb in spellblocks:
             # Process headers
             if sb[0] == 'h':
-
                 # Reattach lines while removing hyphenated line breaks
                 line = ""
                 next_space=" "
                 for l in sb[2]:
+                    if len(l) == 0:
+                        continue
                     if l[-1] == "-":
                         line += "{}{}".format(next_space, l[:-1])
                         next_space = ""
@@ -491,7 +498,15 @@ class Creature():
 
             else:
                 spell_level = {}
-                spells_names = " ".join(sb[2]).split(":")[1].split(",")
+                s = " ".join(sb[2])
+                if ":" in s:
+                    spells_names = s.split(":")[1].split(",")
+                elif "each" in s:
+                    ind = s.find("each")
+                    spells_names = " ".join(s[ind+5].split(","))
+                else:
+                    spells_names = s.split(",")
+
                 spell_list = [s.lower().strip() for s in spells_names]
 
                 # Handle fixed frequency spells (daily, per rest, etc)
@@ -632,6 +647,10 @@ class Creature():
             "proficiency": self.set_proficiency
         }
         
+        if len(section.lines) == 0:
+            self.logger.warn("Submitted empty traits section")
+            return
+
         current_line = section.lines[0]
         for line in section.lines[1:]:
             if not any(attr in LineAnnotationTypes.trait_annotations for attr in line.attributes):

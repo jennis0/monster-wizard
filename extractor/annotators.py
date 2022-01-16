@@ -69,43 +69,50 @@ class LineAnnotator(object):
         self.race_type_regex =  re.compile(race_type_str, re.IGNORECASE)
 
         signatures_strs = [
-                ("Challenge \d+", "cr"),
-                ("\d+d\d+", "dice_roll"),
-                ("Senses\s[\w\s]+\d+\s*ft", "senses"),
-                ("Damage\sImmunities", "dam_immunities"),
-                ("Damage\sResistances", "resistances"),
-                ("Damage\sVulnerabilities", "vulnerabilities"),
-                ("Condition\sImmunities", "con_immunities"),
-                ("^Armor Class\s\d+", "ac"),
-                ("^Hit Points\s\d+", "hp"),
-                ("^Speed\s\d+\s*ft", "speed"),
-                ("^Melee\sWeapon\sAttack:", "melee_attack"),
-                ("^Ranged\sWeapon\sAttack:", "ranged_attack"),
-                ("DC\s\d+\s", "check"),
-                ("\d+/(day|minute|hour)", "counter"),
-                ("^skills\s.*[+-]\d", "skills"),
-                ("^Legendary Action", "legendary_action_title"),
-                ("^Actions", "action_title"),
-                ("Costs \d+ actions", "legendary_action_cost"),
-                ("Recharge \d+-\d+", "recharge"),
-                ("[Rr]echarges?\s*after\s*a\s*([sS]hort|[sS]hort or [Ll]ong|[lL]ong)\s*(?:[Rr]est)?", 'recharge'),
-                ("^STR\s+DEX\s+CON\s+INT\s+WIS\s+CHA", "array_title"),
-                ("(\d+\s*\([+-]?\d+\)\s+){2,6}", "array_values"),
-                ("^Languages?", "languages"),
-                ("^Saves\s+", "saves"),
-                ("^Saving Throws\s+", "saves"),
-                ("^Senses\s+", "senses"),
-                ("^(1st|2nd|3rd|[4-9]th)\s*level\s*\([0-9]+\s*slots\)?:", "spellcasting"),
-                ("^Cantrip (\(at will\))?", "spellcasting"),
-                ("Proficiency Bonus", "proficiency"),
-                ("Hit Dice", "hitdice"),
-                ("^Actions$", "action_header"),
-                ("^Legendary Actions$", "legendary_header"),
-                ("^Mythic Actions$", "mythic_header"),
-                ("^Lair Actions$", "lair_header")
+            ("Challenge \d+", "cr"),
+            ("\d+d\d+", "dice_roll"),
+            ("Senses\s[\w\s]+\d+\s*ft", "senses"),
+            ("Damage\s[iI]mmunities", "dam_immunities"),
+            ("Damage\s[rR]esistances", "resistances"),
+            ("Damage\s[vV]ulnerabilities", "vulnerabilities"),
+            ("Condition\sImmunities", "con_immunities"),
+            ("^Armor Class\s\d+", "ac"),
+            ("^Hit Points\s\d+", "hp"),
+            ("^Speed\s\d+\s*ft", "speed"),
+            ("^Melee\sWeapon\sAttack:", "melee_attack"),
+            ("^Ranged\sWeapon\sAttack:", "ranged_attack"),
+            ("DC\s\d+\s", "check"),
+            ("\d+/(day|minute|hour)", "counter"),
+            ("^[Ss]kills\s.*[+-]\d", "skills"),
+            ("^Legendary Action", "legendary_action_title"),
+            ("Costs \d+ actions", "legendary_action_cost"),
+            ("Recharge \d+-\d+", "recharge"),
+            ("(\d+\s*\([+-]?\d+\)\s+){2,6}", "array_values"),
+            ("^Languages?", "languages"),
+            ("^[sS]aves\s+", "saves"),
+            ("^Saving [tT]hrows\s+", "saves"),
+            ("^Senses\s+", "senses"),
+            ("^(1st|2nd|3rd|[4-9]th)\s*level\s*\([0-9]+\s*slots\)?:", "spellcasting"),
+            ("^[cC]antrip (\(at will\))?", "spellcasting"),
+            ("Proficiency Bonus", "proficiency"),
+            ("Hit [dD]ice", "hitdice"),
+
             ]
+
+        uncased_signatures = [
+            ("^STR\s+DEX\s+CON\s+INT\s+WIS\s+CHA", "array_title"),
+            ("^Actions$", "action_header"),
+            ("^Actions", "action_title"),
+            ("^Legendary Actions$", "legendary_header"),
+            ("^Mythic Actions$", "mythic_header"),
+            ("^Lair Actions$", "lair_header"),
+            ("recharges?\s*after\s*a\s*(short|short or long|long)\s*(?:rest)?", 'recharge'),
+        ]
+    
         self.signatures = []
         for ss in signatures_strs:
+            self.signatures.append((re.compile(ss[0]), ss[1]))
+        for ss in uncased_signatures:
             self.signatures.append((re.compile(ss[0], re.IGNORECASE), ss[1]))
 
     def annotate(self, lines: List[Line]) -> List[Line]:

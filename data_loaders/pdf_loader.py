@@ -59,8 +59,8 @@ FONT_OVERRIDES = {
 ### PDFMiner has been found to have some issues with rendering ligatures in at least one 
 ### pdf I tested. Here we manually override the character processing function so we can
 ### easily inject our own stuff - without having to modify the base library
-def override_render_char(self, matrix, font, fontsize, scaling, rise, cid, ncs,
-					graphicstate, logger):
+def override_render_char(self, matrix, font, fontsize, scaling, rise, cid, ncs=None,
+					graphicstate=None, logger=None):
 		try:
 			text = font.to_unichr(cid)
 			assert isinstance(text, str), str(type(text))
@@ -90,8 +90,10 @@ def override_render_char(self, matrix, font, fontsize, scaling, rise, cid, ncs,
 		if '\x00' in text:
 			logger.error("Found missing character {}".format(cid))
 
+		#item = LTChar(matrix, font, fontsize, scaling, rise, text, textwidth,
+		#			  textdisp, ncs, graphicstate)
 		item = LTChar(matrix, font, fontsize, scaling, rise, text, textwidth,
-					  textdisp, ncs, graphicstate)
+					  textdisp)
 		self.cur_item.add(item)
 
 		return item.adv
@@ -194,6 +196,7 @@ class PDFLoader(DataLoaderInterface):
 
 				page_text.sort()
 				pages.append(page_text)
+
 						
 			#if debug get pages as images
 			if self.config.getboolean('default', 'debug'):
@@ -213,6 +216,8 @@ class PDFLoader(DataLoaderInterface):
 				authors = None,
 				url = None
 			)
+
+
 			
 			return source
 
@@ -299,7 +304,7 @@ class PDFLoader(DataLoaderInterface):
 					escaped_text = escaped_text.strip()[:split]
 
 			if escaped_text.strip() == "":
-				self.logger.debug("Empty Text: ", lt)
+				#self.logger.debug("Empty Text: ", lt)
 				return lines
 
 			lines.append(Line(line_id, escaped_text, bound, annotations))

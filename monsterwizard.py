@@ -77,7 +77,7 @@ p_func = print
 for source_name in parsed_statblocks:
     source, ps = parsed_statblocks[source_name]
     num_pages = len(ps)
-    p_func("Found {} page{} of statblocks".format(num_pages, 's' if num_pages > 1 else ''))
+    p_func("Found {} page{} containing {} statblocks in {}".format(num_pages, 's' if num_pages > 1 else '', sum(len(ps[k]) for k in ps), source.name))
 
     if args.output:
         outfile = args.output

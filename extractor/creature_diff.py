@@ -9,7 +9,7 @@ def remove(s, indent):
     return "<font class='remove'>" + "&nbsp"*indent + "+ {}</font>".format(s)
 
 def change(s, indent):
-    return "<font class='change'>" + "&nbsp"*indent + "+ {}</font>".format(s)
+    return "<font class='change'>" + "&nbsp"*indent + "? {}</font>".format(s)
 
 def header():
     return """
@@ -204,6 +204,6 @@ if __name__ == "__main__":
         with open(new, 'r') as f_new:
             result = diff_mw_file(json.load(f_old), json.load(f_new))
     
-    with open(out, 'w') as f:
+    with open(out, 'w', encoding='utf-8') as f:
         f.write(result)
 

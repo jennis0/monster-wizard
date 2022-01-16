@@ -48,6 +48,8 @@ class CreatureFactory():
         if len(current_section.lines) > 0 and "spellcasting" in current_section.lines[0].text.lower():
             if re.search("^\s*(at will|rest|daily|cantrip|1st|2nd|3rd|[4-9]th|[1-9]+\s*/\s*(day|long rest|short rest|encounter))", line.text, re.IGNORECASE) is not None:
                 spell_list = True
+            if re.search("spellcasting\s*ability\s*is", line.text, re.IGNORECASE) is not None:
+                spell_list = True
 
         #Check if we're at the start of a new feature
         if not spell_list and (new_block or has_title or is_end):
