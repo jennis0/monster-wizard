@@ -346,6 +346,17 @@ class PlutoWriter(WriterInterface):
                         "entries": [self.__format_text(bonus["text"])]
                     }
                 )
+            
+        ### Bonus Actions ###
+        if "reaction" in creature:
+            new_creature["reaction"] = []
+            for reaction in creature["reaction"]:
+                new_creature["reaction"].append(
+                    {
+                        "name": reaction["title"],
+                        "entries": [self.__format_text(reaction["text"])]
+                    }
+                )
 
         ### Lair Actions ###
         if "lair" in creature:

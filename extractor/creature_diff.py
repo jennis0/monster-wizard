@@ -174,11 +174,15 @@ def diff_creature(c_old: Any, c_new: Any, indent: int) -> List[str]:
                 'Languages', 'CR', 'Proficiency']:
         diff_lines += diff_optional_feature(atr, c_old, c_new, indent)
 
-    for atr,atr_name in zip(['features', 'action', 'legendary', 'mythic', 'reaction', 'lair'],
-         ['feature', 'action', 'legendary action', 'mythic action', 'reaction', 'lair action']):
+    for atr,atr_name in zip(['features', 'action', 'bonus', 'legendary', 'mythic', 'reaction', 'lair'],
+         ['feature', 'action', 'bonus action', 'legendary action', 'mythic action', 'reaction', 'lair action']):
         diff_lines += diff_list(atr, c_old, c_new, indent, atr_name)
 
     diff_lines += diff_spellcasting(c_old, c_new, indent)
+
+    for atr, atr_name in zip(['legendary_block', 'lair_block', 'description'],
+                        ['legendary description', 'lair action description', 'description']):
+        diff_lines += add_or_change_diff(c_old, c_new, atr, atr_name, indent)
 
     diff_lines[-1] += "</p>"
 

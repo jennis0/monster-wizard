@@ -21,6 +21,11 @@ class Creature():
         self.logger = logger
 
     def is_valid(self):
+
+        if 'name' not in self.data:
+            self.logger.warn(f'Failed to build basic statblock. No name present')
+            return False
+
         fails = 0
         required = ['size', 'creature_type', 'hp', 'ac', 'speed']
         for r in required:
@@ -714,8 +719,6 @@ class Creature():
             }
         )
         self.__validate_part(action_type.name)
-
-        #self.add_action(title, text, action_type)
 
     def add_background(self, sections: List[Section]):
         self.data["background"] = [s.get_section_text() for s in sections]

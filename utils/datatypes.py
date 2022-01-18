@@ -167,15 +167,17 @@ class Section:
     '''Container holding multiple lines with a single bounding box'''
 
     class SortOrder(Enum):
+        NoSort = 0
         Vertical = 1
         Horizontal = 2
 
     def __init__(self, lines: List[Line] = None, attributes: List[str] = None, 
             sort_order: Section.SortOrder=SortOrder.Vertical, 
-            bound: Optional[Bound]=None, ids: Optional[List[str]]=None):
+            bound: Optional[Bound]=None, ids: Optional[List[str]]=None, page=-1):
         self.lines = lines if lines else []
         self.ids = ids if ids else {l.id: l for l in self.lines}
         self.bound = bound if bound else Bound.merge(l.bound for l in self.lines)
+        self.page = page
         self.attributes = attributes if attributes else []
         self.sort_order = sort_order
 
@@ -204,6 +206,11 @@ class Section:
         if sort:
             self.sort(sort_order=sort_order)
 
+        if self.page == -1:
+            self.page = section.page
+        elif section.page != -1:
+            self.page = min(self.page, section.page)
+
     def remove_line(self, line: Line) -> None:
         '''Delete a line from this section. Expensive!'''
         keep_lines = []
@@ -224,6 +231,8 @@ class Section:
             self.lines.sort(key=lambda x: x.bound.top)
         elif sort_order == Section.SortOrder.Horizontal:
             self.lines.sort(key=lambda x: x.bound.left)
+        elif sort_order == Section.SortOrder.NoSort:
+            pass
 
     def get_line_by_id(self, line_id: str) -> Optional[Line]:
         '''Returns a line by the line id'''
@@ -258,7 +267,7 @@ class Section:
     def to_tuple(self) -> List[Any]:
         lines = [l.to_tuple() for l in self.lines]
         bound = self.bound.to_dict()
-        return [lines, bound, self.attributes, self.sort_order.value]
+        return [lines, bound, self.attributes, self.sort_order.value, self.page]
 
     @staticmethod
     def from_tuple(data: Any) -> Section:
@@ -269,5 +278,6 @@ class Section:
             ids=ids,
             bound=Bound.from_dict(data[1]),
             attributes=data[2],
-            sort_order=data[3]
+            sort_order=data[3],
+            page=data[4] if len(data) > 4 else -1
         )

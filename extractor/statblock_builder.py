@@ -35,11 +35,13 @@ class StatblockBuilder(object):
             "sb_array_title":3,
             "sb_array_value":4,
             "sb_flavour_block":5,
-            "sb_action_block":6,
-            "sb_legendary_action_block":7,
-            "sb_lair_block":8,
-            "sb_part":8,
-            "sb_part_weak":8
+            "sb_feature_block":6,
+            "sb_action_block":7,
+            "sb_reaction_block":8,
+            "sb_legendary_action_block":9,
+            "sb_lair_block":10,
+            "sb_part":10,
+            "sb_part_weak":10
         }
 
         last_tag = max(tag_index_mapping[t] if "sb_part" not in t else 0 for t in current_tags)
@@ -54,23 +56,34 @@ class StatblockBuilder(object):
 
     def merge_statblocks(self, statblocks: List[Section]) -> List[Section]:
         merges = []
-        used = []
+        used = set()
 
         for i in range(len(statblocks)):
-            s = statblocks[i]
             if i in used:
                 continue
 
+            s = statblocks[i]
             if "sb_start" not in s.attributes:
                 continue
 
             ### Allow backwards merging... this might be a terrible idea but it picks up
             ### lair actions formatted below a split block
-            for j in range(len(statblocks)):
+            for j in range(max(i-6, 0), min(i+6, len(statblocks))):
+
                 if j <= i or j in used:
                     continue
 
                 test_block = statblocks[j]
+
+                #Don't allow backwards merging across pages
+                if test_block.page < s.page:
+                    continue
+
+                #Only allow a split over a page boundry if it is the next statblock piece
+                if test_block.page != s.page:
+                    continue
+                if (j-i) > 1 and test_block.page > s.page:
+                    continue
 
                 #Ignore blocks in the same column
                 if abs(s.bound.left - test_block.bound.left) < 0.1:
@@ -81,16 +94,14 @@ class StatblockBuilder(object):
                     continue
 
                 statblocks[i].add_section(test_block, sort=False)
-                used += [j, i]
                 merges.append(statblocks[i])
-                break
+                used.update([i,j])
 
         for i in range(len(statblocks)):
             if i not in used:
                 merges.append(statblocks[i])
 
         merges.sort(key = lambda x: x.bound.top)
-
         return merges
 
     def filter_statblocks(self, sbs: List[Section]) -> List[Section]:
@@ -115,7 +126,7 @@ class StatblockBuilder(object):
                 if line.bound.top - block_start > -0.02 or abs(line.bound.left - block_left) > 0.05:
                     filtered_lines.append(line)
 
-            filtered_sb.append(Section(filtered_lines, attributes=sb.attributes))
+            filtered_sb.append(Section(filtered_lines, attributes=sb.attributes, sort_order=Section.SortOrder.NoSort))
 
         return filtered_sb
 
@@ -128,10 +139,9 @@ class StatblockBuilder(object):
             self.logger.debug("\tCol {} of len {}".format(i, len(col)))
 
         statblock_parts = []
-
         for col in columns:
 
-            current_statblock = Section()
+            current_statblock = Section(sort_order=Section.SortOrder.NoSort)
 
             for cluster in col:
                 sb_parts = [a for a in cluster.attributes if a.startswith("sb_")]
@@ -168,7 +178,7 @@ class StatblockBuilder(object):
         #Merge statblocks across columns
         merged_statblocks = self.merge_statblocks(statblock_parts)
 
-        #Remove any flatblocks that are incomplete
+        #Remove any statblocks that are incomplete
         filtered_statblocks = self.filter_statblocks(merged_statblocks)        
 
         #Turn ununsed lines into 'background text'

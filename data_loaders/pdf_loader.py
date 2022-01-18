@@ -19,8 +19,6 @@ import unicodedata
 import cv2
 import numpy as np
 from binascii import b2a_hex
-import functools
-
 
 from data_loaders.data_loader_interface import DataLoaderInterface
 from utils.datatypes import Line, Bound, Source, Section
@@ -55,6 +53,9 @@ FONT_OVERRIDES = {
 		980:"st",
 	},
 }
+
+import json
+sizes = []
 
 ### PDFMiner has been found to have some issues with rendering ligatures in at least one 
 ### pdf I tested. Here we manually override the character processing function so we can
@@ -217,7 +218,8 @@ class PDFLoader(DataLoaderInterface):
 				url = None
 			)
 
-
+			with open(f'sizes_{name}.json', 'w') as f_s:
+				json.dump(sizes, f_s)
 			
 			return source
 
@@ -267,11 +269,12 @@ class PDFLoader(DataLoaderInterface):
 			skip = False
 			for o in lt._objs:
 				if isinstance(o, LTChar):
+					sizes.append(o.size)
 					if o.size < 6.1:
 						skip = True
-					elif o.size > 20:
+					elif o.size >= 20.:
 						annotations.append("very_large")
-					elif o.size > 12:
+					elif o.size >= 14.:
 						annotations.append("large")
 					break
 					

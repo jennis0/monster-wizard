@@ -29,10 +29,17 @@ class LineAnnotator(object):
         "cave system",
         "true form",
         "prone",
-        "restrained"
+        "restrained",
+        "attack",
+        "DC",
+        "grappled"
     ]
 
     def __is_race_type_string(self, line: Line) -> bool:
+
+        # If it's anything else, skip
+        if len(line.attributes) > 0:
+            return False
            
         race_type_match = self.race_type_regex.findall(line.text.strip())
 
@@ -79,8 +86,8 @@ class LineAnnotator(object):
             ("^Armor Class\s\d+", "ac"),
             ("^Hit Points\s\d+", "hp"),
             ("^Speed\s\d+\s*ft", "speed"),
-            ("^Melee\sWeapon\sAttack:", "melee_attack"),
-            ("^Ranged\sWeapon\sAttack:", "ranged_attack"),
+            ("Melee\sWeapon\sAttack:", "melee_attack"),
+            ("Ranged\sWeapon\sAttack:", "ranged_attack"),
             ("DC\s\d+\s", "check"),
             ("\d+/(day|minute|hour)", "counter"),
             ("^[Ss]kills\s.*[+-]\d", "skills"),
@@ -94,19 +101,22 @@ class LineAnnotator(object):
             ("^Senses\s+", "senses"),
             ("^(1st|2nd|3rd|[4-9]th)\s*level\s*\([0-9]+\s*slots\)?:", "spellcasting"),
             ("^[cC]antrip (\(at will\))?", "spellcasting"),
+            ("^([sS]pellcasting|[iI]nnate [sS]pellcasting).", 'spellcasting'),
             ("Proficiency Bonus", "proficiency"),
             ("Hit [dD]ice", "hitdice"),
-
+            ("Hit.\s*\d+\s*\(\d+", 'in_attack')
             ]
 
         uncased_signatures = [
             ("^STR\s+DEX\s+CON\s+INT\s+WIS\s+CHA", "array_title"),
-            ("^Actions$", "action_header"),
-            ("^Actions", "action_title"),
-            ("^Legendary Actions$", "legendary_header"),
-            ("^Mythic Actions$", "mythic_header"),
-            ("^Lair Actions$", "lair_header"),
+            ("^Actions?$", "action_header"),
+            ("^Legendary Actions?$", "legendary_header"),
+            ("^Mythic Actions?$", "mythic_header"),
+            ("^Lair Actions?$", "lair_header"),
+            ("^\s*Reactions?\s*$", 'reaction_header'),
             ("recharges?\s*after\s*a\s*(short|short or long|long)\s*(?:rest)?", 'recharge'),
+            ("proofreader", 'proofreader'),
+            ("^Credits$", 'credits'),
         ]
     
         self.signatures = []
@@ -119,6 +129,11 @@ class LineAnnotator(object):
         '''Applies annotations to passed lines based on their content, and lines directly before/after them'''
 
         for i,line in enumerate(lines):
+                
+            for r, tag in self.signatures:                
+                matches = r.findall(line.text.strip())
+                if len(matches) > 0:
+                    line.attributes.append(tag)
 
             if self.__is_race_type_string(line):
                 line.attributes.append("race_type_header")
@@ -132,11 +147,6 @@ class LineAnnotator(object):
                                     lines[j].attributes.remove('text_title')
                                 break
                     j -= 1
-                
-            for r, tag in self.signatures:                
-                matches = r.findall(line.text.strip())
-                if len(matches) > 0:
-                    line.attributes.append(tag)
 
             if "." in line.text and line.text[0].isupper() and len(line.text.split('.')[0].split()) < 5:
                 line.attributes.append("block_title")
@@ -167,6 +177,10 @@ class LineAnnotationTypes:
         "con_immunities",
         "cr"
     ]
+    
+    feature_annotations = [
+        "spellcasting"
+    ]
 
     action_annotations = [
         "action_header",
@@ -189,6 +203,10 @@ class LineAnnotationTypes:
         "lair_header"
     ]
 
+    reaction_annotations = [
+        "reaction_header"
+    ]
+
     generic_annotations = [
         "dice_roll",
         "check",
@@ -203,7 +221,9 @@ class LineAnnotationTypes:
 
     #These are annotations we are certain are NOT part of a statblock
     anti_annotations = [
-        "text_title"
+        "text_title",
+        "credits",
+        'proofreader'
     ]
 
 class SectionAnnotator(object):
@@ -242,6 +262,11 @@ class SectionAnnotator(object):
                     c.attributes.append("sb_flavour_block")
                     break
 
+            for df in LineAnnotationTypes.feature_annotations:
+                if df in line_annotations:
+                    c.attributes.append("sb_feature_block")
+                    break
+
             for af in LineAnnotationTypes.action_annotations:
                 if af in line_annotations:
                     c.attributes.append("sb_action_block")
@@ -251,6 +276,10 @@ class SectionAnnotator(object):
                 if lf in line_annotations:
                     c.attributes.append("sb_legendary_action_block")
                     break
+
+            for l in LineAnnotationTypes.reaction_annotations:
+                if lf in line_annotations:
+                    c.attributes.append("sb_reaction_block")
 
             for gf in LineAnnotationTypes.generic_annotations:
                 if gf in line_annotations:

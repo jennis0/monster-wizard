@@ -76,8 +76,10 @@ p_func = print
 
 for source_name in parsed_statblocks:
     source, ps = parsed_statblocks[source_name]
-    num_pages = len(ps)
-    p_func("Found {} page{} containing {} statblocks in {}".format(num_pages, 's' if num_pages > 1 else '', sum(len(ps[k]) for k in ps), source.name))
+    # num_pages = len(ps)
+    # p_func("Found {} page{} containing {} statblocks in {}".format(num_pages, 's' if num_pages > 1 else '', sum(len(ps[k]) for k in ps), source.name))
+    # num_pages = len(ps)
+    p_func("Found {} statblocks in {}".format(len(ps), source.name))
 
     if args.output:
         outfile = args.output
@@ -85,13 +87,13 @@ for source_name in parsed_statblocks:
         outfile = "{}.{}".format(os.path.basename(source.name).split('.')[0], se.writer.get_filetype())
 
     if output:
-        se.write_to_file(outfile, source, ps)
+        se.write_to_file(outfile, source, {0:ps})
 
     if args.print:
-        for page in ps:
-            print("Page {}:".format(page))
-            for creature in ps[page]:
-                p_func("\n" + pretty_format_creature(creature) + "\n")
+        # for page in ps:
+        #     print("Page {}:".format(page))
+        for creature in ps:
+            p_func("\n" + pretty_format_creature(creature) + "\n")
 
 
         

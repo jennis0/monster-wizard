@@ -58,7 +58,7 @@ class CreatureFactory():
                 current_section = Section()
             current_section = Section([line])
         else:
-            current_section.add_line(line)
+            current_section.add_line(line, sort=False)
             # if is_short:
             #     creature.add_feature(current_section)
             #     current_section = Section()
@@ -76,7 +76,9 @@ class CreatureFactory():
         if has_colon > 0:
             title = title[:has_colon]
 
-        in_brackets = "(" in current_section.get_section_text() and ")" not in current_section.get_section_text()
+        
+
+        in_brackets = current_section.get_section_text().count("(") > current_section.get_section_text().count(")")
 
         ### Conditions for starting a new block
         #Easy case, new block
@@ -89,6 +91,9 @@ class CreatureFactory():
         #Is the start of an attack
         is_attack_start = "melee_attack" in line.attributes or "ranged_attack" in line.attributes
 
+        #Is in the middle of an attack
+        is_attack_mid = 'in_attack' in line.attributes and not is_attack_start
+
         #Handle recharges
         is_recharge = "recharge" in line.attributes
 
@@ -96,7 +101,7 @@ class CreatureFactory():
         is_table = len(line.text) > 0 and line.text[0].isnumeric()
 
         #Check if we're at the start of a new feature
-        if not is_table and not in_brackets and (new_block or has_title or is_attack_start or is_recharge):
+        if (not is_table and not in_brackets and not is_attack_mid) and (new_block or has_title or is_attack_start or is_recharge):
             if len(current_section.lines) > 0:
                 if not action_type in handled_action_block or handled_action_block[action_type]:
                     creature.add_action(current_section, action_type)
@@ -106,12 +111,13 @@ class CreatureFactory():
                     if action_type == constants.ACTION_TYPES.lair:
                         creature.add_lair_block(current_section)
                     handled_action_block[action_type] = True
+
                 current_section = Section()
         else:
             if is_table:
                 current_section.lines[-1].text += "\n"
         
-        current_section.add_line(line)
+        current_section.add_line(line, sort=False)
 
         return current_section, handled_action_block
 
@@ -159,13 +165,25 @@ class CreatureFactory():
                     elif "legendary_header" in line.attributes:
                         current_action_type = constants.ACTION_TYPES.legendary
                         current_section = Section()
+                        continue
+                    elif "reaction_header" in line.attributes:
+                        current_action_type = constants.ACTION_TYPES.reaction
+                        current_section = Section()
+                        continue
 
-            ### Check if line is simply an action block title
+            ### Skip empty lines
             if len(line.text) == 0:
                 continue
 
-            action_regex = re.compile("^({})\s+actions?$".format(constants.enum_values(constants.ACTION_TYPES)), re.IGNORECASE)
-            if line.text[0].isupper() and action_regex.match(line.text[0]):
+            ### Check if line is simply an action block title
+            action_regex = re.compile("({})\s*actions?".format("|".join(constants.enum_values(constants.ACTION_TYPES))), re.IGNORECASE)
+            at = action_regex.match(line.text.strip())
+            if line.text[0].isupper() and (at is not None or 'reaction_header' in line.attributes):
+
+                if at is not None:
+                    at = at.group(1).lower()
+                else:
+                    at = 'reaction'
 
                 if state == CreatureFactory.ParserState.features:
                     if len(current_section.lines) > 0:
@@ -174,6 +192,7 @@ class CreatureFactory():
                     state = CreatureFactory.ParserState.actions
                 
                 elif state == CreatureFactory.ParserState.actions:
+                    handled_action_block[current_action_type] = True
                     if len(current_section.lines) > 0:
                         cr.add_action(current_section, current_action_type)
                         current_section = Section()
@@ -183,16 +202,18 @@ class CreatureFactory():
 
             if state == CreatureFactory.ParserState.title:
                 if "statblock_title" in line.attributes:
-                    current_section.add_line(line)
+                    current_section.add_line(line, sort=False)
                     continue
                 if "race_type_header" in line.attributes:
-                    current_section.add_line(line)
+                    current_section.add_line(line, sort=False)
 
                 cr.set_header(current_section)
                 try:
                     name = cr.data["name"]
                 except:
                     self.logger.warning("Failed to parse name in {}".format(current_section.get_section_text()))
+                    for l in statblock.lines:
+                        print(l.text, l.attributes)
                     return None
                 current_section = Section()
                 state = CreatureFactory.ParserState.defence
@@ -208,13 +229,13 @@ class CreatureFactory():
                 i += j - 1
 
                 if i == len(statblock.lines) - 1:
-                    current_section.add_line(line)
+                    current_section.add_line(line, sort=False)
                 if "array_title" in line.attributes or "array_values" in line.attributes:
                     cr.set_defence(current_section)
                     state = CreatureFactory.ParserState.abilities
                     current_section = Section()
                 else:
-                    current_section.add_line(line)
+                    current_section.add_line(line, sort=False)
 
             if state == CreatureFactory.ParserState.abilities:
                 if "array_title" in line.attributes:
@@ -241,7 +262,7 @@ class CreatureFactory():
                         state = CreatureFactory.ParserState.features
                         current_section = Section()
                     else:
-                        current_section.add_line(line)
+                        current_section.add_line(line, sort=False)
 
             if state == CreatureFactory.ParserState.features:
                 # We have to manually check for proficiency as it tends to come after the CR
@@ -268,6 +289,8 @@ class CreatureFactory():
                 if current_action_type not in handled_action_block or handled_action_block[current_action_type]:
                     cr.add_action(current_section, current_action_type)
                 else:
+                    if current_action_type == constants.ACTION_TYPES.reaction:
+                        cr.add_action(current_section, current_action_type)
                     if current_action_type == constants.ACTION_TYPES.legendary:
                         cr.add_legendary_block(current_section)
                     if current_action_type == constants.ACTION_TYPES.lair:

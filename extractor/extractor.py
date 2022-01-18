@@ -149,6 +149,9 @@ class StatblockExtractor(object):
             
             statblocks = {}
             parsed_statblocks = {}
+
+            final_clusters = []
+
             for i, page_data in enumerate(source.pages):
                 if pages and i+1 not in pages:
                     continue
@@ -178,6 +181,10 @@ class StatblockExtractor(object):
                 for col in columns:
                     clusters.append(self.clusterer.cluster(col.lines))
 
+                for col in clusters:
+                    for clus in col:
+                        clus.page = i+1
+
                 if draw_clusters:
                     for col in clusters:
                         boxes += [x for x in col]
@@ -186,45 +193,41 @@ class StatblockExtractor(object):
                 ### Combine line annotations into cluster annotations
                 for col in clusters:
                     self.cluster_annotator.annotate(col)
+                    final_clusters.append(col)
+                    for cl in final_clusters[-1]:
+                        cl.page = i+1
 
-                ### Generate statblocks from clusters
-                statblocks[i],background = self.statblock_generator.create_statblocks(clusters)
-                
-                if draw_statblocks:
-                    boxes += [s for s in statblocks[i]]
-                    colours += [self.statblock_colour for i in range(len(statblocks[i]))]
-                
-                ### Recalculate columns within statblocks
-                columned_statblocks = []
-                if len(statblocks) > 0:
-                    for sb in statblocks[i]:
-                        new_sb = Section()
-                        self.logger.debug(sb.lines)
-                        cols = self.columniser.find_columns(sb.lines)
-                        for c in cols:
-                            new_sb.add_section(c, sort=False)
-                        columned_statblocks.append(new_sb)
+            ### Generate statblocks from clusters
+            statblocks,background = self.statblock_generator.create_statblocks(final_clusters)
+            
+            # ### Recalculate columns within statblocks
+            # columned_statblocks = []
+            # if len(statblocks) > 0:
+            #     for sb in statblocks:
+            #         new_sb = Section()
+            #         self.logger.debug(sb.lines)
+            #         cols = self.columniser.find_columns(sb.lines)
+            #         for c in cols:
+            #             new_sb.add_section(c, sort=False)
+            #         columned_statblocks.append(new_sb)
 
-                        if draw_final_columns:
-                            boxes += [x for x in cols]
-                            colours += [self.column_colour for i in range(len(cols))]
+            #         if draw_final_columns:
+            #             boxes += [x for x in cols]
+            #             colours += [self.column_colour for i in range(len(cols))]
 
-                statblocks[i] = columned_statblocks
+            #     statblocks = columned_statblocks
 
-                if draw:
-                    drawBoundingBoxes(source.page_images[i], boxes, colours)
+            # Parse the creatures
+            if len(statblocks) > 0:
+                parsed_statblocks = []
+                for sb in statblocks:
+                    cr = cp.statblock_to_creature(sb)
+                    if cr:
+                        cr.add_background(background)
+                        cr.set_source(source.name, sb.page)
+                        parsed_statblocks.append(cr)
 
-                # Parse the creatures
-                if len(statblocks[i]) > 0:
-                    parsed_statblocks[i] = []
-                    for sb in statblocks[i]:
-                        cr = cp.statblock_to_creature(sb)
-                        if cr:
-                            cr.add_background(background)
-                            cr.set_source(source.name, i+1)
-                            parsed_statblocks[i].append(cr)
-
-            self.logger.info("Found {} statblocks".format(sum(len(parsed_statblocks[k]) for k in parsed_statblocks)))
+            self.logger.info("Found {} statblocks".format(len(parsed_statblocks)))
 
             finished_ps[source.name] = (source, parsed_statblocks)
             finished_sb[source.name] = statblocks

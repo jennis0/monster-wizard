@@ -30,6 +30,11 @@ class Columniser(object):
         columns = []#[Section([lines[0]])]
 
         for line in lines:
+
+            ### Filter out email addresses
+            if "@" in line.text:
+                continue
+
             placed=False
             for i,cb in enumerate(columns):
                 dist = line.bound.left - cb.bound.left
@@ -160,11 +165,14 @@ class Columniser(object):
                 continue
      
             #Don't want to merge if there is a large horizontal gap between the lines (could be missed columns)
-            if l.bound.left - to_merge[-1].bound.right() > self.max_horizontal_gap:
-                merged.append(Line.merge(to_merge))
-                to_merge = [l]
-            else:
-                to_merge.append(l)
+            # if l.bound.left - to_merge[-1].bound.right() > self.max_horizontal_gap:
+            #     merged.append(Line.merge(to_merge))
+            #     to_merge = [l]
+            # else:
+            #     to_merge.append(l)
+
+            merged.append(Line.merge(to_merge))
+            to_merge = [l]
 
         if len(to_merge) > 0:
             merged.append(Line.merge(to_merge))
