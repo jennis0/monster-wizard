@@ -1,21 +1,27 @@
-# MonsterWizard
-MonsterWizard is a python tool to help you get the most out of D&D homebrew and purchased PDFs, by allowing you to directly convert statblocks into a structured data format of your choice. That can then be imported directly into virtual tabletops (or any other storage/visualisation solution of your choice).
+# PDF2VTT
+PDF2VTT is a python tool to help you get the most out of D&D 5e homebrew and purchased PDFs, by allowing you to directly convert statblocks into a structured data format of your choice. That can then be imported directly into virtual tabletops (or any other storage/visualisation solution of your choice).
 
-It currently supports
-- PNG
-- JPG
-- PDF
+The tool is focused on importing PDFs but it also provides support for png and jpg files via AWS Textract - other OCR tools could feasibly be used but I found the performance wasn't good enough to be reliable.
+This means you need to setup an AWS user in order to run it over images
 
-MonsterWizard handles PDFs natively and makes use of AWS Textract to turn images of statblocks into text, this means you need to setup an AWS user in order to run it over images
-The PDF import makes use of functionality from poppler for debugging, so this must be installed to run in debug mode
+Once setup, PDF2VTT can be used from either the command line, or from within a jupyter notebook
 
-Once setup, MonsterWizard can be used from either the command line, or from within a jupyter notebook
+## VTT Support
+Currently PDF2VTT only supports exports to FoundryVTT and its own native format (to isolate it from changes in Foundry's schema). I'd like to add a future capability to export to the standard WotC statblock format as well.
+Because the parsing is done entirely from the stable internal schema, it should be relatively simple to write exporters for any other format of your choice, even something like GMBinder monster statblocks or HTML display.
+
+## Foundry Import & Spell/Image Linking Functionality
+Technically the output generated is not a foundry compendium, but the import/export format expected by Mana's Compendium Importer module(https://foundryvtt.com/packages/mkah-compendium-importer).
+Additionally, feature images and spell descriptions cannot be added as they are not included within the texts.
+
+As a work-around, we support using existing foundry compendia to provide spells and feature images. To do this, export any spell, item, or feature compendiums you want to use from Foundry (using Mana's importer) and put them in a folder called './foundry' in the directory you are running in. These will be picked up and used to correctly link spells and add images to imported features.
 
 ## Python Setup
+[Optionally, create a virtual environment]
 pip install -f requirements.txt
 
 ## Command Line Use
-`python app.py [input_file] --output [output_file] --output-format [5et|default]`
+`python pdf2vtt.py [input_file] --output [output_file] --output-format [fvtt|default]`
 
 If you want to add proper metadata to the output file you can use
 `--author [authors,] --source [proper name of document]`
@@ -24,12 +30,13 @@ Any additional metadata required by the output format will be requested in the c
 
 By default, the program will append additional monsters to an existing file, use the `--overwrite` argument to create a new file from scratch.
 
-## Output Formats
-Currently we only support output in a MonsterWizard native JSON format and the 5eTools/Plutonium format, primarily as this is currently the only format which can be imported into FoundryVTT with relative ease. We intend to build native export of FoundryVTT compendiums into the app in the near future.
+## PDF-Type Warning
+Not all PDFs can be imported, some have the text baked into the image which means we don't have access to is without running OCR. To check if this is the case, try to highlight text within the document, if it can't be selected, it can't be parsed.
+Hypothetically this could be detected and we could use the image processing backend to extract text, but this hasn't been implement yet
 
 ## TODO
+- Finish FVTT import
+- Better us of Foundry compendia by using defined items
 - Improve handling of metadata entry from the command line.
-- FoundryVTT Export.
-- Monster image grabbing from PDFs.
 - Handle 'image-only' PDFs which don't contain native text.
 - Improve AWS Textract setup or even allow local OCR.
