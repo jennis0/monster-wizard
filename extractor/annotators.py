@@ -32,7 +32,8 @@ class LineAnnotator(object):
         "restrained",
         "attack",
         "DC",
-        "grappled"
+        "grappled",
+        "hit points"
     ]
 
     def __is_race_type_string(self, line: Line) -> bool:
@@ -41,27 +42,34 @@ class LineAnnotator(object):
         if len(line.attributes) > 0:
             return False
            
-        race_type_match = self.race_type_regex.findall(line.text.strip())
+        text = line.text.strip()
+        sizes = self.size_regex.findall(text)
+        types = self.type_regex.findall(text)
+        alignments = self.alignment_regex.findall(text)
+        swarm = " swarm " in text.lower()
 
         # Must have at least size
-        if len(race_type_match) == 0 or race_type_match[0] == '':
+        if len(sizes) == 0:
             return False
+
 
         # First word must be capitilised
         if line.text.strip()[0] != line.text.strip()[0].upper():
             return False
 
-        # Size must be capitilised
-        if race_type_match[0][0][0] != race_type_match[0][0][0].upper():
+        # Size must be capitillised
+        if sizes[0][0] != sizes[0][0].upper():
             return False
 
-        # It should either be short 
-        if len(line.text.split(" ")) < 6 and not (len(race_type_match) < 2 or race_type_match[0][1] != '' or race_type_match[0][2] != ''): #Either short text or it contains at least one of creature type or alignment
+        # It should either be short or contain multiple pieces of info
+        words = len(text.split(" "))
+        if words > 12 or (words > 6 and len(sizes) + len(types) + len(alignments) + (1 if swarm else 0) < 2): #Either short text or it contains at least two of creature type, size and alignment
             return False
 
         for b in LineAnnotator.banned_words:
             if b in line.text.lower():
                 return False
+
 
         return True
 
@@ -69,11 +77,9 @@ class LineAnnotator(object):
         '''Pregenerate regexes used for annotating lines'''
 
         ### Pregenerate Regexes
-        race_type_str = "^\s*({})\s*({})?,?\s*({})?".format(
-            "|".join(constants.enum_values(constants.SIZES)),
-            "|".join(constants.enum_values(constants.CREATURE_TYPES)), 
-            "|".join(constants.enum_values(constants.ALIGNMENTS)))
-        self.race_type_regex =  re.compile(race_type_str, re.IGNORECASE)
+        self.size_regex = re.compile(f"({'|'.join(constants.enum_values(constants.SIZES))})[\s,]", re.IGNORECASE)
+        self.type_regex = re.compile(f"({'|'.join(constants.enum_values(constants.CREATURE_TYPES))})[\s,]", re.IGNORECASE)
+        self.alignment_regex = re.compile(f"({'|'.join(constants.enum_values(constants.ALIGNMENTS))})[\s,]", re.IGNORECASE)
 
         signatures_strs = [
             ("Challenge \d+", "cr"),
@@ -87,14 +93,17 @@ class LineAnnotator(object):
             ("^Hit Points\s\d+", "hp"),
             ("^Speed\s\d+\s*ft", "speed"),
             ("Melee\sWeapon\sAttack:", "melee_attack"),
+            ("Melee: [+-]\d+ to hit", 'melee_attack'),
+            ("Ranged: [+-]\d+ to hit", 'ranged_attack'),
             ("Ranged\sWeapon\sAttack:", "ranged_attack"),
+            ('Melee\sSpell\sAttack:', 'melee_attack'),
+            ('Ranged\sSpell\sAttack:', 'ranged_attack'),
             ("DC\s\d+\s", "check"),
             ("\d+/(day|minute|hour)", "counter"),
             ("^[Ss]kills\s.*[+-]\d", "skills"),
             ("^Legendary Action", "legendary_action_title"),
-            ("Costs \d+ actions", "legendary_action_cost"),
             ("Recharge \d+-\d+", "recharge"),
-            ("(\d+\s*\([+-]?\d+\)\s+){2,6}", "array_values"),
+            ("(\d+\s*\([+-−]\d+\)\s*){2,6}", "array_values"),
             ("^Languages?", "languages"),
             ("^[sS]aves\s+", "saves"),
             ("^Saving [tT]hrows\s+", "saves"),
@@ -104,7 +113,9 @@ class LineAnnotator(object):
             ("^([sS]pellcasting|[iI]nnate [sS]pellcasting).", 'spellcasting'),
             ("Proficiency Bonus", "proficiency"),
             ("Hit [dD]ice", "hitdice"),
-            ("Hit.\s*\d+\s*\(\d+", 'in_attack')
+            ("Hit.\s*\d+\s*\(\d+", 'in_attack'),
+            ("to hit, reach \d+ ft.", 'in_attack'),
+            ("^Multiattack.", "multiattack"),
             ]
 
         uncased_signatures = [
@@ -117,6 +128,10 @@ class LineAnnotator(object):
             ("recharges?\s*after\s*a\s*(short|short or long|long)\s*(?:rest)?", 'recharge'),
             ("proofreader", 'proofreader'),
             ("^Credits$", 'credits'),
+            ("on a failed save or half", "save_to_halve"),
+            ("costs\s*\d+\s*actions", 'legendary_action_cost'),
+            ("\([a-zA-Z]+\s+form\s+only\).", 'form_restriction'),
+            ("^[a-zA-Z\s]+\(\s*\d+\s*/\s*[a-zA-Z\s]+\s*\)\s*.", 'use_count')
         ]
     
         self.signatures = []
@@ -187,6 +202,7 @@ class LineAnnotationTypes:
         "action_title",
         "melee_attack",
         "ranged_attack",
+        "multiattack"
     ]
 
     legendary_annotations = [
@@ -212,7 +228,10 @@ class LineAnnotationTypes:
         "check",
         "recharge",
         "counter",
-        "spellcasting"
+        "spellcasting",
+        "save_to_halve",
+        "form_restriction",
+        "use_count"
     ]
 
     weak_generic_annotations = [
@@ -235,6 +254,10 @@ class SectionAnnotator(object):
         self.logger.debug("Configured SectionAnnotator")
 
     def annotate(self, sections: List[Section]) -> List[Section]:
+
+        if len(sections) == 0:
+            self.logger.debug("No sections found to annotate. Skipping")
+            return sections
 
         self.logger.debug("Annotating {} Sections".format(len(sections)))
         for c in sections:
@@ -277,7 +300,7 @@ class SectionAnnotator(object):
                     c.attributes.append("sb_legendary_action_block")
                     break
 
-            for l in LineAnnotationTypes.reaction_annotations:
+            for lf in LineAnnotationTypes.reaction_annotations:
                 if lf in line_annotations:
                     c.attributes.append("sb_reaction_block")
 

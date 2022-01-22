@@ -1,9 +1,10 @@
-
 import os
 
 from data_loaders.pdf_loader import PDFLoader
 from outputs.pluto_writer import PlutoWriter
 from outputs.default_writer import DefaultWriter
+from outputs.print_writer import PrintWriter
+from outputs.fvtt_writer import FVTTWriter
 
 from utils.config import get_config, get_argparser
 from utils.logger import get_logger
@@ -12,7 +13,7 @@ from data_loaders.textract_image_loader import TextractImageLoader
 from data_loaders.pdf_loader import PDFLoader
 
 from extractor.extractor import StatblockExtractor
-from extractor.creature_printer import pretty_format_creature
+from outputs.creature_printer import pretty_format_creature
 
 
 
@@ -49,6 +50,8 @@ se.register_data_loader(PDFLoader)
 ### Register Output formats and select one
 se.register_output_writer(DefaultWriter, append=not args.overwrite)
 se.register_output_writer(PlutoWriter, append=not args.overwrite)
+se.register_output_writer(PrintWriter, append=not args.overwrite)
+se.register_output_writer(FVTTWriter, append=not args.overwrite)
 output = True
 if args.output_format:
     if args.output_format == 'none':
@@ -76,22 +79,17 @@ p_func = print
 
 for source_name in parsed_statblocks:
     source, ps = parsed_statblocks[source_name]
-    # num_pages = len(ps)
-    # p_func("Found {} page{} containing {} statblocks in {}".format(num_pages, 's' if num_pages > 1 else '', sum(len(ps[k]) for k in ps), source.name))
-    # num_pages = len(ps)
     p_func("Found {} statblocks in {}".format(len(ps), source.name))
 
-    if args.output:
-        outfile = args.output
-    else:
-        outfile = "{}.{}".format(os.path.basename(source.name).split('.')[0], se.writer.get_filetype())
-
     if output:
+        if args.output:
+            outfile = args.output
+        else:
+            outfile = "{}.{}".format(os.path.basename(source.name).split('.')[0], se.writer.get_filetype())
+
         se.write_to_file(outfile, source, {0:ps})
 
     if args.print:
-        # for page in ps:
-        #     print("Page {}:".format(page))
         for creature in ps:
             p_func("\n" + pretty_format_creature(creature) + "\n")
 

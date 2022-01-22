@@ -11,21 +11,30 @@ class StatblockBuilder(object):
         self.config = config
         self.logger = logger.getChild("builder")
 
-    def can_be_continuation(self, current_tags: List[str], new_tags: List[str]) -> bool:
+    def can_be_continuation(self, current_section: Section, new_section: Section) -> bool:
         '''Check whether the statblock would make logical sense if we combined the two candidate statblocks 
         based on their contained parts'''
 
+        current_tags = [a for a in current_section.attributes if a.startswith('sb_')]
+        new_tags = [a for a in new_section.attributes if a.startswith('sb_')]
+
         if 'sb_skip' in new_tags:
+            return False
+
+        #Needs to be stronger than a weak sb part to link across pages
+        if new_section.page > current_section.page and set(new_tags) == set(['sb_part_weak']):
             return False
 
         current_tags = [t for t in current_tags if t.startswith("sb_")]
         new_tags = [t for t in new_tags if t.startswith("sb_")]
         
-
         if len(current_tags) == 0:
             return False
 
         if len(new_tags) == 0:
+            return False
+
+        if "sb_skip" in new_tags or "sb_skip" in current_tags:
             return False
 
         tag_index_mapping = {
@@ -56,56 +65,85 @@ class StatblockBuilder(object):
 
     def merge_statblocks(self, statblocks: List[Section]) -> List[Section]:
         merges = []
-        used = set()
 
+        used = set()
+        used_base = set()
+
+        self.logger.debug("CLUSTERING CROSS-COLUMN STATBLOCKS")
         for i in range(len(statblocks)):
+
             if i in used:
                 continue
 
             s = statblocks[i]
             if "sb_start" not in s.attributes:
+                self.logger.debug(f"Not start: {s.lines[0]} - {s.attributes}")
                 continue
 
-            ### Allow backwards merging... this might be a terrible idea but it picks up
-            ### lair actions formatted below a split block
-            for j in range(max(i-6, 0), min(i+6, len(statblocks))):
+            if "sb_skip" in s.attributes:
+                self.logger.debug(f"Skip: {s.lines[0]} - {s.attributes}")
+                continue
 
-                if j <= i or j in used:
-                    continue
+            self.logger.debug(f"Building: {s.lines[0]} - {s.attributes}")
+
+            last_page = s.page
+            last_col = i
+            ### Iterate over next blocks looking for remaining statblock pieces
+            for j in range(i+1, min(i+6, len(statblocks))):
 
                 test_block = statblocks[j]
 
+                if j in used:
+                    continue
+
+                self.logger.debug(f"Trying to add: {s.lines[0]} - {s.attributes}")
+
                 #Don't allow backwards merging across pages
                 if test_block.page < s.page:
+                    self.logger.debug("Failed: Backwards")
                     continue
 
                 #Only allow a split over a page boundry if it is the next statblock piece
-                if test_block.page != s.page:
-                    continue
-                if (j-i) > 1 and test_block.page > s.page:
+                if (j-last_col) > 1 and test_block.page > last_page:
+                    self.logger.debug("Failed: Page Gap")
                     continue
 
                 #Ignore blocks in the same column
-                if abs(s.bound.left - test_block.bound.left) < 0.1:
+                if test_block.page == s.page and abs(s.bound.left - test_block.bound.left) < 0.1:
+                    self.logger.debug("Failed: Same Column")
                     continue
 
                 #Ignore blocks that don't make logical sense
-                if not self.can_be_continuation(s.attributes, test_block.attributes):
+                if not self.can_be_continuation(s, test_block):
+                    self.logger.debug("Failed: Not a continuation")
                     continue
 
+                #We combine the statblock and note that these are used
+                self.logger.debug("Merged")
                 statblocks[i].add_section(test_block, sort=False)
-                merges.append(statblocks[i])
+                last_page = test_block.page
+                last_col = j
                 used.update([i,j])
+                used_base.add(i)
+
+        for i in range(len(statblocks)):
+            if i in used_base:
+                merges.append(statblocks[i])
 
         for i in range(len(statblocks)):
             if i not in used:
                 merges.append(statblocks[i])
 
-        merges.sort(key = lambda x: x.bound.top)
+        merges.sort(key = lambda x: -x.page * 100 -  x.bound.top)
+
+        # for m in merges:
+        #     for l in m.lines:
+        #         print(l)
+        #     print("==============================================")
+
         return merges
 
     def filter_statblocks(self, sbs: List[Section]) -> List[Section]:
-        '''Remove any statblocks that do not make logical sense'''
         
         filtered_sb = []
         for sb in sbs:
@@ -114,6 +152,7 @@ class StatblockBuilder(object):
                 if "statblock_title" in line.attributes:
                     block_start = line.bound.top
                     block_left = line.bound.left
+                    start_page = line.page
                     break
 
             if block_start < 0:
@@ -123,10 +162,12 @@ class StatblockBuilder(object):
             # Long term - do this after 2nd columnisation to allow for misaligned statblocks
             filtered_lines = []
             for line in sb.lines:
-                if line.bound.top - block_start > -0.02 or abs(line.bound.left - block_left) > 0.05:
+                if line.page != start_page or (line.bound.top - block_start) > -0.02 or abs(line.bound.left - block_left) > 0.05:
                     filtered_lines.append(line)
 
             filtered_sb.append(Section(filtered_lines, attributes=sb.attributes, sort_order=Section.SortOrder.NoSort))
+
+        # return sbs
 
         return filtered_sb
 
@@ -150,9 +191,6 @@ class StatblockBuilder(object):
                 self.logger.debug("L0 Attributes, Bound - {}, {}".format(cluster.lines[0].attributes, cluster.lines[0].bound))
                 self.logger.debug("Attributes - {}".format(cluster.attributes))
 
-                if 'sb_skip' in sb_parts:
-                    continue
-
                 #No statblock tags, so finish current statblock part, excluding this cluster
                 if len(sb_parts) == 0:
 
@@ -162,7 +200,7 @@ class StatblockBuilder(object):
                     continue
 
                 #Otherwise - can this part be added to our existing statblock and still make sense?
-                if self.can_be_continuation(current_statblock.attributes, sb_parts):
+                if self.can_be_continuation(current_statblock, cluster):
                     current_statblock.add_section(cluster)
 
                 #If not - also start a new statblock
@@ -201,7 +239,7 @@ class StatblockBuilder(object):
                             found = True
                             break
                     
-                    if not found:
-                        unused_lines.append(cluster)
+                    # if not found:
+                    #     unused_lines.append(cluster)
 
         return filtered_statblocks, unused_lines

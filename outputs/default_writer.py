@@ -79,15 +79,26 @@ class DefaultWriter(WriterInterface):
         if make_file:
             data = []
         else:
-            with open(filename, 'r') as f:
+            with open(filename, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
         pretty_name = DefaultWriter.prettify_name(source.name)
 
+        source_data = {
+            'title': pretty_name,
+        }
+        if source.num_pages > 0:
+            source_data['pages'] = source.num_pages
+        if source.url is not None:
+            source_data['url'] = source.url
+        if source.authors is not None and len(source.authors) > 0:
+            source_data['authors'] = source.authors
+
         written = False
         for source_entry in data:
-            if source_entry["title"] == pretty_name:
+            if source_entry['source']["title"] == pretty_name:
                 source_entry["creatures"] += [c.to_json() for c in creatures]
+                source_entry['source'] = source_data
                 written = True
                 self.logger.debug("Appending creatures to existing source")
                 break
@@ -96,7 +107,8 @@ class DefaultWriter(WriterInterface):
             self.logger.debug("Making new source entry")
             data.append(
                 {
-                    "title": pretty_name,
+                    "source": source_data,
+                    'title': source_data['title'],
                     "creatures": [c.to_json() for c in creatures]
                 }
             )
@@ -105,7 +117,7 @@ class DefaultWriter(WriterInterface):
             if source.url is not None:
                 data[-1]["url"] = source.url
 
-        with open(filename, 'w') as f:
+        with open(filename, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4)
 
         return True

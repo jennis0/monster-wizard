@@ -92,6 +92,9 @@ class Bound:
     width: float
     height: float
 
+    def __str__(self):
+        return f"Bound<{self.left}, {self.top}, {self.right()}, {self.bottom()}>"
+
     def right(self) -> float:
         '''Returns right edge of bounding box'''
         return self.left + self.width
@@ -142,6 +145,7 @@ class Line:
     id: str
     text: str
     bound: Bound
+    page: int
     attributes: List[str]
 
     @staticmethod
@@ -154,14 +158,14 @@ class Line:
 
         for l in lines:
             attrib += l.attributes
-        return Line(id = lines[0].id, text=text, bound=bound, attributes=attrib)
+        return Line(id = lines[0].id, text=text, bound=bound, page=lines[0].page, attributes=attrib)
 
     @staticmethod
     def from_tuple(tuple: List[Any]) -> Line:
-        return Line(id=str(tuple[0]), text=tuple[1], bound=Bound.from_dict(tuple[2]), attributes=tuple[3])
+        return Line(id=str(tuple[0]), text=tuple[1], bound=Bound.from_dict(tuple[2]), page=tuple[3], attributes=tuple[4])
 
     def to_tuple(self) -> List[Any]:
-        return [self.id, self.text, self.bound.to_dict(), self.attributes]
+        return [self.id, self.text, self.bound.to_dict(), self.page, self.attributes]
 
 class Section:
     '''Container holding multiple lines with a single bounding box'''
@@ -228,9 +232,9 @@ class Section:
             sort_order = self.sort_order
 
         if sort_order == Section.SortOrder.Vertical:
-            self.lines.sort(key=lambda x: x.bound.top)
+            self.lines.sort(key=lambda x: x.bound.top + 100*self.page)
         elif sort_order == Section.SortOrder.Horizontal:
-            self.lines.sort(key=lambda x: x.bound.left)
+            self.lines.sort(key=lambda x: x.bound.left + 100*self.page)
         elif sort_order == Section.SortOrder.NoSort:
             pass
 

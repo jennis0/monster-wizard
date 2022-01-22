@@ -25,19 +25,21 @@ def to_fixed_width(width: int, indent: int, strs: List[str]) -> List[str]:
 
 def format_type_alignment(creature: Creature) -> str:
     type_str = ""
-    type = " or ".join(creature.data["creature_type"]["type"]) if "creature_type" in creature.data else ""
+    type = ""
     size = " or ".join(creature.data["size"]) if "size" in creature.data else ""
-    if creature.data["creature_type"]["swarm"]:
-        s = creature.data["creature_type"]["swarm_size"]
-        if s is None:
-            s = creature.data["size"]
-        if s is not None:
-            type_str = "Swarm of {size} {type}".format(size=size, type=type)
-        else:
-            type_str = "Swarm of {type}".format(type=type)
 
-    else:
-        type_str = "{} {}".format(size, type).strip()
+    if 'creature_type' in creature.data:
+        type = " or ".join(creature.data["creature_type"]["type"])
+        if creature.data["creature_type"]["swarm"]:
+            s = creature.data["creature_type"]["swarm_size"]
+            if s is None:
+                s = creature.data["size"]
+            if s is not None:
+                type_str = "Swarm of {size} {type}".format(size=size, type=type)
+            else:
+                type_str = "Swarm of {type}".format(type=type)
+        else:
+            type_str = "{} {}".format(size, type).strip()
 
     parts = [
         type_str[0].upper() + type_str[1:] if len(type_str) > 0 else type_str
@@ -81,18 +83,19 @@ def format_speed(creature: Creature) -> str:
     return ", ".join(speeds_strs)
 
 def format_abilities(creature: Creature) -> str:
-    mods = {k: int((creature.data["abilities"][k] - 10) / 2) for k in creature.data["abilities"]}
+    abs = {"str", "dex", "con", "int", "wis", "cha"}
+    mods = {k: int((creature.data["abilities"][k] - 10) / 2) for k in abs}
     abs = creature.data["abilities"]
 
     # Add positive signs
-    for k in mods:
+    for k in abs:
         if mods[k] > 0:
             mods[k] = "+{}".format(mods[k])
         else:
             mods[k] = "{}".format(mods[k])
 
     abs_str = []
-    for k in {"str", "dex", "con", "int", "wis", "cha"}:
+    for k in abs:
         abs_str.append("{:2d} ({:2s})".format(abs[k], mods[k]))
     return  "   " + " ".join(abs_str)
 
@@ -426,14 +429,16 @@ def pretty_format_creature(creature: Creature) -> str:
     else:
         text = "="*width + "\n" + text + "="*width
 
-    if "background" in creature.data:
-        text += "\n"
-        bg = creature.data["background"]
-        text += "".join(["\n{}\n".format(t) for t in bg])
+    # if "background" in creature.data:
+    #     text += "\n"
+    #     bg = creature.data["background"]
+    #     text += "".join(["\n{}\n".format(t) for t in bg])
 
-        if len(lines) > 40 and columns:
-            text += "="*width*2 + "\n" 
-        else:
-            text += "="*width + "\n" 
+    #     if len(lines) > 40 and columns:
+    #         text += "="*width*2 + "\n" 
+    #     else:
+    #         text += "="*width + "\n" 
 
     return text
+
+

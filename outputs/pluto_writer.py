@@ -369,10 +369,10 @@ class PlutoWriter(WriterInterface):
                     }
                 )
 
-        ### Fluff ###
-        if "background" in creature:
-            new_creature["fluff"] = {}
-            new_creature["fluff"]["entries"] = creature["background"]
+        # ### Fluff ###
+        # if "background" in creature:
+        #     new_creature["fluff"] = {}
+        #     new_creature["fluff"]["entries"] = creature["background"]
 
         if "source" in creature:
             if "page" in creature['source']:

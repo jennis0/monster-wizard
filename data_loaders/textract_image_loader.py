@@ -75,7 +75,7 @@ class TextractImageLoader(DataLoaderInterface):
 
             b_box = Bound(**{k.lower():line["Geometry"]["BoundingBox"][k] for k in line["Geometry"]["BoundingBox"]})
 
-            pages[page - 1].add_line(Line(id=line["Id"], text=line["Text"], bound=b_box, attributes=[]))
+            pages[page - 1].add_line(Line(id=line["Id"], text=line["Text"], bound=b_box, page=page, attributes=[]))
 
         for i,p in enumerate(pages):
             p.attributes = ["page_{}".format(i+1)]

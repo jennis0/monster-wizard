@@ -24,7 +24,7 @@ def header():
     """
 
 def diff_mw_file(f_old: Any, f_new: Any, indent: int=4) -> str:
-    titles_old = {e['title']:e for e in f_old}
+    titles_old = {e['title']:e  for e in f_old}
     titles_new= {e['title']:e for e in f_new}
     
     lines = ["<p>Source Changes:"]
@@ -204,10 +204,12 @@ if __name__ == "__main__":
     else:
         out = "diff.html"
 
-    with open(old, 'r') as f_old:
-        with open(new, 'r') as f_new:
-            result = diff_mw_file(json.load(f_old), json.load(f_new))
-    
+    with open(old, 'r', encoding='utf-8') as f_old:
+        with open(new, 'r', encoding='utf-8') as f_new:
+            old_data = json.load(f_old)
+            new_data = json.load(f_new)
+            result = diff_mw_file(old_data, new_data)
+
     with open(out, 'w', encoding='utf-8') as f:
         f.write(result)
 

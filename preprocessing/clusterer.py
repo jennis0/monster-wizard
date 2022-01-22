@@ -25,7 +25,7 @@ class Clusterer(object):
     def _estimate_distances_and_gap(self, lines: List[Line]) -> Tuple[List[float], float]:
         '''Calculate the distances between each element in the cluster and returns a sensible cutoff'''
 
-        gaps = [lines[i+1].bound.top - (lines[i].bound.bottom()) for i in range(len(lines) - 1)]
+        gaps = [0.] + [lines[i+1].bound.top - (lines[i].bound.bottom()) for i in range(len(lines) - 1)]
         gaps = np.array(gaps)
         bins = np.arange(0, .1, 0.005)
         counts, edges = np.histogram(gaps, bins=bins)
@@ -43,15 +43,37 @@ class Clusterer(object):
         threshold = min(max(self.min_gap, threshold * self.fuzzyness), self.max_gap)
         self.logger.debug("Using clustering threshold of {}".format(threshold))
 
-        current_cluster = Section([lines[0]], [])
-        for line,gap in zip(lines[1:], gaps):
+        current_cluster = Section([], ['col_start'])
+        block_started = False
+        for i,lg in enumerate(zip(lines, gaps)):
+            line,gap = lg
+
+            self.logger.debug(f"{i} - {line}")
+
+            ### Filter out email addresses
+            if "@" in line.text:
+                self.logger.debug(f"Throwing away line {line} due to as an email address")
+                continue
+
+            #Throw away anything right at the top or bottom of the page if it doesn't have a none-title block and we haven't already seen a 'good' line
+            if not block_started:
+                if line.bound.top < 0.05 and len([a for a in line.attributes if a not in ['text_title']]) == 0:
+                    self.logger.debug(f"Throwing away line {line} as it's too close to start or end of page")
+                    continue
+                else:
+                    block_started = True
+                    current_cluster.add_line(line)
+                    continue
+
             #Gap is large so start a new cluster
             if gap < -0.1 or gap > threshold or "statblock_title" in line.attributes or "text_title" in line.attributes:
                 clusters.append(current_cluster)
                 current_cluster = Section([line], [])
+                continue
             else:
                 current_cluster.add_line(line)
-
-        clusters.append(current_cluster)
+                
+        if len(current_cluster.lines) > 0:
+            clusters.append(current_cluster)
 
         return clusters

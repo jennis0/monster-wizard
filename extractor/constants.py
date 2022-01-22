@@ -189,6 +189,7 @@ class ALIGNMENTS(Enum):
     good = auto()
     evil = auto()
     neutral = auto()
+    unaligned = auto()
 
 
 XP_BY_CR = {

@@ -55,7 +55,6 @@ FONT_OVERRIDES = {
 }
 
 import json
-sizes = []
 
 ### PDFMiner has been found to have some issues with rendering ligatures in at least one 
 ### pdf I tested. Here we manually override the character processing function so we can
@@ -189,7 +188,7 @@ class PDFLoader(DataLoaderInterface):
 						
 
 				for l in lines:
-					new_lines = self.__layout_to_line(line_id, l, x_size, y_size)
+					new_lines = self.__layout_to_line(line_id, l, x_size, y_size, j)
 					line_id += len(new_lines)
 
 					for l in new_lines:
@@ -217,9 +216,6 @@ class PDFLoader(DataLoaderInterface):
 				authors = None,
 				url = None
 			)
-
-			with open(f'sizes_{name}.json', 'w') as f_s:
-				json.dump(sizes, f_s)
 			
 			return source
 
@@ -234,29 +230,27 @@ class PDFLoader(DataLoaderInterface):
 		elif isinstance(lt, LTImage):
 			images.append(lt)
 
-		else:
-			if hasattr(lt, "_objs"):
-				for o in lt._objs:
-					ls, ims = self.__recursive_filter_to_lines_and_images(o)
+		elif hasattr(lt, "_objs"):
+			for o in lt._objs:
+				ls, ims = self.__recursive_filter_to_lines_and_images(o)
 
-					### Handle duplicate lines caused by (e.g.) outlines
-					for l in ls:
-						if len(lines) == 0 or l.get_text() != lines[-1].get_text():
-							lines.append(l)
+				### Handle duplicate lines caused by (e.g.) outlines
+				for l in ls:
+					if len(lines) == 0 or l.get_text() != lines[-1].get_text() or abs(l.y1 - lines[-1].y1) > 0.1:
+						lines.append(l)
 
-						
+				images += ims
 
-					images += ims
 		return lines, images
 
-	def __layout_to_line(self, line_id: str, lt: Union[LTTextBox, LTTextLine], x_size: int, y_size: int) -> List[Line]:
+	def __layout_to_line(self, line_id: str, lt: Union[LTTextBox, LTTextLine], x_size: int, y_size: int, page:int) -> List[Line]:
 		'''Split TextBoxes into TextLines'''
 		lines = []
 		if isinstance(lt, LTTextBox):
 			for obj in lt._objs:
-				self.logger.debug("\t {}".format(obj))
+				self.logger.debug("\t {} - {}".format(obj, type(obj)))
 				if isinstance(obj, LTTextLine):
-					lines += self.__layout_to_line(line_id, obj, x_size, y_size)
+					lines += self.__layout_to_line(line_id, obj, x_size, y_size, page)
 					line_id += 1
 					
 		elif isinstance(lt, LTTextLine):
@@ -269,7 +263,6 @@ class PDFLoader(DataLoaderInterface):
 			skip = False
 			for o in lt._objs:
 				if isinstance(o, LTChar):
-					sizes.append(o.size)
 					if o.size < 6.1:
 						skip = True
 					elif o.size >= 20.:
@@ -282,7 +275,9 @@ class PDFLoader(DataLoaderInterface):
 				return lines
 
 			text = unicodedata.normalize('NFC', lt.get_text().strip())
-			### Hack to deal with some title being weirdly encoded
+			### Hacks to deal with some title being weirdly encoded
+			text = text.replace("\t\r", " ")
+			text = " ".join(text.split())
 			escaped_text = ""
 			for t in text:
 				if repr(t) in LIGATURE_MAP:
@@ -310,6 +305,6 @@ class PDFLoader(DataLoaderInterface):
 				#self.logger.debug("Empty Text: ", lt)
 				return lines
 
-			lines.append(Line(line_id, escaped_text, bound, annotations))
+			lines.append(Line(line_id, escaped_text, bound, page, annotations))
 		
 		return lines

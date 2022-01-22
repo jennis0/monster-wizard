@@ -1,7 +1,7 @@
 import abc
 from typing import List, Any
+import json
 
-from extractor.creature_schema import CreatureSchema
 from utils.datatypes import Source
 
 class WriterInterface(object):
@@ -28,3 +28,25 @@ class WriterInterface(object):
     def write(self, filename: str, source: Source, creatures: List[Any], append: bool=None) -> bool:
         '''Writes the creatures to the specified file. If append is set to true, creatures will be inserted into the existing file. Returns True if write is successful'''
         raise NotImplementedError("users must define a function to write to a file.")
+
+    def write_p2v(self, out_filename: str, p2vdata: List[Any], append: bool=None) -> bool:
+        '''Converts from an existing p2v file into the writer format'''
+
+        ### Apply configuration overrides
+        if append is None:
+            append = super().append
+
+        with open(p2vdata, 'r') as f:
+            data = json.load(f)
+
+        ret = True
+        for source in data:
+            source_data = data['source']
+            s = Source(
+                source_data['title'], source_data['title'], source_data['num_pages']  if 'num_pages' in source_data else None
+                , None, None, None, source_data['authors'] if 'authors' in source_data else None
+            )
+
+            ret &= super().write(out_filename, s, source['creatures'], append)
+
+        return ret        

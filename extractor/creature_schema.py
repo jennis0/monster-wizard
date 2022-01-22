@@ -182,6 +182,7 @@ SpellcastingSchema = Schema(
         "mod": enum_str(constants.SHORT_ABILITIES),
         "text":str,
         "levels": [SpellLevelSchema],
+        "spellcastingLevel": int,
         Optional("save"):int,
         Optional("post_text"):str
     }

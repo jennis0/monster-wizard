@@ -59,9 +59,6 @@ class CreatureFactory():
             current_section = Section([line])
         else:
             current_section.add_line(line, sort=False)
-            # if is_short:
-            #     creature.add_feature(current_section)
-            #     current_section = Section()
 
         return current_section
 
@@ -88,6 +85,8 @@ class CreatureFactory():
              and title.split()[0].lower() not in constants.enum_values(constants.ABILITIES)\
              and len(parts) > 1 and parts[1] != ''
 
+        is_multiattack = "multiattack" in line.attributes
+
         #Is the start of an attack
         is_attack_start = "melee_attack" in line.attributes or "ranged_attack" in line.attributes
 
@@ -95,13 +94,13 @@ class CreatureFactory():
         is_attack_mid = 'in_attack' in line.attributes and not is_attack_start
 
         #Handle recharges
-        is_recharge = "recharge" in line.attributes
+        is_recharge = "recharge" in line.attributes or "use_count" in line.attributes
 
         #Handle a rare case where actions contain a table
         is_table = len(line.text) > 0 and line.text[0].isnumeric()
 
         #Check if we're at the start of a new feature
-        if (not is_table and not in_brackets and not is_attack_mid) and (new_block or has_title or is_attack_start or is_recharge):
+        if (not is_table and not in_brackets and not is_attack_mid) and (new_block or has_title or is_attack_start or is_recharge or is_multiattack):
             if len(current_section.lines) > 0:
                 if not action_type in handled_action_block or handled_action_block[action_type]:
                     creature.add_action(current_section, action_type)
@@ -136,6 +135,11 @@ class CreatureFactory():
 
         # Guess the name for debugging purposes until we know it for sure
         name = statblock.lines[0].text
+
+        # print("++++++++++++++++++++++++++++++++++++++++++++++")
+        # for l in statblock.lines:
+        #     print(l)
+        # print("++++++++++++++++++++++++++++++++++++++++++++++")
 
         i = -1
         while i < len(statblock.lines) - 1:
@@ -213,7 +217,7 @@ class CreatureFactory():
                 except:
                     self.logger.warning("Failed to parse name in {}".format(current_section.get_section_text()))
                     for l in statblock.lines:
-                        print(l.text, l.attributes)
+                        print("Error", l.text, l.attributes)
                     return None
                 current_section = Section()
                 state = CreatureFactory.ParserState.defence

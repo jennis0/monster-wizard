@@ -11,9 +11,10 @@ class Columniser(object):
     
     def __init__(self, config: configparser.ConfigParser, logger: logging.Logger):
         self.left_offset_leeway = config.get("columniser", "left_leeway", fallback=0.01)
-        self.right_offset_leeway = config.get("columniser", "right_leeway", fallback=0.1)
+        self.right_offset_leeway = config.get("columniser", "right_leeway", fallback=0.15)
         self.max_vertical_gap = config.get("columniser", "max_vertical_gap", fallback=0.05)
         self.max_horizontal_gap = config.get("columniser", "max_horizontal_gap", fallback=0.1)
+        self.merge_leeway = config.get('columniser', 'merge_leeway', fallback=0.1)
         self.fuzzyness = config.get("columniser", "fuzzyness", fallback=0.01)
 
         self.logger = logger.getChild("columniser")
@@ -31,17 +32,35 @@ class Columniser(object):
 
         for line in lines:
 
-            ### Filter out email addresses
-            if "@" in line.text:
+            #Filter out anything that approaches page width - is there a better way to do this to handle single column content?
+            if line.bound.width > 0.7:
+                self.logger.debug(f"Throwing away line {line} due to width")
                 continue
 
             placed=False
+
+            ### First try to line up start of line with an existing column
             for i,cb in enumerate(columns):
                 dist = line.bound.left - cb.bound.left
                 # Does the line start within a reasonable distance of the column start point?
                 if dist > -self.left_offset_leeway and dist < self.right_offset_leeway:
                     if abs(line.bound.top - cb.bound.bottom()) < self.max_horizontal_gap:
-                    
+
+                        # Yes? Well append the line to the column
+                        columns[i].add_line(line, sort=False)
+                        placed=True
+                        break
+            
+            if placed:
+                continue
+
+            ### If this fails, does the line fit within another column?
+            for i,cb in enumerate(columns):
+                dist = line.bound.left - cb.bound.left
+                rdist = line.bound.right() - cb.bound.right()
+                if dist > -self.left_offset_leeway and rdist < self.left_offset_leeway:
+                    if abs(line.bound.top - cb.bound.bottom()) < self.max_horizontal_gap:
+
                         # Yes? Well append the line to the column
                         columns[i].add_line(line, sort=False)
                         placed=True
@@ -69,8 +88,8 @@ class Columniser(object):
                 if i == j or j in ignore_columns:
                     continue
                 #Check if bound of the column is within another (use left offset to allow for minor variations)
-                if col2.bound.left > col1.bound.left - self.left_offset_leeway:
-                    if col2.bound.right() < col1.bound.right() + self.left_offset_leeway:
+                if col2.bound.left > col1.bound.left - self.merge_leeway:
+                    if col2.bound.right() < col1.bound.right() + self.merge_leeway:
                         col1.add_section(col2, sort=False) 
                         ignore_columns.append(j)
 
@@ -88,11 +107,6 @@ class Columniser(object):
         new_column = Section([])
         candidate_lines = [column.lines[0]]
 
-        is_array_value = re.compile("^([0-9]+\s*|\s*\(\s*[+-][0-9]\s*\)\s*){1,12}$", re.IGNORECASE)
-        is_array_title = re.compile("^(?:\s?(str|wis|con|int|dex|cha)\s\s?){1,6}$", re.IGNORECASE)
-        
-        in_value = False
-        in_title = False
         for i in range(1, len(column.lines)):
             line = column.lines[i]
             first_bottom = candidate_lines[0].bound.bottom()
@@ -131,13 +145,15 @@ class Columniser(object):
         if len(candidates) == 1:
             return candidates
 
-        is_array_value = re.compile("^([0-9]+\s*|\s*\(\s*[+-][0-9]\)\s*){1,12}$", re.IGNORECASE)
+        is_array_value = re.compile("^(\d+\s*|\(\s*[+\-–]\d+\)\s*){1,12}$", re.IGNORECASE)
         is_array_title = re.compile("^((?:(str|wis|con|int|dex|cha)\s*){1,6})$", re.IGNORECASE)
+
 
         merged = []
         to_merge = [candidates[0]]
         in_title = is_array_title.match(candidates[0].text.strip()) is not None
         in_value = is_array_value.match(candidates[0].text.strip()) is not None
+
         for i in range(1, len(candidates)):
             l = candidates[i]
 

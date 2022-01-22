@@ -136,11 +136,11 @@ class Creature():
         ), text.strip(), re.IGNORECASE)
         if len(matches) == 1:
             self.data["size"] = [matches[0][0]]
-            self.data["creature_type"] = [{
-                "type": matches[0][1],
+            self.data["creature_type"] = {
+                "type": matches[0][2],
                 "swarm": True,
-                "swarm_size": matches[0][2]
-            }]
+                "swarm_size": matches[0][1]
+            }
         else:
             ### Find size by pattern matching
             sizes = self.__basic_pattern_match(parts[0], constants.SIZES)
@@ -440,6 +440,7 @@ class Creature():
                 spellblocks[-1][2].append(line)
 
         results = {"title":title, "levels":[]}
+        level_re = re.compile("a\s*(\d+)(?:st|nd|rd|th)?\s*level\s*spellcaster", re.IGNORECASE)
         ability_re = re.compile("spellcasting\s*ability\s*(?:score)?\s*is\s*({})".format("|".join(constants.enum_values(constants.ABILITIES))), re.IGNORECASE)
  
         last_line = " ".join(spellblocks[-1][2])
@@ -476,9 +477,17 @@ class Creature():
                     self.logger.warning("Conflicting spellcasting abilities")
                 else:
                     results["mod"] = abilities[0].strip()[:3].lower()
+
+                level = level_re.findall(line)
+                if len(level) == 0:
+                    self.logger.warning("No spellcasting level found")
+                    results["spellcastingLevel"] = 0
+                elif len(level) > 1:
+                    self.logger.warning("Conflicting spellcasting levels found")
+                else:
+                    results["spellcastingLevel"] = int(level[0])
+
                 
-                #line = self._replace_dcs(line)
-                #line = self._replace_hit(line)
                 results["text"] = line
 
                 save = re.findall("spell\s*save\s*DC\s*([0-9]+)", line)

@@ -165,7 +165,7 @@ class StatblockExtractor(object):
                     boxes += [x for x in page_data.lines]
                     colours += [self.line_colour for i in range(len(page_data.lines))]
 
-                    ### Parse data into sections
+                ### Parse data into sections
                 columns = self.columniser.find_columns(page_data.lines)
 
                 if draw_columns:
@@ -176,6 +176,15 @@ class StatblockExtractor(object):
                 for col in columns:
                     self.line_annotator.annotate(col.lines)
 
+                if self.config.get("default", "debug"):
+                    self.logger.debug("Annotated Lines")
+                    for c in columns:
+                        self.logger.debug("COLUMN START")
+                        self.logger.debug(f"Has {len(c.lines)} lines")
+                        for l in c.lines:
+                            self.logger.debug(l)
+                        self.logger.debug("COLUMN END")
+                        
                 ### Combine lines into clusters
                 clusters = []
                 for col in columns:

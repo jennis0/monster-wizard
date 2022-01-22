@@ -26,10 +26,10 @@ class CachedLoaderWrapper(DataLoaderInterface):
 
     def load_data_from_file(self, filepath: str) -> Source:
         '''Reads file and extracts lines of texts. Returns one section per page'''
-        if self.flush_cache or not self.use_cache:
+        if not self.use_cache:
             return self.loader.load_data_from_file(filepath)
 
-        if self.cache.check_cache(filepath):
+        if not self.flush_cache and self.cache.check_cache(filepath):
             data, json = self.cache.read(filepath)
             if not data and not json:
                 self.logger.warning("Found cache dir for {} but it contained no files. Falling back".format(filepath))
@@ -39,8 +39,7 @@ class CachedLoaderWrapper(DataLoaderInterface):
         source = self.loader.load_data_from_file(filepath)
 
         self.logger.debug("Writing {} to cache".format(filepath))
-        if self.flush_cache or self.use_cache:
-            self.cache.write(filepath, *source.serialise())
+        self.cache.write(filepath, *source.serialise())
 
         return source
         
