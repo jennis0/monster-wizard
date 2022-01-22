@@ -76,7 +76,7 @@ class CompendiumLoader(object):
         compendiums = []
         compendium_dir = self.config.get("foundry", "compendium-dir", fallback="./foundry")
         for f in os.listdir(compendium_dir):
-            if not "fvtt-" in f and ".json" not in f:
+            if ".json" not in f:
                 continue
             compendiums.append(os.path.join(compendium_dir, f))
         for f in self.config.get("foundry", "compendia", fallback="").split(","):
