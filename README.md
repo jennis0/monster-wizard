@@ -37,6 +37,7 @@ I've tried to pick a variety of PDF formats when testing PDF2VTT to ensure it ha
  - Kobold Press: Tome of Beasts (90%)
  - Kobold Press: Warlock 15: Boss Monsters (100%)
  - Heliana's Guide to Monster Hunting: Shadow of the Broodmother (90%)
+  
 Along with several small pieces of homebrew I've downloaded from Reddit. 
 
 In general, for sensibly formatted PDFs, expect between 90-100% accuracy, at this point the most common errors are simply merging flavour text into statblocks, along with occasionally missing features.
