@@ -1,6 +1,7 @@
 from distutils.log import Log
 import json
 import os
+from copy import deepcopy
 
 from configparser import ConfigParser
 from logging import Logger
@@ -108,8 +109,7 @@ class CompendiumLoader(object):
 
         n = self.__format_name(name)
         if n in self.compendia[target_type]:
-            return self.compendia[target_type][n]
-
+            return deepcopy(self.compendia[target_type][n])
         return None
 
     def query_compendium_image(self, name: str) -> Optional[str]:

@@ -5,7 +5,8 @@ import configparser
 import logging
 import schema
 
-from extractor import constants
+
+from extractor.constants import *
 import re
 
 import extractor.creature_schema as cs
@@ -19,6 +20,25 @@ class Creature():
         self.data = {}
         self.config = config
         self.logger = logger
+
+        ### Precompile some regexes
+        self.attack_res = {
+            "type":re.compile("^(melee|ranged|melee\s*or\s*ranged)\s*(spell|weapon)?\s*(?:attack)?:", re.IGNORECASE),
+            "hit":re.compile(":\s*([+-]?\s*\d+)\s*to\s*hit", re.IGNORECASE),
+            "reach":re.compile(f"reach\s*(\d+)\s*({'|'.join(enum_values(MEASURES))})"),
+            "range":re.compile(f"range\s*(\d+)(?:/(\d+))?\s*({'|'.join(enum_values(MEASURES))})"),
+            "target":re.compile(f",\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten|all|any)\s*(creature|target|object)s?,?\s*([a-zA-Z,\s']+)?.\s*Hit"),
+            "hit_damage":re.compile(f".\s*hit:\s*(\d+)\s*(?:\(([\d\s\+-d]+)\))?\s*({'|'.join(enum_values(DAMAGE_TYPES))})", re.IGNORECASE),
+            "versatile_damage":re.compile(f"or\s*(\d+)\s*(?:\(([\d\s\+-d]+)\))?\s*({'|'.join(enum_values(DAMAGE_TYPES))})\s*[a-zA-Z\s]*\s*two hands", re.IGNORECASE)
+        }
+
+        self.general_res = {
+            "damage":re.compile(f"\s*(\d+)\s*(?:\(([\d\s\+-d]+)\))?\s*({'|'.join(enum_values(DAMAGE_TYPES))})", re.IGNORECASE),
+            "saves":re.compile(f"dc\s*(\d+)\s*\(?\s*({'|'.join(enum_values(ABILITIES) + enum_values(SHORT_ABILITIES) + enum_values(SKILLS))})\s*\(?", re.IGNORECASE),
+            "escape":re.compile(f"escape\s*dc\s*(\d+)", re.IGNORECASE),
+            "conditions":re.compile(f"({'|'.join(enum_values(CONDITIONS))})", re.IGNORECASE),
+            "halves":re.compile('half\s*as\s*much\s*damage', re.IGNORECASE)
+        }
 
     def is_valid(self):
 
@@ -51,7 +71,7 @@ class Creature():
     
     def __basic_pattern_match(self, text: str, options: Enum, expected: int=1) -> List[str]:
         '''Find words matching the enum within this string'''
-        matches = re.findall("({})".format("|".join(constants.enum_values(options))), text, re.IGNORECASE)
+        matches = re.findall("({})".format("|".join(enum_values(options))), text, re.IGNORECASE)
         if len(matches) == 0:
             self.logger.warning("Failed to find {} in {}".format(options.__name__, text))
             return []
@@ -82,7 +102,7 @@ class Creature():
     def _parse_enum_with_pre_post(self, text: str, enum: Enum):
         results = []
         match = re.compile("([\w\s'()]+\w)?(?:^|\s+)({})(?:\s*)([^.,]+)?,?".format(
-            "|".join(constants.enum_values(enum))),
+            "|".join(enum_values(enum))),
             re.IGNORECASE)
         # Split the line based on semi-colons
         texts = text.split(";")
@@ -130,9 +150,9 @@ class Creature():
 
         ### Check for complex swarm case
         matches = re.findall("({})\s+swarm\s+of\s+({})\s+({})".format(
-            "|".join(constants.enum_values(constants.SIZES)),
-            "|".join(constants.enum_values(constants.SIZES)),
-            "|".join(constants.enum_values(constants.CREATURE_TYPES) + constants.enum_values(constants.CREATURE_TYPE_PLURALS))
+            "|".join(enum_values(SIZES)),
+            "|".join(enum_values(SIZES)),
+            "|".join(enum_values(CREATURE_TYPES) + enum_values(CREATURE_TYPE_PLURALS))
         ), text.strip(), re.IGNORECASE)
         if len(matches) == 1:
             self.data["size"] = [matches[0][0]]
@@ -143,7 +163,7 @@ class Creature():
             }
         else:
             ### Find size by pattern matching
-            sizes = self.__basic_pattern_match(parts[0], constants.SIZES)
+            sizes = self.__basic_pattern_match(parts[0], SIZES)
             if len(sizes) > 0:
                 self.data["size"] = []
                 for s in sizes:
@@ -151,7 +171,7 @@ class Creature():
                 self.__validate_part("size")
 
             ### Find creature type, and whether they are a swarm
-            types = self.__basic_pattern_match(parts[0], constants.CREATURE_TYPES)
+            types = self.__basic_pattern_match(parts[0], CREATURE_TYPES)
             if len(types) > 0:
                 ts = []
                 for t in types:
@@ -243,10 +263,10 @@ class Creature():
 
     def set_speed(self, text: str):
         
-        text = constants.MEASURES.normalise(text)
+        text = MEASURES.normalise(text)
         matches = re.findall('({})?\s([0-9]+)\s*({})\.?'.format(
-                "|".join(constants.enum_values(constants.MOVEMENT_TYPES)),
-                "|".join(constants.enum_values(constants.MEASURES))),
+                "|".join(enum_values(MOVEMENT_TYPES)),
+                "|".join(enum_values(MEASURES))),
             text,
             re.IGNORECASE)
 
@@ -274,10 +294,10 @@ class Creature():
     def set_senses(self, line: Line):
         '''Sets the creatures senses'''
 
-        text = constants.MEASURES.normalise(line.text)
+        text = MEASURES.normalise(line.text)
         sense_matches = re.findall("({})\s+([0-9]+)\s*({})".format(
-            "|".join(constants.enum_values(constants.SENSES)),
-            "|".join(constants.enum_values(constants.MEASURES))),
+            "|".join(enum_values(SENSES)),
+            "|".join(enum_values(MEASURES))),
             text,
             re.IGNORECASE
         )
@@ -301,26 +321,26 @@ class Creature():
 
 
     def set_damage_immunities(self, line: Line):
-        self.data["damage_immunities"] = self._parse_enum_with_pre_post(line.text[17:].strip(), constants.DAMAGE_TYPES)
+        self.data["damage_immunities"] = self._parse_enum_with_pre_post(line.text[17:].strip(), DAMAGE_TYPES)
         self.__validate_part("damage_immunities")
 
     def set_conditions_immunities(self, line: Line):
-        self.data["condition_immunities"] = self._parse_enum_with_pre_post(line.text[20:].strip(), constants.CONDITIONS)
+        self.data["condition_immunities"] = self._parse_enum_with_pre_post(line.text[20:].strip(), CONDITIONS)
         self.__validate_part("condition_immunities")
 
     def set_damage_resistances(self, line: Line):
-        self.data["resistances"] = self._parse_enum_with_pre_post(line.text[18:].strip(), constants.DAMAGE_TYPES)
+        self.data["resistances"] = self._parse_enum_with_pre_post(line.text[18:].strip(), DAMAGE_TYPES)
         self.__validate_part("resistances")
 
     def set_vulnerabilities(self, line: Line):
-        self.data["vulnerabilities"] = self._parse_enum_with_pre_post(line.text[22:].strip(), constants.DAMAGE_TYPES)
+        self.data["vulnerabilities"] = self._parse_enum_with_pre_post(line.text[22:].strip(), DAMAGE_TYPES)
         self.__validate_part("vulnerabilities")
 
 
     def set_saves(self, line: Line):
         parsed_saves = {}
         found_saves = re.findall("(?:[\s,.]|^)({})\s*([+-])?\s*([0-9]+)".format(
-            "|".join(constants.enum_values(constants.SHORT_ABILITIES))
+            "|".join(enum_values(SHORT_ABILITIES))
         ), line.text, re.IGNORECASE)
         
         if len(found_saves) == 0:
@@ -399,6 +419,25 @@ class Creature():
         })
         self.__validate_part("features")
 
+
+    def __parse_spell_names(self, spells: List[str]) -> List[Any]:
+            per_spell_level_re = re.compile("([a-zA-Z\s/']+)\s*\((.*)\)", re.IGNORECASE)
+            spell_list = []
+            for s in spells:
+                parts = per_spell_level_re.findall(s.lower().strip())
+                if len(parts) == 1:
+                    t = parts[0][1].strip()
+                    if "level" in t and t[0] in "123456789":
+                        spell_list.append({"name":parts[0][0].strip(), "level": int(t[0])})
+                    elif "cantrip" in t:
+                        spell_list.append({"name":parts[0][0].strip(), "level":0})
+                    else:
+                        spell_list.append({"name":parts[0][0].strip(), "post_text":t})
+                else:
+                    spell_list.append({"name":s.lower().strip()})
+
+            return spell_list
+
     def add_spell_feature(self, section: Section):
         parts = section.lines[0].text.split(".")
         title = parts[0]
@@ -441,7 +480,7 @@ class Creature():
 
         results = {"title":title, "levels":[]}
         level_re = re.compile("a\s*(\d+)(?:st|nd|rd|th)?\s*level\s*spellcaster", re.IGNORECASE)
-        ability_re = re.compile("spellcasting\s*ability\s*(?:score)?\s*is\s*({})".format("|".join(constants.enum_values(constants.ABILITIES))), re.IGNORECASE)
+        ability_re = re.compile("spellcasting\s*ability\s*(?:score)?\s*is\s*({})".format("|".join(enum_values(ABILITIES))), re.IGNORECASE)
  
         last_line = " ".join(spellblocks[-1][2])
         split = -1
@@ -505,9 +544,7 @@ class Creature():
                     'level':'unlevelled'
                 }
                 spells_names = " ".join(sb[2]).split(":")[1].split(",")
-                spell_level['spells'] = [
-                    s.lower().strip() for s in spells_names
-                ]
+                spell_level['spells'] = self.__parse_spell_names(spells_names)
                 results["levels"].append(spell_level)
 
             else:
@@ -521,7 +558,7 @@ class Creature():
                 else:
                     spells_names = s.split(",")
 
-                spell_list = [s.lower().strip() for s in spells_names]
+                spell_list = self.__parse_spell_names(spells_names)
 
                 # Handle fixed frequency spells (daily, per rest, etc)
                 if sb[0] == 'x':
@@ -565,7 +602,7 @@ class Creature():
     #################################### Actions #######################################
     ####################################################################################
 
-    # def add_action(self, title: str, text: str, action_type: constants.ACTION_TYPES):
+    # def add_action(self, title: str, text: str, action_type: ACTION_TYPES):
 
     def add_legendary_block(self, section: Section):
         self.data["legendary_block"] = section.get_section_text().strip().replace("\n", " ").replace("  ", " ")
@@ -626,7 +663,7 @@ class Creature():
                 return None
 
             #Iterate over values and either use raw number of guess based on ability score
-            for t,a in zip(tokens, constants.SHORT_ABILITIES):
+            for t,a in zip(tokens, SHORT_ABILITIES):
                 if t[0] != '':
                     attribs[a.name] = int(t[0])
                 else:
@@ -639,7 +676,7 @@ class Creature():
 
         else:
             #Otherwise, we have everthing we need!
-            for i,a in enumerate(constants.SHORT_ABILITIES):
+            for i,a in enumerate(SHORT_ABILITIES):
                 attribs[a.name] = int(parts[2*i])
 
         self.data["abilities"] = attribs
@@ -697,8 +734,158 @@ class Creature():
         else:
             self.add_normal_feature(title, text.replace("\n", " ").replace("  ", " "))
 
-    def add_action(self, section: Section, action_type: constants.ACTION_TYPES):
+
+    def __create_attack(self, title: str, properties: Any):
+        '''Use results of precomplied regexes to turn attack text intro structured data'''
+
+        attack = {
+            "name":title,
+            "type":properties["type"][1][0].strip(),
+            "weapon": properties["type"][1][1].strip() if properties["type"][1][1] else "weapon",
+        }
+
         
+        target_count_map = {
+            "one":1, "two":2, "three":3, "four":4, "five":5,"six":6,"seven":7,"eight":8,"nine":9,"any":"any","all":"all"
+        }
+
+        max_parsed = properties["type"][0] 
+
+        if "or" in attack["type"]:
+            attack["type"] = "both"
+
+        if properties["reach"]:
+            v = properties["reach"]
+            attack["reach"] = {"distance": v[1][0], "measure": v[1][1]}
+            max_parsed = max(v[0], max_parsed)
+
+        if properties["range"]:
+            v = properties["range"]
+            print(v)
+            attack["range"] = {"short_distance": v[1][0], "long_distance": v[1][1], "measure": v[1][2]}
+            max_parsed = max(v[0], max_parsed)
+
+        if properties["hit"]:
+            attack["hit"] = int(properties["hit"][1][0])
+            max_parsed = max(properties["hit"][0], max_parsed)
+
+        if properties["target"]:
+            v = properties["target"][1]
+            try:
+                c = int(v[0])
+            except:
+                c = target_count_map[v[0]]
+            attack["target"] = {"count":c, "type":v[1]}
+            if v[2] and v[2].strip():
+                attack["target"]["post_text"] = v[2].strip()
+            max_parsed = max(properties["hit"][0], max_parsed)
+
+
+        if properties["hit_damage"]:
+            v = properties["hit_damage"][1]
+            attack["damage"] = {"damage":{"average":v[0], "formula":v[1]}, "type":v[2].strip()}
+            max_parsed = max(properties["hit_damage"][0], max_parsed)
+
+
+        if properties["versatile_damage"]:
+            v = properties["versatile_damage"][1]
+            attack["versatile"] = {"damage":{"average":v[0], "formula":v[1]}, "type":v[2].strip()}
+            max_parsed = max(properties["hit_damage"][0], max_parsed)
+
+        effects = self.__create_effects(properties, start_char=max_parsed)
+        if len(effects) > 0:
+            attack["effects"] = effects
+
+        return attack
+
+    def __create_effects(self, properties: Any, start_char=0):
+        '''Use results of precompiled regexes to turn action text into structred effect data'''
+        
+        used_conditions = []
+        used_damage = []
+        used_halves = []
+
+        effects = []
+
+        damage = properties["damage"] if properties["damage"] else []
+        saves = properties["saves"] if properties["saves"] else []
+        conditions = properties["conditions"] if properties["conditions"] else []
+        halves = properties["halves"] if properties["halves"] else []
+        escape = properties["escape"] if properties["escape"] else []
+
+        #Add a 'no save' save at the start so we can capture any effects not tied to a save
+        saves = [[start_char,None]] + saves
+
+        for i in range(len(saves)):
+            effect = {}     
+
+            ### Only consider things up to the next check
+            if i+1 == len(saves):
+                end_char = 1000000
+            else:
+                end_char = saves[i+1][0]
+
+            ### Add Save
+            if saves[i][1]:
+                effect["save"] = {
+                    "ability": saves[i][1][1][:3],
+                    "value": saves[i][1][0]
+                }
+                effect["on_save"] = "none"
+
+            condition_set = set()
+
+            ### Add damage
+            for di,d in enumerate(damage):
+                if di in used_damage:
+                    continue
+                if d[0] < start_char or d[0] > end_char:
+                    continue
+                if "damage" not in effect:
+                    effect["damage"] = []
+                effect["damage"].append({"damage":{"average":d[1][0], "formula":d[1][1]}, "type":d[1][2]})
+                used_damage.append(di)
+
+            ### Add conditions
+            for ci,c in enumerate(conditions):
+                if ci in used_conditions or c[1] in condition_set:
+                    continue
+                if c[0] < start_char or c[0] > end_char:
+                    continue
+                if "conditions" not in effect:
+                    effect["conditions"] = []
+                if c[1][0] == CONDITIONS.grappled.name:
+                    if len(escape) == 0:
+                        continue
+                    else:
+                        effect["end_save"] = {
+                            "ability":"ath or acr",
+                            "value":escape[0][1][0]
+                        }
+
+                effect["conditions"].append({"condition":c[1][0]})
+                condition_set.add(c[1][0])
+                used_conditions.append(ci)
+
+            ### Add save efect
+            if saves[i][1]:
+                for hi,h in enumerate(halves):
+                    if hi in used_halves:
+                        continue
+                    if h[0] < start_char or h[0] > end_char:
+                        continue
+                    effect["on_save"] = "half"
+                    used_halves.append(hi)
+                    break            
+
+            if len(effect.keys()) > 0:
+                effects.append(effect)
+
+        return effects
+
+    def add_action(self, section: Section, action_type: ACTION_TYPES):
+        
+        ### Do some parsing to get the title from the text
         parts = section.get_section_text(join_char=" ").split(".")
         title = parts[0].strip()
         text = ". ".join(parts[1:]).strip()
@@ -720,13 +907,66 @@ class Creature():
         if not action_type.name in self.data:
             self.data[action_type.name] = []
 
-        self.data[action_type.name].append(
-            {
-                "title":title,
-                "text":text.replace("\n", " ").replace("  ", " "),
-                "type":action_type.name
-            }
-        )
+        ### Start parsing the main action text
+        # Run a set of regexes over the text to pull out key information
+        # First regexes handle the attack header
+        properties = {}
+        for r in self.attack_res:
+            v = self.attack_res[r].search(text.lower())
+            properties[r] = [v.end(), v.groups()] if v else None
+
+        ### Track where the 'attack header' ends so we don't double count damage
+        attack_line_end = 0
+        if properties["type"]:
+            for p in properties:
+                v = properties[p]
+                if v:
+                    attack_line_end = max(attack_line_end, v[0])
+
+        # Seconds regexes handle more general damage and effects
+        for r in self.general_res:
+            v = [(match.end(), match.groups()) for match in self.general_res[r].finditer(text.lower(), pos=attack_line_end)]
+            properties[r] = v if len(v) > 0 else None
+
+        action = {
+            "title":title,
+            "text":text,
+            "type":action_type.name
+        }
+
+        # If attack, parse attack, otherwise only parse effects
+        if properties["type"]:
+            action["attack"] = self.__create_attack(title, properties)
+        else:
+            effects = self.__create_effects(properties)
+            if len(effects) > 0:
+                action["effects"] = effects
+
+        # Look at title to pull out any associated costs/recharge/uses
+        recharge_re = re.compile("recharge\s*(\d+)(?:-+(\d+))?", re.IGNORECASE)
+        uses_re = re.compile(f"(\d+)\s*/\s*({'|'.join(enum_values(TIME_MEASURES))})", re.IGNORECASE)
+        cost_re = re.compile(f"costs\s*\d+\s*action")
+
+        recharge = recharge_re.findall(title)
+        uses = uses_re.findall(title)
+        costs = cost_re.findall(title)
+
+        if len(recharge) == 1:
+            if recharge[0][1]:
+                action["recharge"] = {"from":int(recharge[0][0]), "to":int(recharge[0][1])}
+            else:
+                action["recharge"] = {"from":int(recharge[0][0]), "to":int(recharge[0][0])}
+
+        if len(uses) == 1:
+            action["uses"] = {"slots":int(uses[0][0]), "period":uses[0][1].lower()}
+
+        if len(costs) == 1:
+            action["cost"] = int(costs[0])
+        elif action_type == ACTION_TYPES.legendary:
+            action["cost"] = 1
+
+        ### Append parsed action to data
+        self.data[action_type.name].append(action)
         self.__validate_part(action_type.name)
 
     def add_background(self, sections: List[Section]):

@@ -7,12 +7,14 @@ from extractor import constants
 
 from configparser import ConfigParser
 from logging import Logger
-from extractor.creature_schema import SpellcastingSchema
+from extractor.creature_schema import ActionSchema, SpellLevelSchema, SpellSchema, SpellcastingSchema
 
 from outputs.fvtt.types import CompendiumTypes
 from outputs.fvtt.compendium_loader import CompendiumLoader
 
 from extractor.creature import Creature
+
+import utils.text_format as fmt
 
 from typing import Any
 
@@ -30,6 +32,7 @@ class FVTTConverter(object):
     __SKILLSMAP = {
         constants.SKILLS.acrobatics.name: "acr",
         constants.SKILLS.animal_handling.name: "ani",
+        "animal handling": "ani",
         constants.SKILLS.arcana.name: "arc",
         constants.SKILLS.athletics.name: "ath",
         constants.SKILLS.deception.name: "dec",
@@ -66,6 +69,15 @@ class FVTTConverter(object):
         "slt":"dex",
         "ste":"dex",
         "sur":"wis"
+    }
+
+    __FREQUENCYMAP = {
+        constants.SPELL_FREQUENCIES.encounter.name: "sr",
+        constants.SPELL_FREQUENCIES.daily.name: "day",
+        constants.SPELL_FREQUENCIES.rest.name: "lr",
+        constants.SPELL_FREQUENCIES.weekly.name: "charges",
+        constants.SPELL_FREQUENCIES.cantrip.name: "",
+        constants.SPELL_FREQUENCIES.will.name: "",
     }
 
     __IDCHARS = string.ascii_letters + "0123456789"
@@ -107,6 +119,148 @@ class FVTTConverter(object):
         "flags": {}
       }
 
+    def __make_spell(self, spell: SpellSchema):
+        return  {
+          "_id": "1VqHo34RfZWxXk7R",
+          "name": spell["name"],
+          "type": "spell",
+          "img": self.cl.query_compendium_image(spell["name"]),
+          "data": {
+            "description": {"value": "","chat": "","unidentified": ""},
+            "source": "",
+            "activation": {"type": "action","cost": 1,"condition": ""},
+            "duration": {"value": None,"units": "inst"},
+            "target": {"value": 1,"width": None,"units": "","type": "creature"},
+            "range": {"value": None,"long": None,"units": "ft"},
+            "uses": {"value": None,"max": None, "per":None},
+            "consume": {},
+            "ability": "",
+            "actionType": "save",
+            "attackBonus": 0,
+            "chatFlavor": "",
+            "critical":{"threshold":None,"damage": ""},
+            "damage": {"parts": [],"versatile": ""},
+            "formula": "",
+            "level": 0,
+            "school": "evo",
+            "components": {"value": "","vocal": False,"somatic": False,"material": False,"ritual": False,"concentration": False},
+            "preparation": {"mode": "prepared","prepared":True},
+          }
+        }
+
+    def __make_attack(self, attack: ActionSchema):
+        return        {
+          "_id": "6ZAh5TkiXwQMUfDB",
+          "name": attack["title"],
+          "type": "weapon",
+          "img": self.cl.query_compendium_image(attack["title"]),
+          "data": {
+            "description": {
+              "value": "<section class=\"secret\">\n<p><em>Melee Weapon Attack:</em><strong>+14 to hit,</strong>, <strong>10 ft.,</strong> one target. Hit: <strong>21 (3d8 + 8) <em>slashing damage</em></strong> plus <strong>13 (3d8) <em>lightning damage</em></strong>.</p>\n<p>If the balor scores a critical hit, it rolls damage dice three times, instead of twice.</p>\n</section>\n<p>The Balor attacks with its Longsword.</p>",
+              "chat": "",
+              "unidentified": ""
+            },
+            "source": "PHB pg. 149",
+            "attunement": 0,
+            "equipped": true,
+            "rarity": "Common",
+            "identified": true,
+            "activation": {
+              "type": "action",
+              "cost": 1,
+              "condition": ""
+            },
+            "duration": {
+              "value": null,
+              "units": ""
+            },
+            "target": {
+              "value": null,
+              "width": null,
+              "units": "",
+              "type": ""
+            },
+            "range": {
+              "value": 10,
+              "long": null,
+              "units": "ft"
+            },
+            "uses": {
+              "value": 0,
+              "max": 0,
+              "per": ""
+            },
+            "consume": {
+              "type": "",
+              "target": "",
+              "amount": null
+            },
+            "ability": "str",
+            "actionType": "mwak",
+            "attackBonus": 0,
+            "chatFlavor": "",
+            "critical": {
+              "threshold": null,
+              "damage": ""
+            },
+            "damage": {
+              "parts": [
+                [
+                  "3d8 + @mod",
+                  "slashing"
+                ],
+                [
+                  "3d8",
+                  "lightning"
+                ]
+              ],
+              "versatile": ""
+            },
+            "formula": "",
+            "save": {
+              "ability": "",
+              "dc": null,
+              "scaling": "spell"
+            },
+            "armor": {
+              "value": 10
+            },
+            "hp": {
+              "value": 0,
+              "max": 0,
+              "dt": null,
+              "conditions": ""
+            },
+            "weaponType": "martialM",
+            "baseItem": "",
+            "properties": {
+              "ver": true,
+              "amm": false,
+              "fin": false,
+              "fir": false,
+              "foc": false,
+              "hvy": false,
+              "lgt": false,
+              "lod": false,
+              "rch": true,
+              "rel": false,
+              "ret": false,
+              "spc": false,
+              "thr": false,
+              "two": false
+            },
+            "proficient": true,
+            "attuned": false
+          },
+          "effects": [],
+          "folder": null,
+          "sort": 800000,
+          "permission": {
+            "default": 0
+          },
+          "flags": {}
+        },
+
     def __init__(self, config: ConfigParser, logger: Logger):
         self.config = config
         self.logger = logger.getChild("fvtt_conv")
@@ -120,7 +274,6 @@ class FVTTConverter(object):
                     custom.append("".join([di["pre_text"], ",".join(di["type"]), di["post_text"]]))
             else:
                 for d in di["type"]:
-                    print(d, d in enums)
                     if d in enums:
                         dis.append(d)
                     else:
@@ -149,10 +302,14 @@ class FVTTConverter(object):
 
         if "spellcasting" in cr:
             spell_items, spell_data = self.spells(cr, data)
-            print(spell_items)
             new_creature["items"] += spell_items
             data["spells"] = spell_data
         
+
+        if "features" in cr:
+            new_creature["items"] += self.features(cr, data)
+
+        new_creature["items"] += self.actions(cr, data)
 
         new_creature['data'] = data
         return new_creature
@@ -237,7 +394,7 @@ class FVTTConverter(object):
         if "proficiency" in data:
             conv["prof"] = data["proficiency"]
         elif "cr" in data:
-            conv["prof"] = floor(int(data["cr"]["cr"]) / 4) + 2
+            conv["prof"] = 2 + floor(0.25 * (int(data["cr"]["cr"]) - 1))
         else:
             conv["prof"] = 0
 
@@ -248,7 +405,7 @@ class FVTTConverter(object):
                 if "mod" in sc:
                     mod = sc["mod"]
                     conv["spellcasting"] = mod
-                    conv["spelldc"] =  8 + current_state["abilities"][mod]["mod"] + conv["prof"]
+                    conv["spelldc"] =  sc["save"] if "save" in sc else 8 + current_state["abilities"][mod]["mod"] + conv["prof"]
                     conv["spellLevel"] = sc["spellcastingLevel"] if "spellcastingLevel" in sc else 0
                     break
 
@@ -333,31 +490,27 @@ class FVTTConverter(object):
 
         return conv
 
-    def __format_spellcasting_text(self, data: SpellcastingSchema) -> str:
-        levels = []
-        for sl in data["levels"]:
-            if sl['frequency'] == constants.SPELL_FREQUENCIES.will.name:
-                freq = 'At will'
-            elif sl['frequency'] == constants.SPELL_FREQUENCIES.daily.name:                
-                freq = f"{sl['slots']}/day" if "slots" in sl else "1/day"
-            elif sl['frequency'] == constants.SPELL_FREQUENCIES.rest.name:                
-                freq = f"{sl['slots']}/long or short rest" if "slots" in sl else "1/long or short rest"
-            elif sl['frequency'] == constants.SPELL_FREQUENCIES.levelled.name and not sl["level"] == "cantrip":
-                l = sl["level"] + {"1":"st", "2":"nd", "3":"rd", "4":"th", "5":"th", "6":"th", "7":"th", "8":"th", "9":"th"}
-                freq = f'{l} level ({sl["slots"] if "slots" in sl else 1} slots)'
-            elif sl['frequency'] == constants.SPELL_FREQUENCIES.cantrip.name or sl["level"] == "cantrip":
-                freq = 'Cantrip (at will)'
-            
-            if "each" in sl and sl["each"]:
-                freq += " each"
+    def __prepare_spell(self, sl: SpellLevelSchema, orig: SpellSchema, spell: Any):
+        if sl["frequency"] != constants.SPELL_FREQUENCIES.levelled.name:
+            spell['data']["preparation"] = {"mode":"innate","prepared":True}
 
-            levels.append(f'{freq}: {",".join(sl["spells"])}')
+            # Note that Foundry currently has no way to link 'X/day' spells uses so spells get separate counters
+            if sl["frequency"] == constants.SPELL_FREQUENCIES.will.name:
+                spell['data']['uses'] = {"value":None,"max":None,"per":None}
+            else:
+                spell["data"]["uses"] = {
+                    "value":sl["slots"] if "slots" in sl else 1,
+                    "max": sl["slots"] if "slots" in sl else 1,
+                    "per": self.__FREQUENCYMAP[sl['frequency']]
+                }
 
-        text = data["text"] + "</br>" + "</br>".join(levels)
-        if "post_text" in data:
-            text += f"</br>{data['post_text']}"
+            if "level" in orig:
+                spell["data"]["level"] = orig["level"]
 
-        return text
+        spell["name"] = fmt.upcase(fmt.spell(orig).strip())
+        return spell      
+
+        
 
     def spells(self, data, current_state):
         spell_items = []
@@ -379,17 +532,40 @@ class FVTTConverter(object):
             return spell_items, spell_data
 
         for sc in data["spellcasting"]:
-            feat = self.__make_feature(sc["title"], self.__format_spellcasting_text(sc))
+            feat = self.__make_feature(sc["title"], fmt.spellblock(sc))
             spell_items.append(feat)
 
             for level in sc["levels"]:
-                for s in level["spells"]:
-                    resolved_spell = self.cl.query_compendium(CompendiumTypes.Item, s)
+                for spell in level["spells"]:
+                    resolved_spell = self.cl.query_compendium(CompendiumTypes.Item, spell["name"])
                     if resolved_spell is None:
-                        self.logger.warning(f"Could not find spell {s} in compendium")
-                        continue
+                        self.logger.warning(f"Could not find spell {spell} in compendium")
+                        resolved_spell = self.__make_spell(spell)
+                        resolved_spell["data"]["description"]["value"] = "<p>Failed to import</p>"
 
-                    spell_items.append(resolved_spell)
+                    spell_items.append(self.__prepare_spell(level, spell, resolved_spell))
 
+                    #Set number of spell slots. Note we assume a creature onyl has one levelled spellcasting block
+                    if level["frequency"] == "levelled":
+                        spell_data[f"spell{level['level']}"] = {
+                            "value":level["slots"] if "slots" in level else 1,
+                            "override":None,
+                            "max":level["slots"] if "slots" in level else 1,
+                        }
+                            
 
         return spell_items, spell_data
+
+    def features(self, data, current_state):
+        features= []
+
+        for f in data["features"]:
+            feat = self.__make_feature(f["title"], f["text"])
+            features.append(feat)
+
+        return features
+
+    def actions(self, data, current_state):
+        actions = []
+
+        return actions

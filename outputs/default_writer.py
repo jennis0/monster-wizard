@@ -41,7 +41,7 @@ class DefaultWriter(WriterInterface):
     @staticmethod
     def get_filetype() -> str:
         '''Returns the output filetype of this writer'''
-        return "mw"
+        return "p2v"
 
     @staticmethod
     def prettify_name(s: str) -> str:
@@ -65,7 +65,7 @@ class DefaultWriter(WriterInterface):
 
         ### Ensure we're writing something with the correct filetype
         if not filename.endswith(DefaultWriter.get_filetype()):
-            filename = ".".join(filename.split(".")[:-1]) + DefaultWriter.get_filetype()
+            filename = ".".join(filename.split(".")[:-1]) + "." + DefaultWriter.get_filetype()
 
         make_file = False
         if not os.path.exists(filename) or not append:

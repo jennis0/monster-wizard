@@ -8,7 +8,7 @@ def is_in_enum(candidate: str, enum: Enum) -> bool:
 
 def enum_values(enum: Enum) -> List[str]:
     '''Helper function to return list of names'''
-    return list(enum.__members__.keys())
+    return list([k.replace("_"," ") for k in enum.__members__.keys()])
         
 
 class SIZES(Enum):
@@ -164,6 +164,11 @@ class TIME_MEASURES(Enum):
     day = auto()
     week = auto()
     year = auto()
+    encounter = auto()
+    rest = auto()
+    long_rest = auto()
+    short_rest = auto()
+    long_or_short_rest = auto()
 
 class SPELL_FREQUENCIES(Enum):
     will = auto()

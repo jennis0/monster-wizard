@@ -64,7 +64,7 @@ ConditionResistSchema = pre_post_schema(constants.CONDITIONS)
 UsesSchema = Schema(
     {
         "slots": int,
-        "period": Or("day", "rest", "encounter", "long rest", "short rest")
+        "period": enum_str(constants.TIME_MEASURES)
     }
 )
 
@@ -95,15 +95,13 @@ DamageSchema = Schema(
     {
         "damage": AverageDiceSchema,
         "type": enum_str(constants.DAMAGE_TYPES),
-        "on_save": Or("none", "halved", "applied")
     }
 )
 
 ConditionSchema = Schema(
     {
         "condition": enum_str(constants.CONDITIONS),
-        "duration": DurationSchema,
-        "on_save": Or("none", "applied")
+        Optional("duration"): DurationSchema,
     }
 )
 
@@ -111,9 +109,14 @@ EffectSchema = Schema({
         Optional("damage"): [DamageSchema],
         Optional("condition"): [ConditionSchema],
         Optional("save"): {
-            "ability": enum_str(constants.SHORT_ABILITIES),
+            "ability": Or(enum_str(constants.SHORT_ABILITIES), enum_str(constants.SKILLS)),
             "value": int
-        }
+        },
+        Optional("on_save"): Or("half", "none"),
+        Optional("end_save"): {
+            "ability": Or(enum_str(constants.SHORT_ABILITIES), enum_str(constants.SKILLS)),
+            "value": int
+        },
     }
 )
 
@@ -125,10 +128,19 @@ RangeSchema = Schema(
     }
 )
 
+TargetSchema = Schema(
+    {
+        "count": Or(int, "all", "any"),
+        "type": Or("creature", "target", "object"),
+        Optional("post_text"): str
+    }
+)
+
 AttackSchema = Schema(
     {
         "name": str,
         "type": Or("melee", "ranged", "both"),
+        "weapon": Or("weapon", "spell"),
         Optional("reach"): {
             "distance":int,
             "measure":enum_str(constants.MEASURES)
@@ -139,8 +151,10 @@ AttackSchema = Schema(
             "measure":enum_str(constants.MEASURES)
         },
         "hit":int,
-        "target": Or("one target"),
-        "effects": [EffectSchema],
+        "target": TargetSchema,
+        "damage": DamageSchema,
+        Optional("versatile"): DamageSchema,
+        Optional("effects"): [EffectSchema]
     }
 )
 
@@ -149,7 +163,7 @@ FeatureSchema = Schema(
         "title":str,
         "text":str,
         Optional("attack"): AttackSchema,
-        Optional("effect"): [EffectSchema]
+        Optional("effects"): [EffectSchema]
     }
 )
 
@@ -162,14 +176,22 @@ ActionSchema = Schema(
         Optional("effect"): EffectSchema,
         Optional("cost"): int,
         Optional("uses"): UsesSchema,
-        Optional("recharge"): [int]
+        Optional("recharge"): {"from": int, "to":int}
+    }
+)
+
+SpellSchema = Schema(
+    {
+        "name": str,
+        Optional("level"): int,
+        Optional("post_text"): str
     }
 )
 
 SpellLevelSchema = Schema(
     {
         "frequency": enum_str(constants.SPELL_FREQUENCIES),
-        "spells": [str],
+        "spells": [SpellSchema],
         "level": Or('unlevelled','cantrip','1','2','3','4','5','6','7','8','9'),
         Optional("each"): bool,
         Optional("slots"): int
