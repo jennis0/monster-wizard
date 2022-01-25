@@ -16,6 +16,7 @@ from outputs.fvtt.converter import FVTTConverter
 from outputs.fvtt.types import CompendiumTypes
 
 from enum import Enum, auto
+import traceback
 
 def int_to_add_string(i: int):
     if i >= 0:
@@ -122,8 +123,11 @@ class FVTTWriter(WriterInterface):
         
         converter = FVTTConverter(self.config, self.logger)
         for creature in creatures:
-            # try:
-            cr = converter.convert_creature(creature)
+            try:
+                cr = converter.convert_creature(creature)
+            except Exception as e:
+                traceback.print_exc()
+                exit(e)
             if cr is None: 
                 self.logger.error("Failed to convert {}".format(creature['name']))
                 continue

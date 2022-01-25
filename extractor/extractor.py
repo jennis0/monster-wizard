@@ -233,7 +233,7 @@ class StatblockExtractor(object):
                     cr = cp.statblock_to_creature(sb)
                     if cr:
                         cr.add_background(background)
-                        cr.set_source(source.name, sb.page)
+                        cr.set_source(source.name, sb.page+1)
                         parsed_statblocks.append(cr)
 
             self.logger.info("Found {} statblocks".format(len(parsed_statblocks)))

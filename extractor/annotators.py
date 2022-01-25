@@ -38,8 +38,9 @@ class LineAnnotator(object):
 
     def __is_race_type_string(self, line: Line) -> bool:
 
-        # If it's anything else, skip
-        if len(line.attributes) > 0:
+        #If it's anything else, skip
+        attrs = [a for a in line.attributes if a != 'large' and a != 'very_large']
+        if len(attrs) > 0:
             return False
            
         text = line.text.strip()
@@ -51,7 +52,6 @@ class LineAnnotator(object):
         # Must have at least size
         if len(sizes) == 0:
             return False
-
 
         # First word must be capitilised
         if line.text.strip()[0] != line.text.strip()[0].upper():
@@ -131,7 +131,8 @@ class LineAnnotator(object):
             ("on a failed save or half", "save_to_halve"),
             ("costs\s*\d+\s*actions", 'legendary_action_cost'),
             ("\([a-zA-Z]+\s+form\s+only\).", 'form_restriction'),
-            ("^[a-zA-Z\s]+\(\s*\d+\s*/\s*[a-zA-Z\s]+\s*\)\s*.", 'use_count')
+            ("^[a-zA-Z\s]+\(\s*\d+\s*/\s*[a-zA-Z\s]+\s*\)\s*.", 'use_count'),
+            ("[\d+][-\s]*(foot|ft\.?)\s*(cube|cone|line|sphere)", "template")
         ]
     
         self.signatures = []
@@ -231,7 +232,8 @@ class LineAnnotationTypes:
         "spellcasting",
         "save_to_halve",
         "form_restriction",
-        "use_count"
+        "use_count",
+        "template"
     ]
 
     weak_generic_annotations = [

@@ -53,7 +53,7 @@ SpeedSchema = Schema(
 
 SkillSchema = Schema(
     {
-        "skill": str,
+        "skill": enum_str(constants.SHORT_SKILLS),
         "mod": int
     }
 )
@@ -78,9 +78,9 @@ SenseSchema = Schema(
 
 CRSchema = Schema(
     {
-        "cr": And(str, lambda x: re.match("[0-9/]+", x) != None),
-        Optional("lair"): And(str, lambda x: re.match("[0-9/]+", x) != None),
-        Optional("coven"):  And(str, lambda x: re.match("[0-9/]+", x) != None)
+        "cr": Or(float, int),
+        Optional("lair"): Or(float, int),
+        Optional("coven"):  Or(float, int)
     }
 )
 
@@ -107,14 +107,14 @@ ConditionSchema = Schema(
 
 EffectSchema = Schema({
         Optional("damage"): [DamageSchema],
-        Optional("condition"): [ConditionSchema],
+        Optional("conditions"): [ConditionSchema],
         Optional("save"): {
-            "ability": Or(enum_str(constants.SHORT_ABILITIES), enum_str(constants.SKILLS)),
+            "ability": Or(enum_str(constants.SHORT_ABILITIES), enum_str(constants.SKILLS), enum_str(constants.SHORT_SKILLS), "ath or acr"),
             "value": int
         },
         Optional("on_save"): Or("half", "none"),
         Optional("end_save"): {
-            "ability": Or(enum_str(constants.SHORT_ABILITIES), enum_str(constants.SKILLS)),
+            "ability": Or(enum_str(constants.SHORT_ABILITIES), enum_str(constants.SKILLS), enum_str(constants.SHORT_SKILLS), "ath or acr"),
             "value": int
         },
     }
@@ -147,7 +147,7 @@ AttackSchema = Schema(
         },
         Optional("range"): {
             "short_distance":int,
-            "long_distance":int,
+            "long_distance": Or(int, None),
             "measure":enum_str(constants.MEASURES)
         },
         "hit":int,
@@ -173,7 +173,7 @@ ActionSchema = Schema(
         "text":str,
         "type": enum_str(constants.ACTION_TYPES),
         Optional("attack"): AttackSchema,
-        Optional("effect"): EffectSchema,
+        Optional("effects"): [EffectSchema],
         Optional("cost"): int,
         Optional("uses"): UsesSchema,
         Optional("recharge"): {"from": int, "to":int}
@@ -207,6 +207,14 @@ SpellcastingSchema = Schema(
         "spellcastingLevel": int,
         Optional("save"):int,
         Optional("post_text"):str
+    }
+)
+
+SourceSchema = Schema(
+    {
+        "title":str,
+        Optional("page"):int,
+        Optional("authors"):[str]
     }
 )
 
@@ -269,7 +277,10 @@ CreatureSchema = Schema(
         Optional("lair_block"): str,
 
         #Additional Text
-        Optional("description"): [str]
+        Optional("description"): [str],
+
+        #Monster Source
+        Optional("source"): SourceSchema
 
     }
 )

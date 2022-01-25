@@ -15,7 +15,7 @@ class CompendiumLoader(object):
         return s.lower().replace(" ","")
 
     def __format_image_name(self, s):
-        return s.lower().split("(")[0]
+        return "".join([s.strip() for s in s.lower().split() if s])
 
     def load_compendium(self, data):
         if data["type"].lower() not in self.compendia:
@@ -31,12 +31,7 @@ class CompendiumLoader(object):
                     if n in d1[k]:
                         d1[k][n] += d2[k][n]
                     else:
-                        try:
-                            d1[k][n] = d2[k][n]
-                        except:
-                            print(k, n)
-                            print(d1[k])
-                            print(d2[k])
+                        d1[k][n] = d2[k][n]
             else:
                 d1[k] = d2[k]
 
@@ -112,12 +107,21 @@ class CompendiumLoader(object):
             return deepcopy(self.compendia[target_type][n])
         return None
 
-    def query_compendium_image(self, name: str) -> Optional[str]:
+    def query_compendium_image(self, name: str, remove_brackets=True) -> Optional[str]:
         '''
         Looks for an existing compendium entry with the same name to take an image from
         name: Name of the item you wish to search for. This currently trys to find an exact match
         '''
+
+        ### Try full name first
         n = self.__format_image_name(name)
+        if n in self.image_paths:
+            return self.image_paths[n]
+
+        ### Try after removing brackets
+        if remove_brackets and "(" in n:
+            n = n.split("(")[0]
+
         if n in self.image_paths:
             return self.image_paths[n]
         return None

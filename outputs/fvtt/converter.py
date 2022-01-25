@@ -29,27 +29,6 @@ class FVTTConverter(object):
         constants.SIZES.gargantuan.name: "grg"
     }
 
-    __SKILLSMAP = {
-        constants.SKILLS.acrobatics.name: "acr",
-        constants.SKILLS.animal_handling.name: "ani",
-        "animal handling": "ani",
-        constants.SKILLS.arcana.name: "arc",
-        constants.SKILLS.athletics.name: "ath",
-        constants.SKILLS.deception.name: "dec",
-        constants.SKILLS.history.name: "his",
-        constants.SKILLS.insight.name: "ins",
-        constants.SKILLS.intimidation.name: "itm",
-        constants.SKILLS.investigation.name: "inv",
-        constants.SKILLS.medicine.name: "med",
-        constants.SKILLS.nature.name: "nat",
-        constants.SKILLS.perception.name: "prc",
-        constants.SKILLS.performance.name: "prf",
-        constants.SKILLS.religion.name: "rel",
-        constants.SKILLS.sleight_of_hand.name: "slt",
-        constants.SKILLS.stealth.name: "ste",
-        constants.SKILLS.survival.name: "sur"
-    }
-
     __SKILLATRMAP = {
         "acr":"dex",
         "ani":"wis",
@@ -78,6 +57,7 @@ class FVTTConverter(object):
         constants.SPELL_FREQUENCIES.weekly.name: "charges",
         constants.SPELL_FREQUENCIES.cantrip.name: "",
         constants.SPELL_FREQUENCIES.will.name: "",
+        constants.TIME_MEASURES.day.name: "day",
     }
 
     __IDCHARS = string.ascii_letters + "0123456789"
@@ -148,118 +128,124 @@ class FVTTConverter(object):
           }
         }
 
-    def __make_attack(self, attack: ActionSchema):
-        return        {
-          "_id": "6ZAh5TkiXwQMUfDB",
-          "name": attack["title"],
-          "type": "weapon",
-          "img": self.cl.query_compendium_image(attack["title"]),
+    def __make_action(self, action: ActionSchema, current_data: Any):
+
+        core_data =   {
+          "_id": self.__generate_id(),
+          "name": action["title"],
+          "type": "feat",
+          "img": self.cl.query_compendium_image(action["title"]),
           "data": {
-            "description": {
-              "value": "<section class=\"secret\">\n<p><em>Melee Weapon Attack:</em><strong>+14 to hit,</strong>, <strong>10 ft.,</strong> one target. Hit: <strong>21 (3d8 + 8) <em>slashing damage</em></strong> plus <strong>13 (3d8) <em>lightning damage</em></strong>.</p>\n<p>If the balor scores a critical hit, it rolls damage dice three times, instead of twice.</p>\n</section>\n<p>The Balor attacks with its Longsword.</p>",
-              "chat": "",
-              "unidentified": ""
-            },
-            "source": "PHB pg. 149",
-            "attunement": 0,
-            "equipped": true,
-            "rarity": "Common",
-            "identified": true,
-            "activation": {
-              "type": "action",
-              "cost": 1,
-              "condition": ""
-            },
-            "duration": {
-              "value": null,
-              "units": ""
-            },
-            "target": {
-              "value": null,
-              "width": null,
-              "units": "",
-              "type": ""
-            },
-            "range": {
-              "value": 10,
-              "long": null,
-              "units": "ft"
-            },
-            "uses": {
-              "value": 0,
-              "max": 0,
-              "per": ""
-            },
-            "consume": {
-              "type": "",
-              "target": "",
-              "amount": null
-            },
-            "ability": "str",
-            "actionType": "mwak",
-            "attackBonus": 0,
-            "chatFlavor": "",
-            "critical": {
-              "threshold": null,
-              "damage": ""
-            },
-            "damage": {
-              "parts": [
-                [
-                  "3d8 + @mod",
-                  "slashing"
-                ],
-                [
-                  "3d8",
-                  "lightning"
-                ]
-              ],
-              "versatile": ""
-            },
-            "formula": "",
-            "save": {
-              "ability": "",
-              "dc": null,
-              "scaling": "spell"
-            },
-            "armor": {
-              "value": 10
-            },
-            "hp": {
-              "value": 0,
-              "max": 0,
-              "dt": null,
-              "conditions": ""
-            },
-            "weaponType": "martialM",
-            "baseItem": "",
-            "properties": {
-              "ver": true,
-              "amm": false,
-              "fin": false,
-              "fir": false,
-              "foc": false,
-              "hvy": false,
-              "lgt": false,
-              "lod": false,
-              "rch": true,
-              "rel": false,
-              "ret": false,
-              "spc": false,
-              "thr": false,
-              "two": false
-            },
-            "proficient": true,
-            "attuned": false
+            "description": {"value": f"<p>{action['text']}</p>"},
+            "source": "",
+            "equipped": True,
+            "identified": True,
+            "activation": {"type": action['type'],"cost": action["cost"] if "cost" in action else 1,"condition": ""},
+            "proficient": True,
+            "attuned": False,
+            "properties": {}
           },
           "effects": [],
-          "folder": null,
+          "folder": None,
           "sort": 800000,
           "permission": {
             "default": 0
           },
           "flags": {}
-        },
+        }
+
+        if "uses" in action:
+            core_data["data"]["uses"] = {
+                "value":action["uses"]["slots"],
+                "max":action["uses"]["slots"],
+                "per":self.__FREQUENCYMAP[action["uses"]["period"]]
+            }
+
+        abls = current_data["abilities"]
+        prof = int(current_data["attributes"]["prof"])
+
+        #Handle attributes specific to attacks
+        if "attack" in action:
+            action_data = action['attack']
+
+            ## Handle melee attacks
+            if action_data["type"] == "melee":
+                if action_data["weapon"] == "weapon":
+                    core_data["data"]["actionType"] = 'mwak'
+                    ability = 'str'
+                else:
+                    core_data["data"]["actionType"] = 'msak'
+                    ability = "int"
+                core_data["data"]["range"] = {"value":action_data["reach"]["distance"],"long":None,"units":action_data["reach"]["measure"]}
+
+            ## Handle ranged attacks
+            else:
+                if action_data["weapon"] == "weapon":
+                    core_data["data"]["actionType"] = 'rwak'
+                    ability = 'dex'
+                else:
+                    core_data["data"]["actionType"] = 'rsak'
+                    ability = 'int'
+                core_data["data"]["range"] = {
+                    "value":action_data["range"]["short_distance"],
+                    "long":action_data["range"]["long_distance"],
+                    "units":action_data["range"]["measure"]
+                    }
+
+            core_data["data"]["ability"] = ability
+
+            ### We use this to counteract Foundry's mandatory ability score adding.
+            core_data["data"]["attackBonus"] = action_data["hit"] - (prof + abls[ability]["mod"])
+
+            ### Apply damage formula
+            core_data["data"]["damage"] = {
+                "parts": [[action_data["damage"]["damage"]["formula"], action_data["damage"]["type"]]]
+            }
+
+            ### Add versatile damage
+            if "versatile" in action_data:
+                core_data["data"]["damage"]["versatile"] = action_data["versatile"]["damage"]["formula"]
+                core_data["data"]["properties"]["ver"] = True
+
+            ### Handle effects. Note Foundry only supports a single save-based effect!
+            if "effects" in action_data:
+                for effect in action_data["effects"]:
+                    #Only add first save since that's probably the most important
+                    if "save" in effect:
+                        core_data["data"]["save"] = {
+                            "ability": effect["save"]["ability"][:3],
+                            "dc": int(effect["save"]["value"]),
+                            "scaling": "flat"
+                        }  
+                        if "damage" in effect:
+                            for dmg in effect["damage"]:
+                                core_data["data"]["formula"] = f'{dmg["damage"]["formula"]}[{dmg["type"]}]'
+                    else:
+                        #Handle non-save related damage
+                        if "damage" in effect:
+                            for dmg in effect["damage"]:
+                                core_data["data"]["damage"]["parts"].append([dmg["damage"]["formula"],dmg["type"]])
+
+        if "effects" in action:
+            effect_data = action["effects"]
+            for effect in effect_data:
+                    if "damage" in effect:
+                        for dmg in effect["damage"]:
+                            core_data["data"]["formula"] = f'{dmg["damage"]["formula"]}[{dmg["type"]}]'
+
+                    #Only add first save since that's probably the most important
+                    if "save" in effect:
+                        core_data["data"]["save"] = {
+                            "ability": effect["save"]["ability"][:3],
+                            "dc": int(effect["save"]["value"]),
+                            "scaling": "flat"
+                        }
+                        
+                    #Only add first effect                
+                    break
+        
+        return core_data
+
 
     def __init__(self, config: ConfigParser, logger: Logger):
         self.config = config
@@ -316,6 +302,8 @@ class FVTTConverter(object):
 
     def ability_scores(self, data, current_state):
         conv = {}
+        if "abilities" not in data:
+            data["abilities"] = {}
         for abs in constants.enum_values(constants.SHORT_ABILITIES):
             if abs in data['abilities']:
                 ab_data = data['abilities'][abs]
@@ -341,7 +329,6 @@ class FVTTConverter(object):
             }
         
         return conv
-
 
     def attributes(self, data, current_state):
         conv = {}
@@ -394,7 +381,7 @@ class FVTTConverter(object):
         if "proficiency" in data:
             conv["prof"] = data["proficiency"]
         elif "cr" in data:
-            conv["prof"] = 2 + floor(0.25 * (int(data["cr"]["cr"]) - 1))
+            conv["prof"] = 2 + floor(0.25 * (float(data["cr"]["cr"]) - 1))
         else:
             conv["prof"] = 0
 
@@ -510,8 +497,6 @@ class FVTTConverter(object):
         spell["name"] = fmt.upcase(fmt.spell(orig).strip())
         return spell      
 
-        
-
     def spells(self, data, current_state):
         spell_items = []
         spell_data = {
@@ -567,5 +552,15 @@ class FVTTConverter(object):
 
     def actions(self, data, current_state):
         actions = []
+
+        for action_type in ["action", "bonus", "reaction", "legendary"]:
+            if action_type not in data:
+                continue
+            for action in data[action_type]:
+                try:
+                    actions.append(self.__make_action(action, current_state))
+                except Exception as e:
+                    self.logger.error(e)
+                    self.logger.error(action)
 
         return actions

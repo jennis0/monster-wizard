@@ -1,4 +1,6 @@
 from enum import Enum
+from fractions import Fraction
+from math import floor
 from extractor.annotators import LineAnnotationTypes
 from typing import Any, List
 import configparser
@@ -13,6 +15,8 @@ import extractor.creature_schema as cs
 import extractor.constants as constants
 from utils.datatypes import Line, Section
 
+import traceback
+
 class Creature():
     '''Class for constructing a validated creature schema'''
 
@@ -26,14 +30,15 @@ class Creature():
             "type":re.compile("^(melee|ranged|melee\s*or\s*ranged)\s*(spell|weapon)?\s*(?:attack)?:", re.IGNORECASE),
             "hit":re.compile(":\s*([+-]?\s*\d+)\s*to\s*hit", re.IGNORECASE),
             "reach":re.compile(f"reach\s*(\d+)\s*({'|'.join(enum_values(MEASURES))})"),
-            "range":re.compile(f"range\s*(\d+)(?:/(\d+))?\s*({'|'.join(enum_values(MEASURES))})"),
-            "target":re.compile(f",\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten|all|any)\s*(creature|target|object)s?,?\s*([a-zA-Z,\s']+)?.\s*Hit"),
-            "hit_damage":re.compile(f".\s*hit:\s*(\d+)\s*(?:\(([\d\s\+-d]+)\))?\s*({'|'.join(enum_values(DAMAGE_TYPES))})", re.IGNORECASE),
+            "range":re.compile(f"(?:range|reach)\s*(\d+)(?:/(\d+))?\s*({'|'.join(enum_values(MEASURES))})"),
+            "target":re.compile(f",\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten|all|any)\s*(creature|target|object)s?\s*,?\s*([a-zA-Z,\s']+)?\.\s*[Hh]it"),
+            "hit_damage":re.compile(f".\s*hit:?\s*(\d+)\s*(?:\(([\d\s\+-d]+)\))?\s*({'|'.join(enum_values(DAMAGE_TYPES))})", re.IGNORECASE),
             "versatile_damage":re.compile(f"or\s*(\d+)\s*(?:\(([\d\s\+-d]+)\))?\s*({'|'.join(enum_values(DAMAGE_TYPES))})\s*[a-zA-Z\s]*\s*two hands", re.IGNORECASE)
         }
 
         self.general_res = {
-            "damage":re.compile(f"\s*(\d+)\s*(?:\(([\d\s\+-d]+)\))?\s*({'|'.join(enum_values(DAMAGE_TYPES))})", re.IGNORECASE),
+            "dice_damage":re.compile(f"[^\d]\s+([d\d\s\+-]+)\s+({'|'.join(enum_values(DAMAGE_TYPES))})", re.IGNORECASE),
+            "damage":re.compile(f"\s*[^d](\d+)\s+(?:\(([\d\s\+-d]+)\))?\s*({'|'.join(enum_values(DAMAGE_TYPES))})", re.IGNORECASE),
             "saves":re.compile(f"dc\s*(\d+)\s*\(?\s*({'|'.join(enum_values(ABILITIES) + enum_values(SHORT_ABILITIES) + enum_values(SKILLS))})\s*\(?", re.IGNORECASE),
             "escape":re.compile(f"escape\s*dc\s*(\d+)", re.IGNORECASE),
             "conditions":re.compile(f"({'|'.join(enum_values(CONDITIONS))})", re.IGNORECASE),
@@ -93,14 +98,22 @@ class Creature():
             else:
                 raise schema.SchemaError("{}: Did not find correct key type in schema for key {}".format(self.data["name"], key))
         except schema.SchemaError as e:
-            self.logger.error("{}: Failed to validate parsed schema for {}. Error was:".format(self.data["name"], key))
-            self.logger.error("\n"+e.__str__()+"\n")
+            self.logger.error("{}: Failed to validate parsed schema for {}.".format(self.data["name"], key))
+            self.logger.error(e.__str__()+"\n")
+            self.logger.error(f"Data: {self.data[key]}")
             return False
 
         return True
 
     def _parse_enum_with_pre_post(self, text: str, enum: Enum):
         results = []
+        
+        #hack to deal with 'cold iron'
+        text = text.replace("cold iron", "cldirn")
+
+        #Normalise space formatting
+        text = " ".join([t for t in text.split() if t != ""])
+
         match = re.compile("([\w\s'()]+\w)?(?:^|\s+)({})(?:\s*)([^.,]+)?,?".format(
             "|".join(enum_values(enum))),
             re.IGNORECASE)
@@ -111,14 +124,14 @@ class Creature():
             if len(matches) > 0:
                 fields = {
                     "type": [m[1] for m in matches],
-                    "pre_text": matches[0][0].strip(),
-                    "post_text": matches[-1][2].strip()
+                    "pre_text": matches[0][0].strip().replace("cldirn", "cold iron"),
+                    "post_text": matches[-1][2].strip().replace("cldirn", "cold iron")
                     }
                 results.append(fields)
             elif len(matches) == 0:
                 results.append({
                     'type':[],
-                    "pre_text":t,
+                    "pre_text":t.replace("cldirn", "cold iron"),
                     "post_text":""
                 })
         return results
@@ -371,8 +384,12 @@ class Creature():
 
         skills = []
         for skill in skill_matches:
+            if skill[0].strip().lower() in constants.SHORTSKILLSMAP:
+                sk = constants.SHORTSKILLSMAP[skill[0].strip().lower()]
+            else:
+                sk = skill[0].strip().lower()
             skills.append({
-                "skill": skill[0].strip(),
+                "skill": sk,
                 "mod": int(skill[2]) * (-1 if skill[1] == '-' else 1)
             })
 
@@ -386,6 +403,13 @@ class Creature():
             return
 
         cr = {"cr":cr_matches[0][0]}
+
+        for k in cr:
+            if "/" in cr[k]:
+                cr[k] = float(Fraction(cr[k]))
+            else:
+                cr[k] = int(cr[k])
+
         if "lair" in line.text:
             cr["lair"] = cr_matches[1]
         elif "coven" in line.text:
@@ -479,7 +503,7 @@ class Creature():
                 spellblocks[-1][2].append(line)
 
         results = {"title":title, "levels":[]}
-        level_re = re.compile("a\s*(\d+)(?:st|nd|rd|th)?\s*level\s*spellcaster", re.IGNORECASE)
+        level_re = re.compile("an?\s*(\d+)(?:st|nd|rd|th)?[-\s*]level\s*spellcaster", re.IGNORECASE)
         ability_re = re.compile("spellcasting\s*ability\s*(?:score)?\s*is\s*({})".format("|".join(enum_values(ABILITIES))), re.IGNORECASE)
  
         last_line = " ".join(spellblocks[-1][2])
@@ -735,6 +759,12 @@ class Creature():
             self.add_normal_feature(title, text.replace("\n", " ").replace("  ", " "))
 
 
+    @staticmethod
+    def __pm_str_to_int(s: str) -> int:
+        s = s.replace("+","")
+        s = s.strip()
+        return int(s)
+
     def __create_attack(self, title: str, properties: Any):
         '''Use results of precomplied regexes to turn attack text intro structured data'''
 
@@ -756,23 +786,23 @@ class Creature():
 
         if properties["reach"]:
             v = properties["reach"]
-            attack["reach"] = {"distance": v[1][0], "measure": v[1][1]}
+            attack["reach"] = {"distance": int(v[1][0]), "measure": v[1][1]}
             max_parsed = max(v[0], max_parsed)
 
-        if properties["range"]:
+        ### Only write long range for non-melee attacks
+        if properties["range"] and attack["type"] != "melee":
             v = properties["range"]
-            print(v)
-            attack["range"] = {"short_distance": v[1][0], "long_distance": v[1][1], "measure": v[1][2]}
+            attack["range"] = {"short_distance": int(v[1][0]), "long_distance": int(v[1][1]) if v[1][1] else None, "measure": v[1][2]}
             max_parsed = max(v[0], max_parsed)
 
         if properties["hit"]:
-            attack["hit"] = int(properties["hit"][1][0])
+            attack["hit"] = Creature.__pm_str_to_int(properties["hit"][1][0])
             max_parsed = max(properties["hit"][0], max_parsed)
 
         if properties["target"]:
             v = properties["target"][1]
             try:
-                c = int(v[0])
+                c = Creature.__pm_str_to_int(v[0])
             except:
                 c = target_count_map[v[0]]
             attack["target"] = {"count":c, "type":v[1]}
@@ -783,13 +813,13 @@ class Creature():
 
         if properties["hit_damage"]:
             v = properties["hit_damage"][1]
-            attack["damage"] = {"damage":{"average":v[0], "formula":v[1]}, "type":v[2].strip()}
+            attack["damage"] = {"damage":{"average":int(v[0]), "formula":v[1] if v[1] else str(v[0])}, "type":v[2].strip()}
             max_parsed = max(properties["hit_damage"][0], max_parsed)
 
 
         if properties["versatile_damage"]:
             v = properties["versatile_damage"][1]
-            attack["versatile"] = {"damage":{"average":v[0], "formula":v[1]}, "type":v[2].strip()}
+            attack["versatile"] = {"damage":{"average":int(v[0]), "formula":v[1] if v[1] else str(v[0])}, "type":v[2].strip()}
             max_parsed = max(properties["hit_damage"][0], max_parsed)
 
         effects = self.__create_effects(properties, start_char=max_parsed)
@@ -797,6 +827,29 @@ class Creature():
             attack["effects"] = effects
 
         return attack
+
+    @staticmethod
+    def __calculate_average_formula(formula: str) -> int:
+        '''
+        Performs a dirty quick calculation to get the average of a maths formula.
+        Does not handle brackets!
+        '''
+        total = 0
+        next_pos = 1
+        for part in formula.split():
+            part = part.strip()
+            if "d" in part:
+                num,size = part.split("d")
+                num = int(num)
+                size = int(size)
+                total += floor(next_pos * num * ((size / 2) + 0.5))
+                next_pos = 1
+            elif part == "-":
+                next_pos = -1
+            else:
+                total += next_pos * int(part)
+                next_pos = 1
+        return total
 
     def __create_effects(self, properties: Any, start_char=0):
         '''Use results of precompiled regexes to turn action text into structred effect data'''
@@ -812,6 +865,11 @@ class Creature():
         conditions = properties["conditions"] if properties["conditions"] else []
         halves = properties["halves"] if properties["halves"] else []
         escape = properties["escape"] if properties["escape"] else []
+
+        # Include formula only damage with damage
+        if properties["dice_damage"]:
+            for dmg in properties["dice_damage"]:
+                damage.append([dmg[0], [Creature.__calculate_average_formula(dmg[1][0]), dmg[1][0], dmg[1][1]]])
 
         #Add a 'no save' save at the start so we can capture any effects not tied to a save
         saves = [[start_char,None]] + saves
@@ -829,7 +887,7 @@ class Creature():
             if saves[i][1]:
                 effect["save"] = {
                     "ability": saves[i][1][1][:3],
-                    "value": saves[i][1][0]
+                    "value": int(saves[i][1][0])
                 }
                 effect["on_save"] = "none"
 
@@ -843,12 +901,22 @@ class Creature():
                     continue
                 if "damage" not in effect:
                     effect["damage"] = []
-                effect["damage"].append({"damage":{"average":d[1][0], "formula":d[1][1]}, "type":d[1][2]})
-                used_damage.append(di)
 
-            ### Add conditions
+                #conver to list for asignment
+                dmg = list(d[1])
+
+                ### Handle average but no formula
+                if not d[1][1] and d[1][0]:
+                    dmg[1] = str(d[1][0])
+
+                ### Don't consider no formula AND no average
+                if d[1][0]:
+                    effect["damage"].append({"damage":{"average":int(dmg[0]), "formula":dmg[1]}, "type":dmg[2]})
+                    used_damage.append(di)
+
+            ### Add conditions Note we have to filter for conditions being repeated
             for ci,c in enumerate(conditions):
-                if ci in used_conditions or c[1] in condition_set:
+                if ci in used_conditions or c[1][0] in condition_set:
                     continue
                 if c[0] < start_char or c[0] > end_char:
                     continue
@@ -936,7 +1004,12 @@ class Creature():
 
         # If attack, parse attack, otherwise only parse effects
         if properties["type"]:
-            action["attack"] = self.__create_attack(title, properties)
+            try:
+                action["attack"] = self.__create_attack(title, properties)
+            except Exception as e:
+                print(text)
+                traceback.print_exc()
+                exit()
         else:
             effects = self.__create_effects(properties)
             if len(effects) > 0:
@@ -945,7 +1018,7 @@ class Creature():
         # Look at title to pull out any associated costs/recharge/uses
         recharge_re = re.compile("recharge\s*(\d+)(?:-+(\d+))?", re.IGNORECASE)
         uses_re = re.compile(f"(\d+)\s*/\s*({'|'.join(enum_values(TIME_MEASURES))})", re.IGNORECASE)
-        cost_re = re.compile(f"costs\s*\d+\s*action")
+        cost_re = re.compile(f"costs\s*(\d+)\s*action", re.IGNORECASE)
 
         recharge = recharge_re.findall(title)
         uses = uses_re.findall(title)

@@ -227,8 +227,8 @@ class PDFLoader(DataLoaderInterface):
 
 		if isinstance(lt, LTTextLine):
 			lines.append(lt)
-		elif isinstance(lt, LTImage):
-			images.append(lt)
+		# elif isinstance(lt, LTImage):
+		# 	images.append(lt)
 
 		elif hasattr(lt, "_objs"):
 			for o in lt._objs:
@@ -260,6 +260,7 @@ class PDFLoader(DataLoaderInterface):
 			annotations = []
 
 			### Remove very small text
+			size = 0
 			skip = False
 			for o in lt._objs:
 				if isinstance(o, LTChar):
@@ -269,6 +270,8 @@ class PDFLoader(DataLoaderInterface):
 						annotations.append("very_large")
 					elif o.size >= 14.:
 						annotations.append("large")
+
+					size = o.size
 					break
 					
 			if skip:
@@ -279,6 +282,15 @@ class PDFLoader(DataLoaderInterface):
 			text = text.replace("\t\r", " ")
 			text = " ".join(text.split())
 			escaped_text = ""
+
+			### Replace some unicode character's with more common ones to make parsing easier
+			text_replacements = {
+				u"\u2013":"-",
+				u"\u2014":"-",
+				u"\u2019":"'",
+				"\xad":"",
+			}
+
 			for t in text:
 				if repr(t) in LIGATURE_MAP:
 					escaped_text += LIGATURE_MAP[repr(t)]
@@ -291,9 +303,13 @@ class PDFLoader(DataLoaderInterface):
 						except Exception as e:
 							self.logger.error("Exception:", e)
 				else:
-					escaped_text += t
+					if t in text_replacements:
+						escaped_text += text_replacements[t]
+					else:
+						escaped_text += t
 
-			self.logger.debug("{} ESCAPED={}".format(text, escaped_text))
+			self.logger.debug(text.encode("utf-8"))
+			self.logger.debug("{} SIZE={}, ESCAPED={}".format(text, size, escaped_text))
 
 			### Sometimes the text will get duplicated within a single line. Check for this
 			if len(escaped_text.strip()) % 2 == 0:

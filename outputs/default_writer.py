@@ -62,7 +62,6 @@ class DefaultWriter(WriterInterface):
         if append is None:
             append = self.append
 
-
         ### Ensure we're writing something with the correct filetype
         if not filename.endswith(DefaultWriter.get_filetype()):
             filename = ".".join(filename.split(".")[:-1]) + "." + DefaultWriter.get_filetype()
@@ -87,6 +86,7 @@ class DefaultWriter(WriterInterface):
         source_data = {
             'title': pretty_name,
         }
+
         if source.num_pages > 0:
             source_data['pages'] = source.num_pages
         if source.url is not None:

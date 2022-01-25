@@ -146,6 +146,48 @@ class SKILLS(Enum):
     stealth = auto()
     survival = auto()
 
+class SHORT_SKILLS(Enum):
+    acr = auto()
+    ani = auto()
+    arc = auto()
+    ath = auto()
+    dec = auto()
+    his = auto()
+    ins = auto()
+    itm = auto()
+    inv = auto()
+    med = auto()
+    nat = auto()
+    prc = auto()
+    prf = auto()
+    per = auto()
+    rel = auto()
+    slt = auto()
+    ste = auto()
+    sur = auto()
+
+SHORTSKILLSMAP = {
+        SKILLS.acrobatics.name: "acr",
+        SKILLS.animal_handling.name: "ani",
+        "animal handling": "ani",
+        SKILLS.arcana.name: "arc",
+        SKILLS.athletics.name: "ath",
+        SKILLS.deception.name: "dec",
+        SKILLS.history.name: "his",
+        SKILLS.insight.name: "ins",
+        SKILLS.intimidation.name: "itm",
+        SKILLS.investigation.name: "inv",
+        SKILLS.medicine.name: "med",
+        SKILLS.nature.name: "nat",
+        SKILLS.perception.name: "prc",
+        SKILLS.performance.name: "prf",
+        SKILLS.persuasion.name: "per",
+        SKILLS.religion.name: "rel",
+        SKILLS.sleight_of_hand.name: "slt",
+        SKILLS.stealth.name: "ste",
+        SKILLS.survival.name: "sur"
+}
+
 class MEASURES(Enum):
     ft = auto()
     mi = auto()

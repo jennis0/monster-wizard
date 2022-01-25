@@ -18,6 +18,8 @@ class StatblockBuilder(object):
         current_tags = [a for a in current_section.attributes if a.startswith('sb_')]
         new_tags = [a for a in new_section.attributes if a.startswith('sb_')]
 
+        self.logger.debug(f"Current Tags: {current_tags}, Proposed Tags: {new_tags}")
+
         if 'sb_skip' in new_tags:
             return False
 
@@ -53,13 +55,18 @@ class StatblockBuilder(object):
             "sb_part_weak":10
         }
 
-        last_tag = max(tag_index_mapping[t] if "sb_part" not in t else 0 for t in current_tags)
+        last_tag = max(tag_index_mapping[t] if "sb_part" not in t else -1 for t in current_tags)
         next_tag = min(tag_index_mapping[t] for t in new_tags)
 
         ### Only allow lair actions if we've already seen legendary actions
         if "sb_lair_block" in new_tags\
              and ("sb_legendary_action_block" not in new_tags and "sb_legendary_action_block" not in current_tags):
              return False
+
+        ### If the only thing in the current section is parts and the next cluster is a new statblock
+        ### Then they shouldn't be clustered together
+        if last_tag == -1 and next_tag == 0:
+            return False
 
         return next_tag >= last_tag
 
@@ -70,6 +77,8 @@ class StatblockBuilder(object):
         used_base = set()
 
         self.logger.debug("CLUSTERING CROSS-COLUMN STATBLOCKS")
+       
+        #Track the names of current statblocks
         for i in range(len(statblocks)):
 
             if i in used:
@@ -88,6 +97,9 @@ class StatblockBuilder(object):
 
             last_page = s.page
             last_col = i
+
+            mid_stats = []
+
             ### Iterate over next blocks looking for remaining statblock pieces
             for j in range(i+1, min(i+6, len(statblocks))):
 
@@ -96,12 +108,35 @@ class StatblockBuilder(object):
                 if j in used:
                     continue
 
-                self.logger.debug(f"Trying to add: {s.lines[0]} - {s.attributes}")
+                self.logger.debug(f"Trying to add: {test_block.lines[0]} - {test_block.attributes}")
 
-                #Don't allow backwards merging across pages
-                if test_block.page < s.page:
-                    self.logger.debug("Failed: Backwards")
+                #If a new statblock starts on a new page, assume we've finished the last one
+                if "sb_start" in test_block.attributes:
+                    #Store name of any new statblock we see
+                    if "col_end" in test_block.attributes:
+                        mid_stats.append(test_block.lines[0].text.lower().strip())
+                    if test_block.page > s.page:
+                        self.logger.debug("Reached new statblock on new page. Do consider any more")
+                        break
                     continue
+                else:
+                    #If the name of a statblock is present, assume it is not part of the current one
+                    # and no future ones are
+                    if "col_start" in test_block.attributes:
+                        end = False
+                        for l in test_block.lines:
+                            for ms in mid_stats:
+                                if not ms in l.text.lower():
+                                    continue
+                                print(s.lines[0].text,",", ms, "-", l.text)
+                                end = True
+                                break
+                            if end:
+                                break
+                        if end:
+                            self.logger.debug("Found continuous statblock over column break")
+                            print("Ignoring")
+                            break
 
                 #Only allow a split over a page boundry if it is the next statblock piece
                 if (j-last_col) > 1 and test_block.page > last_page:
@@ -188,25 +223,26 @@ class StatblockBuilder(object):
                 sb_parts = [a for a in cluster.attributes if a.startswith("sb_")]
 
                 self.logger.debug("Lines - {}".format(" || ".join([l.text for l in cluster.lines])))
-                self.logger.debug("L0 Attributes, Bound - {}, {}".format(cluster.lines[0].attributes, cluster.lines[0].bound))
                 self.logger.debug("Attributes - {}".format(cluster.attributes))
 
                 #No statblock tags, so finish current statblock part, excluding this cluster
                 if len(sb_parts) == 0:
-
                     if len(current_statblock) > 0:
                         statblock_parts.append(current_statblock)
                     current_statblock = Section()
+                    self.logger.debug("Starting new cluster")
                     continue
 
                 #Otherwise - can this part be added to our existing statblock and still make sense?
                 if self.can_be_continuation(current_statblock, cluster):
+                    self.logger.debug("Adding to cluster")
                     current_statblock.add_section(cluster)
 
                 #If not - also start a new statblock
                 else:
                     if len(current_statblock) > 0:
                         statblock_parts.append(current_statblock)
+                    self.logger.debug("Not a continuation, starting new cluster")
                     current_statblock = Section()
                     current_statblock.add_section(cluster)
 

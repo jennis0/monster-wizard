@@ -185,6 +185,9 @@ class Section:
         self.attributes = attributes if attributes else []
         self.sort_order = sort_order
 
+        if self.page == -1 and len(self.lines) > 0:
+            self.page = min([l.page for l in self.lines])
+
     def is_empty(self) -> bool:
         '''Returns true if this section contains no lines'''
         return len(self.lines) == 0
