@@ -87,9 +87,14 @@ class CompendiumLoader(object):
                 self.load_compendium(data)
 
         for c in self.compendia:
-            self.logger.info(f"Loaded {len(self.compendia[c])} entries of type {c}")
+            self.logger.info(f"Processing {len(self.compendia[c])} entries of type {c}")
 
         self.image_paths = self.to_map(self.__get_images(self.compendia[CompendiumTypes.Item.name.lower()]))
+        self.actor_image_paths = self.to_map(self.__get_images(self.compendia[CompendiumTypes.Actor.name.lower()]))
+
+        self.logger.info(f"Loaded {len(self.image_paths)} entries of type 'item'")
+        self.logger.info(f"Loaded {len(self.actor_image_paths)} entries of type 'actor'")
+
 
     def query_compendium(self, type: CompendiumTypes, name: str) -> Optional[Any]:
         '''
@@ -107,21 +112,30 @@ class CompendiumLoader(object):
             return deepcopy(self.compendia[target_type][n])
         return None
 
-    def query_compendium_image(self, name: str, remove_brackets=True) -> Optional[str]:
+    def query_compendium_image(self, name: str, remove_brackets=True, type='item') -> Optional[str]:
         '''
         Looks for an existing compendium entry with the same name to take an image from
         name: Name of the item you wish to search for. This currently trys to find an exact match
+        type: Can be either 'item' or 'actor'
         '''
+
+        if type == 'item':
+            paths = self.image_paths
+        else:
+            paths = self.actor_image_paths
 
         ### Try full name first
         n = self.__format_image_name(name)
-        if n in self.image_paths:
-            return self.image_paths[n]
+        if n in paths:
+            if type == 'actor':
+                print(n, paths[n])
+            return paths[n]
 
         ### Try after removing brackets
         if remove_brackets and "(" in n:
             n = n.split("(")[0]
 
-        if n in self.image_paths:
-            return self.image_paths[n]
-        return None
+        if n in paths:
+            return paths[n]
+
+        return "icons/svg/mystery-man.svg"

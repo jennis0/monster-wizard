@@ -154,11 +154,19 @@ class FVTTConverter(object):
           "flags": {}
         }
 
+        ### Handle action uses
         if "uses" in action:
             core_data["data"]["uses"] = {
                 "value":action["uses"]["slots"],
                 "max":action["uses"]["slots"],
                 "per":self.__FREQUENCYMAP[action["uses"]["period"]]
+            }
+
+        ### Handle action recharge
+        if "recharge" in action: 
+            core_data["data"]["recharge"] = {
+                "charged":True,
+                "value":action["recharge"]["from"]
             }
 
         abls = current_data["abilities"]
@@ -167,6 +175,8 @@ class FVTTConverter(object):
         #Handle attributes specific to attacks
         if "attack" in action:
             action_data = action['attack']
+
+            core_data["type"] = "weapon"
 
             ## Handle melee attacks
             if action_data["type"] == "melee":
@@ -198,9 +208,10 @@ class FVTTConverter(object):
             core_data["data"]["attackBonus"] = action_data["hit"] - (prof + abls[ability]["mod"])
 
             ### Apply damage formula
-            core_data["data"]["damage"] = {
-                "parts": [[action_data["damage"]["damage"]["formula"], action_data["damage"]["type"]]]
-            }
+            if "damage" in action_data:
+                core_data["data"]["damage"] = {
+                    "parts": [[action_data["damage"]["damage"]["formula"], action_data["damage"]["type"]]]
+                }
 
             ### Add versatile damage
             if "versatile" in action_data:
@@ -275,7 +286,7 @@ class FVTTConverter(object):
         #### Header ####
         new_creature["name"] = cr["name"]
         new_creature["type"] = "npc"
-        new_creature["img"] = "icons/svg/mystery-man.svg"
+        new_creature["img"] = self.cl.query_compendium_image(cr["name"], type='actor')
 
         ### Creature Data ###
         data = {}
@@ -415,6 +426,15 @@ class FVTTConverter(object):
         if "cr" in data:
             conv["cr"] = data["cr"]["cr"]
 
+        if "source" in data:
+            if "short_title" in data["source"]:
+                title = data["source"]["short_title"]
+            else:
+                title = data["source"]["title"]
+            if "page" in data["source"]:
+                title += f" pg. {data['source']['page']}"
+            conv["source"] = title
+
         return conv
 
     def traits(self, data, current_state):
@@ -451,10 +471,9 @@ class FVTTConverter(object):
         conv = {}
         prof = current_state["attributes"]["prof"]
         if "skills" in data:
-            for sk in data["skills"]:
-                skill = self.__SKILLSMAP[sk["skill"].lower()]
-                atr = self.__SKILLATRMAP[skill]
-                total = sk["mod"]
+            for skill in data["skills"]:
+                atr = self.__SKILLATRMAP[skill["skill"]]
+                total = skill["mod"]
                 mod = current_state["abilities"][atr]["mod"]
 
                 if total >= 2*mod + prof:
@@ -464,7 +483,7 @@ class FVTTConverter(object):
                 else:
                     prof_level = 0
 
-                conv[skill] = {
+                conv[skill["skill"]] = {
                     "value": prof_level,
                     "ability": atr,
                     "bonuses": {"check":"", "passive":""},

@@ -213,6 +213,7 @@ SpellcastingSchema = Schema(
 SourceSchema = Schema(
     {
         "title":str,
+        Optional("short_title"):str,
         Optional("page"):int,
         Optional("authors"):[str]
     }

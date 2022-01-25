@@ -184,6 +184,7 @@ SHORTSKILLSMAP = {
         SKILLS.persuasion.name: "per",
         SKILLS.religion.name: "rel",
         SKILLS.sleight_of_hand.name: "slt",
+        "sleight of hand": "slt",
         SKILLS.stealth.name: "ste",
         SKILLS.survival.name: "sur"
 }

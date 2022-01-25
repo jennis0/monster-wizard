@@ -107,9 +107,20 @@ class FVTTWriter(WriterInterface):
 
         ### Get additional information
         if not self.config.getboolean("default", "use_defaults"):
-            print()
             label = get_input("Source Title", "Title for this source", source.name)
-            print()
+
+            stop_words = ["of","and","the","in","a","an"]
+            short_label= "".join([w[0].upper() if w not in stop_words else w[0].lower() for w in label.split()])
+
+            short_label = get_input("Source Title", "Title for this source", short_label)
+
+            if not short_label:
+                stop_words = ["of","and","the","in","a","an"]
+                short_label= "".join([w[0].upper() if w in stop_words else w[0].lower() for w in label.split()])
+
+            for cr in creatures:
+                cr.data["source"]["title"] = label
+                cr.data["source"]["short_title"] = short_label
         else:
             label = source.name
 
