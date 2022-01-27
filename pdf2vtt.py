@@ -49,7 +49,6 @@ se.register_data_loader(PDFLoader)
 
 ### Register Output formats and select one
 se.register_output_writer(DefaultWriter, append=not args.overwrite)
-se.register_output_writer(PlutoWriter, append=not args.overwrite)
 se.register_output_writer(PrintWriter, append=not args.overwrite)
 se.register_output_writer(FVTTWriter, append=not args.overwrite)
 output = True
@@ -59,7 +58,7 @@ if args.output_format:
     else:
         se.select_writer(args.output_format)
 else:
-    se.select_writer(DefaultWriter.get_name())
+    se.select_writer(FVTTWriter.get_name())
 
 ### Run over provided targets 
 parsed_statblocks = []

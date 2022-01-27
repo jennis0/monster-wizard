@@ -25,6 +25,17 @@ class Creature():
         self.config = config
         self.logger = logger
 
+        add_damage_types = [
+            "damage",
+            "healing"
+        ]
+
+        ### Complex regexes for dice formula
+        average_regex = '[^d](\d+)[^d]' #Finds 5 but not 1d5
+        formula_regex = '\(?((?:\d+d\d+)(?:\s*(?:\+|-|\s+)\s*(?:\d+d\d+|\d+))*)\)?' #Finds 1d6+3 or (1d2-4)
+        damage_type_regex = f"({'|'.join(enum_values(DAMAGE_TYPES) + add_damage_types)})" #Finds damage types
+        dice_formula_regex = f'(?:{formula_regex}|{average_regex})+\s*{damage_type_regex}?' #Finds at least one of the above
+
         ### Precompile some regexes
         self.attack_res = {
             "type":re.compile("^(melee|ranged|melee\s*or\s*ranged)\s*(spell|weapon)?\s*(?:attack)?:", re.IGNORECASE),
@@ -32,13 +43,14 @@ class Creature():
             "reach":re.compile(f"reach\s*(\d+)\s*({'|'.join(enum_values(MEASURES))})"),
             "range":re.compile(f"(?:range|reach)\s*(\d+)(?:/(\d+))?\s*({'|'.join(enum_values(MEASURES))})"),
             "target":re.compile(f",\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten|all|any)\s*(creature|target|object)s?\s*,?\s*([a-zA-Z,\s']+)?\.\s*[Hh]it"),
-            "hit_damage":re.compile(f".\s*hit:?\s*(\d+)\s*(?:\(([\d\s\+-d]+)\))?\s*({'|'.join(enum_values(DAMAGE_TYPES))})", re.IGNORECASE),
-            "versatile_damage":re.compile(f"or\s*(\d+)\s*(?:\(([\d\s\+-d]+)\))?\s*({'|'.join(enum_values(DAMAGE_TYPES))})\s*[a-zA-Z\s]*\s*two hands", re.IGNORECASE)
+            "hit_damage":re.compile(f".\s*hit:?\s*{dice_formula_regex}", re.IGNORECASE),
+            "versatile_damage":re.compile(f"or\s*{dice_formula_regex}\s*[a-zA-Z\s]*\s*two hands", re.IGNORECASE)
         }
 
         self.general_res = {
-            "dice_damage":re.compile(f"[^\d]\s+([d\d\s\+-]+)\s+({'|'.join(enum_values(DAMAGE_TYPES))})", re.IGNORECASE),
-            "damage":re.compile(f"\s*[^d](\d+)\s+(?:\(([\d\s\+-d]+)\))?\s*({'|'.join(enum_values(DAMAGE_TYPES))})", re.IGNORECASE),
+            #"dice_damage":re.compile(f"[^\d]\s+([d\d\s\+-]+)\s+({'|'.join(enum_values(DAMAGE_TYPES) + ['damage'])})", re.IGNORECASE),
+            #"damage":re.compile(f"\s*[^d](\d+)\s+(?:\(([\d\s\+-d]+)\))?\s*({'|'.join(enum_values(DAMAGE_TYPES) + ['damage'])})", re.IGNORECASE),
+            "dice_rolls":re.compile(dice_formula_regex, re.IGNORECASE),
             "saves":re.compile(f"dc\s*(\d+)\s*\(?\s*({'|'.join(enum_values(ABILITIES) + enum_values(SHORT_ABILITIES) + enum_values(SKILLS))})\s*\(?", re.IGNORECASE),
             "escape":re.compile(f"escape\s*dc\s*(\d+)", re.IGNORECASE),
             "conditions":re.compile(f"({'|'.join(enum_values(CONDITIONS))})", re.IGNORECASE),
@@ -99,8 +111,8 @@ class Creature():
                 raise schema.SchemaError("{}: Did not find correct key type in schema for key {}".format(self.data["name"], key))
         except schema.SchemaError as e:
             self.logger.error("{}: Failed to validate parsed schema for {}.".format(self.data["name"], key))
-            self.logger.error(e.__str__()+"\n")
-            self.logger.error(f"Data: {self.data[key]}")
+            self.logger.error(e.__str__())
+            self.logger.error(f"Data: {self.data[key]}\n")
             return False
 
         return True
@@ -240,8 +252,6 @@ class Creature():
         self.data["ac"] = ac_data
         self.__validate_part("ac")
         
-
-
     def set_hp(self, text):
         '''Set the HP'''
 
@@ -272,8 +282,6 @@ class Creature():
         self.data["hp"] = hp
         self.__validate_part("hp")
 
-
-
     def set_speed(self, text: str):
         
         text = MEASURES.normalise(text)
@@ -294,10 +302,6 @@ class Creature():
         
         self.data["speed"] = speeds
         self.__validate_part("speed")
-
-
-
-
 
 
     ####################################################################################
@@ -331,8 +335,6 @@ class Creature():
             self.data["passive"] = int(passive_matches[0])
             self.__validate_part("passive")
 
-
-
     def set_damage_immunities(self, line: Line):
         self.data["damage_immunities"] = self._parse_enum_with_pre_post(line.text[17:].strip(), DAMAGE_TYPES)
         self.__validate_part("damage_immunities")
@@ -348,7 +350,6 @@ class Creature():
     def set_vulnerabilities(self, line: Line):
         self.data["vulnerabilities"] = self._parse_enum_with_pre_post(line.text[22:].strip(), DAMAGE_TYPES)
         self.__validate_part("vulnerabilities")
-
 
     def set_saves(self, line: Line):
         parsed_saves = {}
@@ -369,12 +370,8 @@ class Creature():
         self.data["saves"] = parsed_saves 
         self.__validate_part("saves")
 
-
-
     def set_languages(self, line: Line):
         self.data["languages"] = [l.strip() for l in " ".join(line.text.split()[1:]).split(",")]
-
-
 
     def set_skills(self, line: Line):        
         skill_matches = re.findall("[\s\.,;]([a-zA-Z'\s]+?)\s+([+-])\s*([0-9]+)",
@@ -417,7 +414,6 @@ class Creature():
 
         self.data["cr"] = cr
         self.__validate_part("cr")
-
     
     def set_proficiency(self, line: Line):
         prof_match = re.findall("Proficiency[\s\w:]+\+?([0-9]+)", line.text, re.IGNORECASE)
@@ -429,7 +425,6 @@ class Creature():
 
 
 
-
     ####################################################################################
     ################################### Features #######################################
     ####################################################################################
@@ -437,10 +432,44 @@ class Creature():
     def add_normal_feature(self, title: str, text: str):
         if "features" not in self.data:
             self.data["features"] = []
-        self.data["features"].append({
+        
+        self.logger.debug("Adding feature {}".format(title))
+        
+        ### Start parsing the main feature text
+        # Run a set of regexes over the text to pull out key information
+        # General damage and effects
+        properties = {}
+        for r in self.general_res:
+            v = [(match.end(), match.groups()) for match in self.general_res[r].finditer(text.lower(), pos=0)]
+            properties[r] = v if len(v) > 0 else None
+
+        feature = {
             "title":title,
-            "text": text
-        })
+            "text":text,
+        }
+
+        effects = self.__create_effects(properties)
+        if len(effects) > 0:
+            feature["effects"] = effects
+
+        # Look at title to pull out any associated costs/recharge/uses
+        recharge_re = re.compile("recharge\s*(\d+)(?:-+(\d+))?", re.IGNORECASE)
+        uses_re = re.compile(f"(\d+)\s*/\s*({'|'.join(enum_values(TIME_MEASURES))})", re.IGNORECASE)
+
+        recharge = recharge_re.findall(title)
+        uses = uses_re.findall(title)
+
+        if len(recharge) == 1:
+            if recharge[0][1]:
+                feature["recharge"] = {"from":int(recharge[0][0]), "to":int(recharge[0][1])}
+            else:
+                feature["recharge"] = {"from":int(recharge[0][0]), "to":int(recharge[0][0])}
+
+        if len(uses) == 1:
+            feature["uses"] = {"slots":int(uses[0][0]), "period":uses[0][1].lower()}
+
+        ### Append parsed action to data
+        self.data["features"].append(feature)
         self.__validate_part("features")
 
 
@@ -636,6 +665,352 @@ class Creature():
         self.data["lair_block"] = section.get_section_text().strip().replace("\n", " ").replace("  ", " ")
         self.__validate_part("lair_block")
 
+
+    @staticmethod
+    def __pm_str_to_int(s: str) -> int:
+        s = s.replace("+","")
+        s = s.strip()
+        return int(s)
+
+    def __create_attack(self, title: str, properties: Any):
+        '''Use results of precomplied regexes to turn attack text intro structured data'''
+
+        attack = {
+            "name":title,
+            "type":properties["type"][1][0].strip(),
+            "weapon": properties["type"][1][1].strip() if properties["type"][1][1] else "weapon",
+        }
+
+        
+        target_count_map = {
+            "one":1, "two":2, "three":3, "four":4, "five":5,"six":6,"seven":7,"eight":8,"nine":9,"any":"any","all":"all"
+        }
+
+        max_parsed = properties["type"][0] 
+
+        if "or" in attack["type"]:
+            attack["type"] = "both"
+
+        if properties["reach"]:
+            v = properties["reach"]
+            attack["reach"] = {"distance": int(v[1][0]), "measure": v[1][1]}
+            max_parsed = max(v[0], max_parsed)
+
+        ### Only write long range for non-melee attacks
+        if properties["range"] and attack["type"] != "melee":
+            v = properties["range"]
+            attack["range"] = {"short_distance": int(v[1][0]), "long_distance": int(v[1][1]) if v[1][1] else None, "measure": v[1][2]}
+            max_parsed = max(v[0], max_parsed)
+
+        if properties["hit"]:
+            if properties["hit"]:
+                attack["hit"] = Creature.__pm_str_to_int(properties["hit"][1][0])
+                max_parsed = max(properties["hit"][0], max_parsed)
+            else:
+                self.logger.warning(f"Hit is missing a value.")
+
+        if properties["target"]:
+            v = properties["target"][1]
+            try:
+                c = Creature.__pm_str_to_int(v[0])
+            except:
+                c = target_count_map[v[0]]
+            attack["target"] = {"count":c, "type":v[1]}
+            if v[2] and v[2].strip():
+                attack["target"]["post_text"] = v[2].strip()            
+            max_parsed = max(properties["target"][0], max_parsed)
+
+
+        if properties["hit_damage"]:
+            v = list(properties["hit_damage"][1])
+            #Number but no formula
+            if v[1] and not v[0]:
+                v[0] = str(v[1])
+
+            #If formula or number
+            if v[0]:
+                #Normalise formula
+                v[0] = self.__normalise_formula(v[0])   
+                
+                #Formula but no number
+                if v[0] and not v[1]:
+                    v[1] = self.__calculate_average_formula(v[1])
+
+                attack["damage"] = {"damage":{"average":int(v[1]), "formula":v[0]}, "type":v[2].strip() if v[2] else None}
+                max_parsed = max(properties["hit_damage"][0], max_parsed)
+
+        if properties["versatile_damage"]:
+            v = list(properties["versatile_damage"][1])
+            #Number but no formula
+            if v[1] and not v[0]:
+                v[0] = str(v[1])
+
+            #If formula or number
+            if v[0]:
+                #Normalise formula
+                v[0] = self.__normalise_formula(v[0])   
+                
+                #Formula but no number
+                if v[0] and not v[1]:
+                    v[1] = self.__calculate_average_formula(v[1])
+
+                attack["versatile"] = {"damage":{"average":int(v[1]), "formula":v[0]}, "type":v[2].strip() if v[2] else None}
+                max_parsed = max(properties["versatile_damage"][0], max_parsed)
+
+        effects = self.__create_effects(properties, start_char=max_parsed)
+        if len(effects) > 0:
+            attack["effects"] = effects
+
+        return attack
+
+    def __normalise_formula(self, formula: str) -> str:
+        last_was_num = False
+        parts = [f.strip() for f in formula.split() if f.strip()]
+        normed_parts = []
+        for p in parts:
+            if p.replace('d','').isnumeric():
+                if last_was_num:
+                    self.logger.warn(f"Unnormalised formula {formula}, adding '+'")
+                    normed_parts.append("+")
+                normed_parts.append(p.strip())
+                last_was_num = True
+            elif p in ['+','-']:
+                last_was_num = False
+                normed_parts.append(p.strip())
+
+        return " ".join(normed_parts)
+
+    @staticmethod
+    def __calculate_average_formula(formula: str) -> int:
+        '''
+        Performs a dirty quick calculation to get the average of a maths formula.
+        Does not handle brackets!
+        '''
+        total = 0
+        next_pos = 1
+        for part in formula.split():
+            part = part.strip()
+            if "d" in part:
+                num,size = part.split("d")
+                num = int(num)
+                size = int(size)
+                total += floor(next_pos * num * ((size / 2) + 0.5))
+                next_pos = 1
+            elif part == "-":
+                next_pos = -1
+            else:
+                total += next_pos * int(part)
+                next_pos = 1
+        return total
+
+    def __create_effects(self, properties: Any, start_char=0):
+        '''Use results of precompiled regexes to turn action text into structred effect data'''
+        
+        used_conditions = []
+        used_rolls = []
+        used_halves = []
+
+        effects = []
+
+        rolls = properties["dice_rolls"] if properties["dice_rolls"] else []
+        saves = properties["saves"] if properties["saves"] else []
+        conditions = properties["conditions"] if properties["conditions"] else []
+        halves = properties["halves"] if properties["halves"] else []
+        escape = properties["escape"] if properties["escape"] else []
+
+        #Add a 'no save' save at the start so we can capture any effects not tied to a save
+        saves = [[start_char,None]] + saves
+
+        for i in range(len(saves)):
+            effect = {}     
+
+            ### Only consider things up to the next check
+            if i+1 == len(saves):
+                end_char = 1000000
+            else:
+                end_char = saves[i+1][0]
+
+            ### Add Save
+            if saves[i][1]:
+                effect["save"] = {
+                    "ability": saves[i][1][1][:3],
+                    "value": int(saves[i][1][0])
+                }
+                effect["on_save"] = "none"
+
+            condition_set = set()
+
+            ### Add dice rolls (inc. damage)
+            for ri,r in enumerate(rolls):
+                if ri in used_rolls:
+                    continue
+                if r[0] < start_char or r[0] > end_char:
+                    continue
+
+                #conver to list for asignment
+                roll = list(r[1])
+
+                #Ignore case of just numbers without either formula or damage type
+                if not roll[2] and not (roll[0] and roll[1]):
+                    continue
+
+                ### Handle average but no formula
+                if not roll[0] and roll[1]:
+                    roll[0] = str(roll[1])
+                elif not roll[1] and roll[0]:
+                    roll[1] = self.__calculate_average_formula(roll[0])
+
+                roll[0] = self.__normalise_formula(roll[0])
+
+                #Handle damage rolls
+                if roll[2] in enum_values(constants.DAMAGE_TYPES) or roll[2] == "damage":
+                    if "damage" not in effect:
+                        effect["damage"] = []
+
+                    effect["damage"].append({"damage":{"average":int(roll[1]), "formula":roll[0]}, "type":roll[2]})
+
+                else:
+                    if "rolls" not in effect:
+                        effect["rolls"] = []
+                    if roll[2]:
+                        effect["rolls"].append({"roll":{"average":int(roll[1]), "formula":roll[0]}, "type":roll[2]})
+                    else:
+                        effect["rolls"].append({"roll":{"average":int(roll[1]), "formula":roll[1]}})
+                
+                used_rolls.append(ri)
+
+            ### Add conditions Note we have to filter for conditions being repeated
+            for ci,c in enumerate(conditions):
+                if ci in used_conditions or c[1][0] in condition_set:
+                    continue
+                if c[0] < start_char or c[0] > end_char:
+                    continue
+                if "conditions" not in effect:
+                    effect["conditions"] = []
+                if c[1][0] == CONDITIONS.grappled.name:
+                    if len(escape) == 0:
+                        continue
+                    else:
+                        effect["end_save"] = {
+                            "ability":"ath or acr",
+                            "value":int(escape[0][1][0])
+                        }
+
+                effect["conditions"].append({"condition":c[1][0]})
+                condition_set.add(c[1][0])
+                used_conditions.append(ci)
+
+            ### Add save efect
+            if saves[i][1]:
+                for hi,h in enumerate(halves):
+                    if hi in used_halves:
+                        continue
+                    if h[0] < start_char or h[0] > end_char:
+                        continue
+                    effect["on_save"] = "half"
+                    used_halves.append(hi)
+                    break            
+
+            if len(effect.keys()) > 0:
+                effects.append(effect)
+
+        return effects
+
+    def add_action(self, section: Section, action_type: ACTION_TYPES):
+        
+        ### Do some parsing to get the title from the text
+        parts = section.get_section_text(join_char=" ").split(".")
+        title = parts[0].strip()
+        text = ". ".join(parts[1:]).strip()
+
+        has_colon = title.find(":")
+        if has_colon > 0:
+            title = title[:has_colon]
+            text = title[has_colon:] + " " + text
+        
+        self.logger.debug("Adding action {}".format(title))
+        
+        if not self.data:
+            self.logger.error("Data object does not exist")
+            self.logger.error(section.get_section_text())
+            self.logger.error(section.attributes)
+            self.logger.error(action_type)
+            return
+
+        if not action_type.name in self.data:
+            self.data[action_type.name] = []
+
+        ### Start parsing the main action text
+        # Run a set of regexes over the text to pull out key information
+        # First regexes handle the attack header
+        properties = {"text": [0,section.get_section_text()]}
+        for r in self.attack_res:
+            v = self.attack_res[r].search(text.lower())
+            properties[r] = [v.end(), v.groups()] if v else None
+
+        ### Track where the 'attack header' ends so we don't double count damage
+        attack_line_end = 0
+        if properties["type"]:
+            for p in properties:
+                v = properties[p]
+                if v:
+                    attack_line_end = max(attack_line_end, v[0])
+
+        # Seconds regexes handle more general damage and effects
+        for r in self.general_res:
+            v = [(match.end(), match.groups()) for match in self.general_res[r].finditer(text.lower(), pos=attack_line_end)]
+            properties[r] = v if len(v) > 0 else None
+
+        action = {
+            "title":title,
+            "text":text,
+            "type":action_type.name
+        }
+
+        # If attack, parse attack, otherwise only parse effects
+        if properties["type"]:
+            try:
+                action["attack"] = self.__create_attack(title, properties)
+            except Exception as e:
+                print(text)
+                traceback.print_exc()
+                exit()
+        else:
+            effects = self.__create_effects(properties)
+            if len(effects) > 0:
+                action["effects"] = effects
+
+        # Look at title to pull out any associated costs/recharge/uses
+        recharge_re = re.compile("recharge\s*(\d+)(?:-+(\d+))?", re.IGNORECASE)
+        uses_re = re.compile(f"(\d+)\s*/\s*({'|'.join(enum_values(TIME_MEASURES))})", re.IGNORECASE)
+        cost_re = re.compile(f"costs\s*(\d+)\s*action", re.IGNORECASE)
+
+        recharge = recharge_re.findall(title)
+        uses = uses_re.findall(title)
+        costs = cost_re.findall(title)
+
+        if len(recharge) == 1:
+            if recharge[0][1]:
+                action["recharge"] = {"from":int(recharge[0][0]), "to":int(recharge[0][1])}
+            else:
+                action["recharge"] = {"from":int(recharge[0][0]), "to":int(recharge[0][0])}
+
+        if len(uses) == 1:
+            action["uses"] = {"slots":int(uses[0][0]), "period":uses[0][1].lower()}
+
+        if len(costs) == 1:
+            action["cost"] = int(costs[0])
+        elif action_type == ACTION_TYPES.legendary:
+            action["cost"] = 1
+
+        ### Append parsed action to data
+        self.data[action_type.name].append(action)
+        self.__validate_part(action_type.name)
+
+    def add_background(self, sections: List[Section]):
+        self.data["background"] = [s.get_section_text() for s in sections]
+
+
     ####################################################################################
     ################################## Primary API #####################################
     ####################################################################################
@@ -650,8 +1025,6 @@ class Creature():
         
         self.set_name(section.lines[0].text)
         self.set_race_type_size(" ".join([l.text for l in section.lines[1:]]))
-
-
 
     def set_defence(self, section: Section):
         '''Set the AC, Hit Points, and Size/Type of the creature'''
@@ -757,290 +1130,3 @@ class Creature():
             self.add_spell_feature(section)
         else:
             self.add_normal_feature(title, text.replace("\n", " ").replace("  ", " "))
-
-
-    @staticmethod
-    def __pm_str_to_int(s: str) -> int:
-        s = s.replace("+","")
-        s = s.strip()
-        return int(s)
-
-    def __create_attack(self, title: str, properties: Any):
-        '''Use results of precomplied regexes to turn attack text intro structured data'''
-
-        attack = {
-            "name":title,
-            "type":properties["type"][1][0].strip(),
-            "weapon": properties["type"][1][1].strip() if properties["type"][1][1] else "weapon",
-        }
-
-        
-        target_count_map = {
-            "one":1, "two":2, "three":3, "four":4, "five":5,"six":6,"seven":7,"eight":8,"nine":9,"any":"any","all":"all"
-        }
-
-        max_parsed = properties["type"][0] 
-
-        if "or" in attack["type"]:
-            attack["type"] = "both"
-
-        if properties["reach"]:
-            v = properties["reach"]
-            attack["reach"] = {"distance": int(v[1][0]), "measure": v[1][1]}
-            max_parsed = max(v[0], max_parsed)
-
-        ### Only write long range for non-melee attacks
-        if properties["range"] and attack["type"] != "melee":
-            v = properties["range"]
-            attack["range"] = {"short_distance": int(v[1][0]), "long_distance": int(v[1][1]) if v[1][1] else None, "measure": v[1][2]}
-            max_parsed = max(v[0], max_parsed)
-
-        if properties["hit"]:
-            attack["hit"] = Creature.__pm_str_to_int(properties["hit"][1][0])
-            max_parsed = max(properties["hit"][0], max_parsed)
-
-        if properties["target"]:
-            v = properties["target"][1]
-            try:
-                c = Creature.__pm_str_to_int(v[0])
-            except:
-                c = target_count_map[v[0]]
-            attack["target"] = {"count":c, "type":v[1]}
-            if v[2] and v[2].strip():
-                attack["target"]["post_text"] = v[2].strip()
-            max_parsed = max(properties["hit"][0], max_parsed)
-
-
-        if properties["hit_damage"]:
-            v = properties["hit_damage"][1]
-            attack["damage"] = {"damage":{"average":int(v[0]), "formula":v[1] if v[1] else str(v[0])}, "type":v[2].strip()}
-            max_parsed = max(properties["hit_damage"][0], max_parsed)
-
-
-        if properties["versatile_damage"]:
-            v = properties["versatile_damage"][1]
-            attack["versatile"] = {"damage":{"average":int(v[0]), "formula":v[1] if v[1] else str(v[0])}, "type":v[2].strip()}
-            max_parsed = max(properties["hit_damage"][0], max_parsed)
-
-        effects = self.__create_effects(properties, start_char=max_parsed)
-        if len(effects) > 0:
-            attack["effects"] = effects
-
-        return attack
-
-    @staticmethod
-    def __calculate_average_formula(formula: str) -> int:
-        '''
-        Performs a dirty quick calculation to get the average of a maths formula.
-        Does not handle brackets!
-        '''
-        total = 0
-        next_pos = 1
-        for part in formula.split():
-            part = part.strip()
-            if "d" in part:
-                num,size = part.split("d")
-                num = int(num)
-                size = int(size)
-                total += floor(next_pos * num * ((size / 2) + 0.5))
-                next_pos = 1
-            elif part == "-":
-                next_pos = -1
-            else:
-                total += next_pos * int(part)
-                next_pos = 1
-        return total
-
-    def __create_effects(self, properties: Any, start_char=0):
-        '''Use results of precompiled regexes to turn action text into structred effect data'''
-        
-        used_conditions = []
-        used_damage = []
-        used_halves = []
-
-        effects = []
-
-        damage = properties["damage"] if properties["damage"] else []
-        saves = properties["saves"] if properties["saves"] else []
-        conditions = properties["conditions"] if properties["conditions"] else []
-        halves = properties["halves"] if properties["halves"] else []
-        escape = properties["escape"] if properties["escape"] else []
-
-        # Include formula only damage with damage
-        if properties["dice_damage"]:
-            for dmg in properties["dice_damage"]:
-                damage.append([dmg[0], [Creature.__calculate_average_formula(dmg[1][0]), dmg[1][0], dmg[1][1]]])
-
-        #Add a 'no save' save at the start so we can capture any effects not tied to a save
-        saves = [[start_char,None]] + saves
-
-        for i in range(len(saves)):
-            effect = {}     
-
-            ### Only consider things up to the next check
-            if i+1 == len(saves):
-                end_char = 1000000
-            else:
-                end_char = saves[i+1][0]
-
-            ### Add Save
-            if saves[i][1]:
-                effect["save"] = {
-                    "ability": saves[i][1][1][:3],
-                    "value": int(saves[i][1][0])
-                }
-                effect["on_save"] = "none"
-
-            condition_set = set()
-
-            ### Add damage
-            for di,d in enumerate(damage):
-                if di in used_damage:
-                    continue
-                if d[0] < start_char or d[0] > end_char:
-                    continue
-                if "damage" not in effect:
-                    effect["damage"] = []
-
-                #conver to list for asignment
-                dmg = list(d[1])
-
-                ### Handle average but no formula
-                if not d[1][1] and d[1][0]:
-                    dmg[1] = str(d[1][0])
-
-                ### Don't consider no formula AND no average
-                if d[1][0]:
-                    effect["damage"].append({"damage":{"average":int(dmg[0]), "formula":dmg[1]}, "type":dmg[2]})
-                    used_damage.append(di)
-
-            ### Add conditions Note we have to filter for conditions being repeated
-            for ci,c in enumerate(conditions):
-                if ci in used_conditions or c[1][0] in condition_set:
-                    continue
-                if c[0] < start_char or c[0] > end_char:
-                    continue
-                if "conditions" not in effect:
-                    effect["conditions"] = []
-                if c[1][0] == CONDITIONS.grappled.name:
-                    if len(escape) == 0:
-                        continue
-                    else:
-                        effect["end_save"] = {
-                            "ability":"ath or acr",
-                            "value":escape[0][1][0]
-                        }
-
-                effect["conditions"].append({"condition":c[1][0]})
-                condition_set.add(c[1][0])
-                used_conditions.append(ci)
-
-            ### Add save efect
-            if saves[i][1]:
-                for hi,h in enumerate(halves):
-                    if hi in used_halves:
-                        continue
-                    if h[0] < start_char or h[0] > end_char:
-                        continue
-                    effect["on_save"] = "half"
-                    used_halves.append(hi)
-                    break            
-
-            if len(effect.keys()) > 0:
-                effects.append(effect)
-
-        return effects
-
-    def add_action(self, section: Section, action_type: ACTION_TYPES):
-        
-        ### Do some parsing to get the title from the text
-        parts = section.get_section_text(join_char=" ").split(".")
-        title = parts[0].strip()
-        text = ". ".join(parts[1:]).strip()
-
-        has_colon = title.find(":")
-        if has_colon > 0:
-            title = title[:has_colon]
-            text = title[has_colon:] + " " + text
-        
-        self.logger.debug("Adding action {}".format(title))
-        
-        if not self.data:
-            self.logger.error("Data object does not exist")
-            self.logger.error(section.get_section_text())
-            self.logger.error(section.attributes)
-            self.logger.error(action_type)
-            return
-
-        if not action_type.name in self.data:
-            self.data[action_type.name] = []
-
-        ### Start parsing the main action text
-        # Run a set of regexes over the text to pull out key information
-        # First regexes handle the attack header
-        properties = {}
-        for r in self.attack_res:
-            v = self.attack_res[r].search(text.lower())
-            properties[r] = [v.end(), v.groups()] if v else None
-
-        ### Track where the 'attack header' ends so we don't double count damage
-        attack_line_end = 0
-        if properties["type"]:
-            for p in properties:
-                v = properties[p]
-                if v:
-                    attack_line_end = max(attack_line_end, v[0])
-
-        # Seconds regexes handle more general damage and effects
-        for r in self.general_res:
-            v = [(match.end(), match.groups()) for match in self.general_res[r].finditer(text.lower(), pos=attack_line_end)]
-            properties[r] = v if len(v) > 0 else None
-
-        action = {
-            "title":title,
-            "text":text,
-            "type":action_type.name
-        }
-
-        # If attack, parse attack, otherwise only parse effects
-        if properties["type"]:
-            try:
-                action["attack"] = self.__create_attack(title, properties)
-            except Exception as e:
-                print(text)
-                traceback.print_exc()
-                exit()
-        else:
-            effects = self.__create_effects(properties)
-            if len(effects) > 0:
-                action["effects"] = effects
-
-        # Look at title to pull out any associated costs/recharge/uses
-        recharge_re = re.compile("recharge\s*(\d+)(?:-+(\d+))?", re.IGNORECASE)
-        uses_re = re.compile(f"(\d+)\s*/\s*({'|'.join(enum_values(TIME_MEASURES))})", re.IGNORECASE)
-        cost_re = re.compile(f"costs\s*(\d+)\s*action", re.IGNORECASE)
-
-        recharge = recharge_re.findall(title)
-        uses = uses_re.findall(title)
-        costs = cost_re.findall(title)
-
-        if len(recharge) == 1:
-            if recharge[0][1]:
-                action["recharge"] = {"from":int(recharge[0][0]), "to":int(recharge[0][1])}
-            else:
-                action["recharge"] = {"from":int(recharge[0][0]), "to":int(recharge[0][0])}
-
-        if len(uses) == 1:
-            action["uses"] = {"slots":int(uses[0][0]), "period":uses[0][1].lower()}
-
-        if len(costs) == 1:
-            action["cost"] = int(costs[0])
-        elif action_type == ACTION_TYPES.legendary:
-            action["cost"] = 1
-
-        ### Append parsed action to data
-        self.data[action_type.name].append(action)
-        self.__validate_part(action_type.name)
-
-    def add_background(self, sections: List[Section]):
-        self.data["background"] = [s.get_section_text() for s in sections]

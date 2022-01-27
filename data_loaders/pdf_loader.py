@@ -52,6 +52,11 @@ FONT_OVERRIDES = {
 		976:'f',
 		980:"st",
 	},
+	"AlegrayaSans-Regular": {
+		143: "f",
+		145: "fi",
+		155: "f"
+	}
 }
 
 import json
@@ -69,6 +74,8 @@ def override_render_char(self, matrix, font, fontsize, scaling, rise, cid, ncs=N
 		textwidth = font.char_width(cid)
 		textdisp = font.char_disp(cid)
 
+		err = False
+
 		if isinstance(font, PDFTrueTypeFont) or isinstance(font, PDFCIDFont):
 			font_title = font.basefont.split("-")[0]
 
@@ -78,6 +85,7 @@ def override_render_char(self, matrix, font, fontsize, scaling, rise, cid, ncs=N
 					text = FONT_OVERRIDES[font_title][cid]
 				else:
 					logger.error("Failed to override {} for font {}".format(cid, font))
+					err = True
 
 		else:
 			if "\x00" in text:
@@ -285,10 +293,22 @@ class PDFLoader(DataLoaderInterface):
 
 			### Replace some unicode character's with more common ones to make parsing easier
 			text_replacements = {
+				# Normalise minus signs/hyphens
 				u"\u2013":"-",
 				u"\u2014":"-",
+				u"\u2212":"-",
+				u"\u002D":"-",
+				u"\uFE63":"-",
+				u"\uFF0D":"-",
+				# Normalise pluses
+				u"\u002B":"+",
+				u"\uFF0B":"+",
+				# Normalise apostrophes
 				u"\u2019":"'",
+				# Remove Non-breaking spaces
 				"\xad":"",
+				# Replace Double-hyphen with hyphen
+				"--":"-"
 			}
 
 			for t in text:

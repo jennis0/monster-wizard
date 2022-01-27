@@ -128,14 +128,12 @@ class StatblockBuilder(object):
                             for ms in mid_stats:
                                 if not ms in l.text.lower():
                                     continue
-                                print(s.lines[0].text,",", ms, "-", l.text)
                                 end = True
                                 break
                             if end:
                                 break
                         if end:
                             self.logger.debug("Found continuous statblock over column break")
-                            print("Ignoring")
                             break
 
                 #Only allow a split over a page boundry if it is the next statblock piece

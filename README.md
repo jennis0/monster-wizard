@@ -17,26 +17,42 @@ Additionally, monster/feature/spell images, and spell descriptions cannot be add
 As a work-around, we support using existing foundry compendia to provide spells and feature images. To do this, export any spell, item, or feature compendiums you want to use from Foundry (using Mana's importer) and put them in a folder called './foundry' in the directory you are running in. These will be picked up and used to correctly link spells and add images to imported features.
 
 ## Python Setup
-[Optionally, create a virtual environment]
-pip install -f requirements.txt
+Optionally, create a virtual environment
+`python -m virtualenv env`
+Linux:
+`env/bin/activate`
+Windows:
+`env\Scripts\activate`
+
+Then install any requirements within the virtual env
+`pip install -r requirements.txt`
 
 ## Command Line Use
-`python pdf2vtt.py [input_file] --output [output_file] --output-format [fvtt|default]`
+`python pdf2vtt.py [input_file] --output [output_file]`
 
 If you want to add proper metadata to the output file you can use
 `--author [authors,] --source [proper name of document]`
+
+You can add multiple input files at once, but they will all have the same author/source tags attached.
 
 Any additional metadata required by the output format will be requested in the command line.
 
 By default, the program will append additional monsters to an existing file if one exists. Use the `--overwrite` argument to create a new file from scratch.
 
 ## Quality
-I've tried to pick a variety of PDF formats when testing PDF2VTT to ensure it has at least passable performance on basically anything. The current test set includes (along with rough guides for accuracy)
- - 5e SRD (95%)
- - Outclassed: The NPC Statblock Compendium (99.9%)
- - Kobold Press: Tome of Beasts (90%)
- - Kobold Press: Warlock 15: Boss Monsters (100%)
- - Heliana's Guide to Monster Hunting: Shadow of the Broodmother (90%)
+I've tried to pick a variety of PDF formats when testing PDF2VTT to ensure it has at least passable performance on basically anything. The current test set includes 
+Free/Pay What You Want Content
+ - [5e System Reference Document - WotC](http://media.wizards.com/2016/downloads/DND/SRD-OGL_V5.1.pdf) 
+ - [Outclassed: The NPC Statblock Compendium - Will Rotor](https://www.dmsguild.com/product/302037/OUTCLASSED-The-NPC-Statblock-Compendium)
+ - [Heliana's Guide to Monster Hunting: Shadow of the Broodmother](https://www.patreon.com/posts/shadow-of-5th-51970320)
+ - [Cosmic Dragon Breviary](https://drive.google.com/file/d/1snCMRNy-KBle96iq-gVnytf5ENfRRMws/view)
+ - [Monster a Day Compendium V2 - Reddit Community](https://drive.google.com/file/d/0B4jAv0Wgv9taVnhSZEgxaDdMakk/view?resourcekey=0-AZeaefTBEmkjtrqsoYs5_w)
+ - [Into Wonderland - Will Rotor](https://www.dmsguild.com/product/352628/Into-Wonderland-A-Feywild-Setting-Book)
+
+Paid Content
+- [Tome of Beasts - Kobold Press](https://koboldpress.com/tome-of-beasts/) (90%)
+- [Warlock 15: Boss Monsters - Kobold Press](https://koboldpress.com/kpstore/product/warlock-patreon-boss-monsters-pdf/)
+- [Tome of Beasts 3: Preview - Kobold Press](https://koboldpress.com/tob3-preview/)
   
 Along with several small pieces of homebrew I've downloaded from Reddit. 
 

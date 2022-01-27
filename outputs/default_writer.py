@@ -21,7 +21,7 @@ OutSchema = Schema(
 )
 
 class DefaultWriter(WriterInterface):
-    '''Write creature schema in their default (internal) format'''
+    '''Write creature schema in PDF2VTTs internal format'''
 
     def __init__(self, config: ConfigParser, logger: Logger, append: bool=False):
         self.logger = logger.getChild("default_out")
@@ -31,17 +31,17 @@ class DefaultWriter(WriterInterface):
     @staticmethod
     def get_long_name() -> str:
         '''Returns a human readable name for this output writer'''
-        return "Default"
+        return "Internal"
 
     @staticmethod
     def get_name() -> str:
         '''Returns a human readable name for this output writer'''
-        return "default"
+        return "internal"
 
     @staticmethod
     def get_filetype() -> str:
         '''Returns the output filetype of this writer'''
-        return "p2v"
+        return "json"
 
     @staticmethod
     def prettify_name(s: str) -> str:

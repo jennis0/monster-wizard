@@ -402,8 +402,13 @@ class FVTTConverter(object):
             for sc in data["spellcasting"]:
                 if "mod" in sc:
                     mod = sc["mod"]
-                    conv["spellcasting"] = mod
-                    conv["spelldc"] =  sc["save"] if "save" in sc else 8 + current_state["abilities"][mod]["mod"] + conv["prof"]
+                    if mod:
+                        conv["spellcasting"] = mod
+                    if "save" in sc:
+                        conv["spelldc"] =  sc["save"]
+                    elif mod:
+                        8 + current_state["abilities"][mod]["mod"] + conv["prof"]
+                        
                     conv["spellLevel"] = sc["spellcastingLevel"] if "spellcastingLevel" in sc else 0
                     break
 

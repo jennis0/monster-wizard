@@ -201,12 +201,14 @@ class MEASURES(Enum):
 
 class TIME_MEASURES(Enum):
     round = auto()
+    turn = auto()
     seconds = auto()
     minute = auto()
     hour = auto()
     day = auto()
     week = auto()
     year = auto()
+    century = auto()
     encounter = auto()
     rest = auto()
     long_rest = auto()

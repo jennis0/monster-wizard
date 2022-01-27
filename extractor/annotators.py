@@ -33,7 +33,12 @@ class LineAnnotator(object):
         "attack",
         "DC",
         "grappled",
-        "hit points"
+        "hit points",
+        "shifts back",
+        "target",
+        "armor",
+        "such as a",
+        "comfortably"
     ]
 
     def __is_race_type_string(self, line: Line) -> bool:
@@ -53,11 +58,12 @@ class LineAnnotator(object):
         if len(sizes) == 0:
             return False
 
-        # First word must be capitilised
-        if line.text.strip()[0] != line.text.strip()[0].upper():
+        # First word must be capitilised and a size
+        words = [l.strip() for l in line.text.split() if l.strip()]
+        if words[0].lower() != sizes[0].lower() or words[0][0].upper() != words[0][0]:
             return False
 
-        # Size must be capitillised
+        # Size must be capitilised
         if sizes[0][0] != sizes[0][0].upper():
             return False
 
@@ -114,6 +120,7 @@ class LineAnnotator(object):
             ("Proficiency Bonus", "proficiency"),
             ("Hit [dD]ice", "hitdice"),
             ("Hit.\s*\d+\s*\(\d+", 'in_attack'),
+            (".\s*Hit:", "in_attack"),
             ("to hit, reach \d+ ft.", 'in_attack'),
             ("^Multiattack.", "multiattack"),
             ]

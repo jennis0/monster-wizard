@@ -76,7 +76,7 @@ def get_argparser() -> argparse.ArgumentParser:
     parser.add_argument("--overwrite", "-O", action='store_true', default=False, help="Overwrite existing file rather than appending")
     parser.add_argument("--url", "-u", type=str, help="Override URL label for processed data")
     parser.add_argument("--output", "-o", type=str, help="Output file containing statblocks", default=None)
-    parser.add_argument("--output-format", '-f', type=str, help="Output format. Select 'none' to print statblocks to the terminal'", default='default', choices=["none", "default", "5et", 'text', 'fvtt'])
+    parser.add_argument("--output-format", '-f', type=str, help="Output format. Select 'none' to print statblocks to the terminal'", default='fvtt', choices=["none", "internal", 'text', 'fvtt'])
     parser.add_argument("--cache", "-C", type=str, default=".cache", help="Local cache directory to store API responses")
     parser.add_argument("--config", "-c", type=str, default="default.conf", help="Configuration file for controlling parser")
     parser.add_argument("--logs", "-l", type=str, default=None, help="Optional output log file")

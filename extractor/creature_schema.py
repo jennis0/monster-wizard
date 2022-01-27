@@ -107,6 +107,7 @@ ConditionSchema = Schema(
 
 EffectSchema = Schema({
         Optional("damage"): [DamageSchema],
+        Optional("rolls"): [{"roll": AverageDiceSchema, Optional("type"):str}],
         Optional("conditions"): [ConditionSchema],
         Optional("save"): {
             "ability": Or(enum_str(constants.SHORT_ABILITIES), enum_str(constants.SKILLS), enum_str(constants.SHORT_SKILLS), "ath or acr"),
@@ -163,7 +164,8 @@ FeatureSchema = Schema(
         "title":str,
         "text":str,
         Optional("attack"): AttackSchema,
-        Optional("effects"): [EffectSchema]
+        Optional("effects"): [EffectSchema],
+        Optional("uses"): UsesSchema
     }
 )
 
