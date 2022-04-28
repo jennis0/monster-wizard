@@ -27,6 +27,12 @@ Windows:
 Then install any requirements within the virtual env
 `pip install -r requirements.txt`
 
+## Foundry Spell/Image Setup (Optional)
+PDF2VTT will attempt to use existing spells, and to automatically pick images for actions and features using the existing foundry library. To enable this create a folder called 'foundry' at the top layer of the folder then:
+- Use Mana's Compendium Importer to export any spell compendium you want to reference and store them in the foundry folder
+- Use the compendium importer to export any creature, item, or feature compendium you would like to use as references for images.
+These should be automatically picked up when you run the tool.
+
 ## Command Line Use
 `python pdf2vtt.py [input_file] --output [output_file]`
 

@@ -1,5 +1,6 @@
 ansiwrap==0.8.4
 boto3==1.17.95
+editdistance==0.6.0
 matplotlib==3.4.2
 numpy==1.22.1
 opencv_python==4.5.2.52
