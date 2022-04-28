@@ -734,7 +734,7 @@ class Creature():
                 
                 #Formula but no number
                 if v[0] and not v[1]:
-                    v[1] = self.__calculate_average_formula(v[1])
+                    v[1] = self.__calculate_average_formula(v[0])
 
                 attack["damage"] = {"damage":{"average":int(v[1]), "formula":v[0]}, "type":v[2].strip() if v[2] else None}
                 max_parsed = max(properties["hit_damage"][0], max_parsed)
