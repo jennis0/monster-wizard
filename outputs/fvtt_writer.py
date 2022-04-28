@@ -84,6 +84,36 @@ class FVTTWriter(WriterInterface):
             }
         }
 
+    def __prettify_name(self, name: str) -> str:
+        '''
+        Try to format a filename insto something nicer by 
+        name: String to prettyify
+        returns: Formatted string
+        '''
+
+        # Remove Hyphens
+        name = name.replace("_"," ").strip()
+
+        # Strip any numbers at the start of the name
+        i = 0
+        for i in range(len(name)):
+            if name[i].isalpha():
+                break
+        name = name[i:]
+
+        # Capitilise
+        sw = ["and", "of", "the", "in", "at", "a"]
+        words = name.split()
+        for i in range(len(words)):
+            if words[i] not in sw:
+                if len(words[i]) > 1:
+                    words[i] = words[i][0] + words[i][1:]
+                else:
+                    words[i] = words[i].upper()
+        name = " ".join(words)
+        name = name[0].upper() + name[1:]
+        return name
+
     def write(self, filename: str, source: Source, creatures: List[Any], append: bool=None) -> bool:
         '''Writes the creatures to the specified file. If append is set to true, creatures will be inserted into the existing file. Returns True if write is successful'''
 
@@ -107,7 +137,7 @@ class FVTTWriter(WriterInterface):
 
         ### Get additional information
         if not self.config.getboolean("default", "use_defaults"):
-            label = get_input("Source Title", "Title for this source", source.name)
+            label = get_input("Source Title", "Title for this source", self.__prettify_name(source.name))
 
             stop_words = ["of","and","the","in","a","an"]
             short_label= "".join([w[0].upper() if w not in stop_words else w[0].lower() for w in label.split()])

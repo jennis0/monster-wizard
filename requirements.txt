@@ -9,4 +9,6 @@ pdfminer.six==20201018
 Pillow==9.0.0
 pytesseract==0.3.8
 schema==0.7.4
+scikit_learn==1.0.2
+sentence_transformers==2.1.0
 tqdm==4.61.2

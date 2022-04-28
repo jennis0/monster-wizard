@@ -50,6 +50,56 @@ class FVTTConverter(object):
         "sur":"wis"
     }
 
+    __PROFICIENCIES = [
+        #Artisan Tools
+        "art"
+        "alchemist",
+        "brewer",
+        "carpenter",
+        "cartographer",
+        "cobbler",
+        "cook",
+        "glassblower",
+        "jeweler",
+        "leatherworker",
+        "mason",
+        "painter",
+        "potter",
+        "smith",
+        "tinker",
+        "weaver",
+        "woodcarver",
+        #Instruments
+        "instrument"
+        "bagpipes",
+        "drum",
+        "dulcimer",
+        "flute",
+        "horn",
+        "lute",
+        "lyre",
+        "pan flute",
+        "shawm",
+        "viol",
+        "violin",
+        #Gaming
+        "gam",
+        "chess",
+        "dice",
+        "playing cards",
+        #Kits
+        "disguise",
+        "forgery",
+        "navigator",
+        "poisoner",
+        "thieves",
+        #Vehicles
+        "vehicle"
+        "air",
+        "land",
+        "water"
+    ]
+
     __FREQUENCYMAP = {
         constants.SPELL_FREQUENCIES.encounter.name: "sr",
         constants.SPELL_FREQUENCIES.daily.name: "day",
@@ -70,7 +120,7 @@ class FVTTConverter(object):
         "_id": self.__generate_id(),
         "name": title,
         "type": "feat",
-        "img": self.cl.query_compendium_image(title),
+        "img": self.cl.query_compendium_image(title, type='actor'),
         "data": {
           "description": {"value": f"<p>{description}</p>", "chat": "","unidentified": ""},
           "source": "",
@@ -294,7 +344,9 @@ class FVTTConverter(object):
         data['attributes'] = self.attributes(cr, data)
         data['details'] = self.details(cr, data)
         data['traits'] = self.traits(cr, data)
-        data["skills"] = self.skills(cr, data)
+        skills, profs = self.skills_and_proficiencies(cr, data)
+        data["skills"] = skills
+        data["traits"]["toolProf"] = profs
         new_creature["items"] = []
 
         if "spellcasting" in cr:
@@ -367,9 +419,7 @@ class FVTTConverter(object):
         ### Init
         init = {"value":0, "bonus": 0, "mod": 0, "total": 0, "prof": 0}
         if "abilities" in data and "dex" in data["abilities"]:
-            init['value'] = data['abilities']['dex']
-            init['bonus'] = data['abilities']['dex']
-            init['total'] = data['abilities']['dex']
+            init['total'] = 10 + int((data['abilities']['dex'] - 10)/2)
         conv['init'] = init
 
         ### Movement
@@ -472,34 +522,44 @@ class FVTTConverter(object):
 
         return conv
 
-    def skills(self, data, current_state):
+    def skills_and_proficiencies(self, data, current_state):
         conv = {}
+        toolProf = {"value":[], "custom":""}
         prof = current_state["attributes"]["prof"]
         if "skills" in data:
             for skill in data["skills"]:
-                atr = self.__SKILLATRMAP[skill["skill"]]
-                total = skill["mod"]
-                mod = current_state["abilities"][atr]["mod"]
+                if skill["skill"] in self.__SKILLATRMAP:
+                    atr = self.__SKILLATRMAP[skill["skill"]]
+                    total = skill["mod"]
+                    mod = current_state["abilities"][atr]["mod"]
 
-                if total >= 2*mod + prof:
-                    prof_level = 2
-                elif total >= mod + prof:
-                    prof_level = 1
+                    if total >= 2*mod + prof:
+                        prof_level = 2
+                    elif total >= mod + prof:
+                        prof_level = 1
+                    else:
+                        prof_level = 0
+
+                    conv[skill["skill"]] = {
+                        "value": prof_level,
+                        "ability": atr,
+                        "bonuses": {"check":"", "passive":""},
+                        "mod":mod,
+                        "bonus":total - (mod * prof_level + prof),
+                        "passive": 10 + total,
+                        "prof": prof,
+                        "total":total
+                    }
+
+                # Handle tools, gaming sets and instruments
                 else:
-                    prof_level = 0
+                    for k in self.__PROFICIENCIES:
+                        if k in skill["skill"]:
+                            toolProf["value"].append(k)
+                        else:
+                            toolProf["custom"] += skill["skill"].strip() + ";"
 
-                conv[skill["skill"]] = {
-                    "value": prof_level,
-                    "ability": atr,
-                    "bonuses": {"check":"", "passive":""},
-                    "mod":mod,
-                    "bonus":total - (mod * prof_level + prof),
-                    "passive": 10 + total,
-                    "prof": prof,
-                    "total":total
-                }
-
-        return conv
+        return conv, toolProf
 
     def __prepare_spell(self, sl: SpellLevelSchema, orig: SpellSchema, spell: Any):
         if sl["frequency"] != constants.SPELL_FREQUENCIES.levelled.name:
@@ -546,7 +606,7 @@ class FVTTConverter(object):
 
             for level in sc["levels"]:
                 for spell in level["spells"]:
-                    resolved_spell = self.cl.query_compendium(CompendiumTypes.Item, spell["name"])
+                    resolved_spell = self.cl.query_compendium(CompendiumTypes.Item, spell["name"], distance_threshold=2)
                     if resolved_spell is None:
                         self.logger.warning(f"Could not find spell {spell} in compendium")
                         resolved_spell = self.__make_spell(spell)
@@ -569,6 +629,7 @@ class FVTTConverter(object):
         features= []
 
         for f in data["features"]:
+            self.logger.debug(f"Converting action: {f['title']}")
             feat = self.__make_feature(f["title"], f["text"])
             features.append(feat)
 
@@ -576,15 +637,22 @@ class FVTTConverter(object):
 
     def actions(self, data, current_state):
         actions = []
+        supported_action_types = ["action", "bonus", "reaction", "legendary"]
+        unsupported_action_types = ["mythic", "lair"]
 
-        for action_type in ["action", "bonus", "reaction", "legendary"]:
+        for action_type in supported_action_types:
             if action_type not in data:
                 continue
             for action in data[action_type]:
                 try:
+                    self.logger.debug(f"Converting action: {action['title']}")
                     actions.append(self.__make_action(action, current_state))
                 except Exception as e:
                     self.logger.error(e)
                     self.logger.error(action)
+
+        for at in unsupported_action_types:
+            if at in data:
+                self.logger.warn(f"Found unsupported action type {at} in creature data['name']. These will not be converted.")
 
         return actions

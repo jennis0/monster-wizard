@@ -7,15 +7,56 @@ from configparser import ConfigParser
 from logging import Logger
 from typing import List, Optional, Any
 
+import editdistance
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics import pairwise_distances
+#Detect whether to use the advanced image mapping techiques or not
+try:
+    from sentence_transformers import SentenceTransformer
+    HAS_TRANSFORMERS=True
+except:
+    HAS_TRANSFORMERS=False
+
 from outputs.fvtt.types import CompendiumTypes
+
+
+class TfidfIconSimilarity():
+
+    def __init__(self):
+        self.stopwords = ["and","of","the","an","a","it","in",]
+        self.tfv = TfidfVectorizer(stop_words=self.stopwords, strip_accents='ascii')
+
+    def fit(self, ip):
+        self.ip_index = ip
+        self.vm = self.tfv.fit_transform(ip)
+
+    def get_match(self, q):
+        vec = self.tfv.transform(q)
+        dists = pairwise_distances(vec.reshape(1, -1), self.vm, metric="cosine")
+        return self.ip_index[dists.argmin()]
+
+class TransformerIconSimilarity():
+
+    def __init__(self):
+        self.model = SentenceTransformer('all-MiniLM-L12-v2')
+
+    def fit(self, ip):
+        self.ip_index = ip
+        self.vm = self.model.encode(ip)
+
+    def get_match(self, q):
+        vec = self.model.encode(q)
+        dists = pairwise_distances(vec.reshape(1, -1), self.vm, metric="cosine")
+        return self.ip_index[dists.argmin()]
 
 class CompendiumLoader(object):
 
     def __format_name(self, s):
-        return s.lower().replace(" ","")
+        return s.lower()#.replace(" ","")
 
     def __format_image_name(self, s):
-        return "".join([s.strip() for s in s.lower().split() if s])
+        return " ".join([s.strip() for s in s.lower().split() if s])
 
     def load_compendium(self, data):
         if data["type"].lower() not in self.compendia:
@@ -95,12 +136,23 @@ class CompendiumLoader(object):
         self.logger.info(f"Loaded {len(self.image_paths)} entries of type 'item'")
         self.logger.info(f"Loaded {len(self.actor_image_paths)} entries of type 'actor'")
 
+        ### Backup image guesser that choose an image based on sentence similarity
+        if HAS_TRANSFORMERS and self.config.getboolean("foundry", "advanced-image-search", fallback=True):
+            self.logger.debug("Found transformer package. Configuring advanced image search")
+            self.image_guesser = TransformerIconSimilarity()
+        else:
+            self.logger.debug("No transformer package or disabled in config. Using basic image search")
+            self.image_guesser = TfidfVectorizer()
+        self.image_guesser.fit(list(self.image_paths.keys()))
+        self.logger.info("Setup image search model")
 
-    def query_compendium(self, type: CompendiumTypes, name: str) -> Optional[Any]:
+
+    def query_compendium(self, type: CompendiumTypes, name: str, distance_threshold: int=0) -> Optional[Any]:
         '''
         Check loaded foundry compendia looking for items with the same name.
         type: A foundry compendium type (e.g. Actor or Item)
         name: The name of the item you're looking for
+        fuzzy_threshold: If greater than zero, the maximum edit distance away to accept if an exact match is not found (default=0)
         returns: Json blob of the item or None
         '''
         target_type = type.name.lower()
@@ -110,7 +162,23 @@ class CompendiumLoader(object):
         n = self.__format_name(name)
         if n in self.compendia[target_type]:
             return deepcopy(self.compendia[target_type][n])
-        return None
+
+        ###If we haven't found anything, do edit distance
+        best=None
+        best_dist = 1000000
+        for k in self.compendia[target_type].keys():
+            if k[0] != n[0]:
+                continue
+            dist = editdistance.eval(n, k)
+            if dist < best_dist:
+                best = k
+                best_dist = dist
+
+        if best_dist <= distance_threshold:
+            self.logger.debug(f"Found best fuzzy match for '{n}: '{best}', distance={best_dist}")
+            return deepcopy(self.compendia[target_type][best])
+        else:
+            return None
 
     def query_compendium_image(self, name: str, remove_brackets=True, type='item') -> Optional[str]:
         '''
@@ -121,14 +189,16 @@ class CompendiumLoader(object):
 
         if type == 'item':
             paths = self.image_paths
-        else:
+        elif type == 'actor':
             paths = self.actor_image_paths
+        else:
+            self.logger.debug(f"Unknown compendium type '{type}'. Cannot do image search")
+            return None
 
         ### Try full name first
         n = self.__format_image_name(name)
         if n in paths:
-            if type == 'actor':
-                print(n, paths[n])
+            self.logger.debug(f"Found matching ability for {name}")
             return paths[n]
 
         ### Try after removing brackets
@@ -136,6 +206,10 @@ class CompendiumLoader(object):
             n = n.split("(")[0]
 
         if n in paths:
+            self.logger.debug(f"Found matching ability for {name}")
             return paths[n]
 
-        return "icons/svg/mystery-man.svg"
+        ### If we dont have a path yet, use backup image search
+        backup_feature = self.image_guesser.get_match(name)
+        self.logger.debug(f"Guessing '{backup_feature}' as image for '{name}'")
+        return self.image_paths[backup_feature]

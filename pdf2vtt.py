@@ -52,11 +52,11 @@ se.register_output_writer(DefaultWriter, append=not args.overwrite)
 se.register_output_writer(PrintWriter, append=not args.overwrite)
 se.register_output_writer(FVTTWriter, append=not args.overwrite)
 output = True
-if args.output_format:
-    if args.output_format == 'none':
+if args.format:
+    if args.format == 'none':
         output = False
     else:
-        se.select_writer(args.output_format)
+        se.select_writer(args.format)
 else:
     se.select_writer(FVTTWriter.get_name())
 

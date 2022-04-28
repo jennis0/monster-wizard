@@ -75,15 +75,19 @@ def get_argparser() -> argparse.ArgumentParser:
     parser.add_argument("--authors", "-a", nargs='*', help="Override author label for the processed data")
     parser.add_argument("--overwrite", "-O", action='store_true', default=False, help="Overwrite existing file rather than appending")
     parser.add_argument("--url", "-u", type=str, help="Override URL label for processed data")
+    parser.add_argument("--pages", type=str, default=None, help="Comma separated list of pages to process. Load all if left blank")
+
     parser.add_argument("--output", "-o", type=str, help="Output file containing statblocks", default=None)
-    parser.add_argument("--output-format", '-f', type=str, help="Output format. Select 'none' to print statblocks to the terminal'", default='fvtt', choices=["none", "internal", 'text', 'fvtt'])
-    parser.add_argument("--cache", "-C", type=str, default=".cache", help="Local cache directory to store API responses")
+    parser.add_argument("--format", '-f', type=str, help="Output format. Select 'none' to print statblocks to the terminal'", default='fvtt', choices=["none", "internal", 'text', 'fvtt'])
+    
     parser.add_argument("--config", "-c", type=str, default="default.conf", help="Configuration file for controlling parser")
     parser.add_argument("--logs", "-l", type=str, default=None, help="Optional output log file")
     parser.add_argument("--debug", action='store_true', default=False, help="Print debug logging")
-    parser.add_argument("--pages", type=str, default=None, help="Comma separated list of pages to process. Load all if left blank")
+    
+    parser.add_argument("--cache", "-C", type=str, default=".cache", help="Local cache directory to store API responses")
     parser.add_argument("--no-cache", "-N", action='store_true', help="Don't use a cache to save the result (useful when debugging the data loader")
     parser.add_argument("--flush-cache", "-F", action="store_true", help="Dont check the local cache but do save the result.")
+    
     parser.add_argument("--yes", '-y', action='store_true', default=False, help="Auto accept defaults")
     parser.add_argument("--print", "-p", action='store_true', default=False, help='Print parsed statblocks to console')
     return parser
