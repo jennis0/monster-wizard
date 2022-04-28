@@ -336,7 +336,7 @@ class FVTTConverter(object):
         #### Header ####
         new_creature["name"] = cr["name"]
         new_creature["type"] = "npc"
-        new_creature["img"] = self.cl.query_compendium_image(cr["name"], type='actor')
+        new_creature["img"] = None#self.cl.query_compendium_image(cr["name"], type='actor')
 
         ### Creature Data ###
         data = {}
