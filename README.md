@@ -41,6 +41,8 @@ If you want to add proper metadata to the output file you can use
 
 You can add multiple input files at once, but they will all have the same author/source tags attached.
 
+On the first run, the tool will ask if you want to setup AWS credential. This is only necessary if you want to extract statblocks directly from images (which is currently quite experimental). Otherwise, feel free to press 'n' to skip this step when running.
+
 Any additional metadata required by the output format will be requested in the command line.
 
 By default, the program will append additional monsters to an existing file if one exists. Use the `--overwrite` argument to create a new file from scratch.
