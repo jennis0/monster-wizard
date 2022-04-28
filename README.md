@@ -14,7 +14,7 @@ Because the hard work is done when generating the internal intermediary format, 
 Technically the output generated is not a foundry compendium, but the import/export format expected by Mana's Compendium Importer module(https://foundryvtt.com/packages/mkah-compendium-importer).
 Additionally, monster/feature/spell images, and spell descriptions cannot be added as they are not included within the texts.
 
-As a work-around, we support using existing foundry compendia to provide spells and feature images. To do this, export any spell, item, or feature compendiums you want to use from Foundry (using Mana's importer) and put them in a folder called './foundry' in the directory you are running in. These will be picked up and used to correctly link spells and add images to imported features.
+As a work-around, we support using existing foundry compendia to provide spells and feature images. See the later setup step.
 
 ## Python Setup
 Optionally, create a virtual environment
@@ -28,9 +28,9 @@ Then install any requirements within the virtual env
 `pip install -r requirements.txt`
 
 ## Foundry Spell/Image Setup (Optional)
-PDF2VTT will attempt to use existing spells, and to automatically pick images for actions and features using the existing foundry library. To enable this create a folder called 'foundry' at the top layer of the folder then:
+PDF2VTT will attempt to use existing spells, and to automatically pick images for actions and features using the existing foundry library. To enable this, create a folder called 'foundry' at the top layer of this directory then:
 - Use Mana's Compendium Importer to export any spell compendium you want to reference and store them in the foundry folder
-- Use the compendium importer to export any creature, item, or feature compendium you would like to use as references for images.
+- Use the compendium importer to export any creature, item, or feature compendiums you would like to use as references for images.
 These should be automatically picked up when you run the tool.
 
 ## Command Line Use
