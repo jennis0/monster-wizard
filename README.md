@@ -1,5 +1,5 @@
 # PDF2VTT
-PDF2VTT is a python tool to help you get the most out of D&D 5e homebrew and purchased PDFs. It allows you to directly convert statblocks into a structured data format of your choice that can then be imported into virtual tabletops (or any other storage/visualisation solution of your choice).
+PDF2VTT is a python tool to help you get the most out of D&D 5e homebrew and purchased PDFs. It allows you to directly convert statblocks into a structured data format of your choice that can then be imported into virtual tabletops (or any other storage/visualisation solution).
 
 The tool is focused on importing PDFs but it also provides support for png and jpg files via AWS Textract - other OCR tools could feasibly be used but I found the performance wasn't good enough to be reliable.
 To use this feature you need to setup an AWS user account. [TODO: Instructions].
@@ -31,6 +31,7 @@ Then install any requirements within the virtual env
 PDF2VTT will attempt to use existing spells, and to automatically pick images for actions and features using the existing foundry library. To enable this, create a folder called 'foundry' at the top layer of this directory then:
 - Use Mana's Compendium Importer to export any spell compendium you want to reference and store them in the foundry folder
 - Use the compendium importer to export any creature, item, or feature compendiums you would like to use as references for images.
+
 These should be automatically picked up when you run the tool.
 
 ## Command Line Use
