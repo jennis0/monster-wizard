@@ -1,7 +1,7 @@
 from configparser import ConfigParser
 from logging import Logger
 
-from typing import List
+from typing import List, Any, Optional
 
 from data_loaders.data_loader_interface import DataLoaderInterface
 from utils.cache import CacheManager
@@ -24,10 +24,13 @@ class CachedLoaderWrapper(DataLoaderInterface):
         '''Returns a list of file types supported by this data loader'''
         return self.loader.get_filetypes()
 
-    def load_data_from_file(self, filepath: str) -> Source:
+    def load_data_from_filepath(self, filepath: str) -> Source:
+        return self.loader.load_data_from_filepath(filepath)
+
+    def load_data_from_file(self, file: Any, filepath: Optional[str]="") -> Source:
         '''Reads file and extracts lines of texts. Returns one section per page'''
         if not self.use_cache:
-            return self.loader.load_data_from_file(filepath)
+            return self.loader.load_data_from_file(file, filepath)
 
         if not self.flush_cache and self.cache.check_cache(filepath):
             data, json = self.cache.read(filepath)
@@ -36,7 +39,7 @@ class CachedLoaderWrapper(DataLoaderInterface):
             else:
                 return Source.deserialise(data, json)
         
-        source = self.loader.load_data_from_file(filepath)
+        source = self.loader.load_data_from_file(file, filepath)
 
         self.logger.debug("Writing {} to cache".format(filepath))
         self.cache.write(filepath, *source.serialise())

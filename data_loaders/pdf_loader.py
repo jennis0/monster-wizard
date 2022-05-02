@@ -8,7 +8,7 @@ from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFTextExtractionNotAllowed
-from pdfminer.layout import LAParams, LTImage, LTTextBox, LTTextLine, LTChar
+from pdfminer.layout import LAParams, LTTextBox, LTTextLine, LTChar
 from pdfminer.converter import PDFPageAggregator
 from pdfminer.pdffont import PDFCIDFont, PDFUnicodeNotDefined, PDFTrueTypeFont
 
@@ -23,7 +23,7 @@ from binascii import b2a_hex
 from data_loaders.data_loader_interface import DataLoaderInterface
 from utils.datatypes import Line, Bound, Source, Section
 
-from typing import List, Union, Any
+from typing import List, Optional, TextIO, Union, Any
 
 LIGATURE_MAP = {
 	"\ufb00": "ff",
@@ -138,94 +138,89 @@ class PDFLoader(DataLoaderInterface):
 		'''Returns a list of file types supported by this data loader'''
 		return ["pdf"]
 
-	def load_data_from_file(self, filepath: str) -> Source:
-		'''Reads file and extracts lines of texts. Returns one section per page'''
+	def load_data_from_filepath(self, filepath: str) -> Source:
 
 		if not os.path.exists(filepath):
 			self.logger.error("File {} does not exist".format(filepath))
 			return None
 
 		with open(filepath, 'rb') as f:
-			parser = PDFParser(f)
-			document = PDFDocument(parser)
+			return self.load_data_from_file(f, filepath)
 
-			if not document.is_extractable:
-				raise PDFTextExtractionNotAllowed
-			
-			rsrcmgr = PDFResourceManager()
-			laparams = LAParams(all_texts=True)
+	def load_data_from_file(self, file: Any, filepath: Optional[str]="") -> Source:
+		'''Reads file and extracts lines of texts. Returns one section per page'''
 
-			device = PDFPageAggregator(rsrcmgr, laparams=laparams)
+		parser = PDFParser(file)
+		document = PDFDocument(parser)
 
-			### Hacky monkey patching to handle missing CID entries for various fonts
-			device.render_char = lambda *args, **kwargs: override_render_char(device, *args, **kwargs, logger=self.logger)
+		if not document.is_extractable:
+			raise PDFTextExtractionNotAllowed
+		
+		rsrcmgr = PDFResourceManager()
+		laparams = LAParams(all_texts=True)
 
-			interpreter = PDFPageInterpreter(rsrcmgr, device)   
-			
-			line_id = 0
-			name=os.path.basename(filepath).split(".")[0]
+		device = PDFPageAggregator(rsrcmgr, laparams=laparams)
 
-			pages = []
-			all_images = []
-			for j, page in enumerate(tqdm(PDFPage.create_pages(document))):
-				page_text = Section()
-				interpreter.process_page(page)
+		### Hacky monkey patching to handle missing CID entries for various fonts
+		device.render_char = lambda *args, **kwargs: override_render_char(device, *args, **kwargs, logger=self.logger)
 
-				y_size = page.mediabox[3]
-				x_size = page.mediabox[2]
-				layout = device.get_result()
+		interpreter = PDFPageInterpreter(rsrcmgr, device)   
+		
+		line_id = 0
+		name=os.path.basename(filepath).split(".")[0]
 
-				lines = []
-				images = []
-				possible_images = []
-				for lt in layout:
-					ls, ims = self.__recursive_filter_to_lines_and_images(lt)
-					lines += ls
-					possible_images += ims
+		pages = []
+		all_images = []
+		for j, page in enumerate(tqdm(PDFPage.create_pages(document))):
+			page_text = Section()
+			interpreter.process_page(page)
 
-				for im in possible_images:
-					try:
-						data = im.stream.get_data()
-						type = determine_image_type(data)
-						if type != 'unknown':
-							images.append(data)
-					except:
-						self.logger.debug("Failed to load image on page {}".format(j))
+			y_size = page.mediabox[3]
+			x_size = page.mediabox[2]
+			layout = device.get_result()
 
-				all_images.append(images)
-						
+			lines = []
+			images = []
+			possible_images = []
+			for lt in layout:
+				ls, ims = self.__recursive_filter_to_lines_and_images(lt)
+				lines += ls
+				possible_images += ims
 
-				for l in lines:
-					new_lines = self.__layout_to_line(line_id, l, x_size, y_size, j)
-					line_id += len(new_lines)
+			for im in possible_images:
+				try:
+					data = im.stream.get_data()
+					type = determine_image_type(data)
+					if type != 'unknown':
+						images.append(data)
+				except:
+					self.logger.debug("Failed to load image on page {}".format(j))
 
-					for l in new_lines:
-						page_text.add_line(l, sort=False)
+			all_images.append(images)
+					
 
-				page_text.sort()
-				pages.append(page_text)
+			for l in lines:
+				new_lines = self.__layout_to_line(line_id, l, x_size, y_size, j)
+				line_id += len(new_lines)
 
-						
-			#if debug get pages as images
-			if self.config.getboolean('default', 'debug'):
-				page_images = convert_from_path(filepath)
-				#convert to cv2
-				page_images = [cv2.cvtColor(np.asarray(im), cv2.COLOR_RGB2BGR) for im in page_images]
-			else:
-				page_images = []
-			
-			source = Source(
-				filepath=filepath,
-				name=name,
-				num_pages = len(pages),
-				pages = pages,
-				page_images = page_images,
-				images = all_images,
-				authors = None,
-				url = None
-			)
-			
-			return source
+				for l in new_lines:
+					page_text.add_line(l, sort=False)
+
+			page_text.sort()
+			pages.append(page_text)
+		
+		source = Source(
+			filepath=filepath,
+			name=name,
+			num_pages = len(pages),
+			pages = pages,
+			page_images = None,
+			images = all_images,
+			authors = None,
+			url = None
+		)
+		
+		return source
 
 	def __recursive_filter_to_lines_and_images(self, lt: Any) -> List[LTTextLine]:
 		lines = []

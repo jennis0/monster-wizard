@@ -55,6 +55,33 @@ class DefaultWriter(WriterInterface):
         capped_words[0] = capped_words[0][0].upper() + capped_words[0][1:]
         return " ".join(capped_words)
 
+    def write_to_json(self, source, creatures: List[Any]) -> Any:
+        '''Writes the creatures to JSON, ready to be written to a file'''
+
+        pretty_name = DefaultWriter.prettify_name(source.name)
+
+        source_data = {
+            'title': pretty_name,
+        }
+        data = []
+
+        if source.num_pages > 0:
+            source_data['pages'] = source.num_pages
+        if source.url is not None:
+            source_data['url'] = source.url
+        if source.authors is not None and len(source.authors) > 0:
+            source_data['authors'] = source.authors
+
+        data.append(
+            {
+                "source": source_data,
+                'title': source_data['title'],
+                "creatures": [c.to_json() for c in creatures]
+            }
+        )
+
+        return data
+
     def write(self, filename: str, source: Source, creatures: List[Any], append: bool=None) -> bool:
         '''Writes the creatures to the specified file. If append is set to true, creatures will be inserted into the existing file. Returns True if write is successful'''
 
@@ -76,49 +103,39 @@ class DefaultWriter(WriterInterface):
 
 
         if make_file:
-            data = []
+            old_data = []
         else:
             with open(filename, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+                old_data = json.load(f)
 
         pretty_name = DefaultWriter.prettify_name(source.name)
 
-        source_data = {
-            'title': pretty_name,
-        }
-
-        if source.num_pages > 0:
-            source_data['pages'] = source.num_pages
-        if source.url is not None:
-            source_data['url'] = source.url
-        if source.authors is not None and len(source.authors) > 0:
-            source_data['authors'] = source.authors
+        new_data = self.write_to_json(source, creatures)
 
         written = False
-        for source_entry in data:
+        for source_entry in old_data:
             if source_entry['source']["title"] == pretty_name:
-                source_entry["creatures"] += [c.to_json() for c in creatures]
-                source_entry['source'] = source_data
+                crs = {c["name"]:i for c,i in enumerate(source_entry["creatures"])}
+                for c in new_data[0]["creatures"]:
+
+                    # Overwrite existing monsters
+                    if c["name"] in crs:
+                        source_entry["creatures"][crs[c["name"]]] = c.to_json()
+                    # Or right new ones
+                    else:
+                        source_entry["creatures"].append(c.to_json())
+                    
+                source_entry['source'] = new_data["source"]
                 written = True
                 self.logger.debug("Appending creatures to existing source")
                 break
         
         if not written:
             self.logger.debug("Making new source entry")
-            data.append(
-                {
-                    "source": source_data,
-                    'title': source_data['title'],
-                    "creatures": [c.to_json() for c in creatures]
-                }
-            )
-            if source.authors is not None:
-                data[-1]["authors"] = source.authors
-            if source.url is not None:
-                data[-1]["url"] = source.url
+            old_data = new_data
 
         with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=4)
+            json.dump(old_data, f, indent=4)
 
         return True
 

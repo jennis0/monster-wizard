@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import configparser
-from typing import List, Any
+from typing import List, Any, Optional
 
 import cv2
 from utils.datatypes import Line, Bound, Section, Source
@@ -30,14 +30,21 @@ class TextractImageLoader(DataLoaderInterface):
         '''Returns list of file types accepted by this data loader'''
         return ["jpg", "png", "webp"]
 
-    def load_data_from_file(self, filepath: str) -> Source:
-        '''Takes a path to an image and returns a Section containing extracted lines of text for each page'''
-        if not os.path.exists(filepath):
-            self.logger.error("Image {} does not exist".format(filepath))
+    def load_data_from_filepath(self, filepath: str) -> Source:
 
-        response = self.__call_textract(filepath)
+        if not os.path.exists(filepath):
+            self.logger.error("File {} does not exist".format(filepath))
+            return None
+        
+        with open(filepath, 'rb') as f:
+            return self.load_data_from_file(f, filepath)
+
+    def load_data_from_file(self, file: Any, filepath: Optional[str]="") -> Source:
+        '''Takes a path to an image and returns a Section containing extracted lines of text for each page'''
+
+        response = self.__call_textract(file, filepath)
         pages = self.__response_to_lines(response)
-        images = self.load_images_from_file(filepath)
+        images = self.load_images_from_file(file)
         source = Source(
             filepath=filepath, 
             name=filepath.split(os.pathsep)[-1],
@@ -51,12 +58,9 @@ class TextractImageLoader(DataLoaderInterface):
 
         return source
         
-    def load_images_from_file(self, filepath: str) -> List[Any]:
+    def load_images_from_file(self, file: Any) -> List[Any]:
         '''Takes a path to an image and returns that image'''
-        if not os.path.exists(filepath):
-            self.logger.error("Image {} does not exist".format(filepath))
-
-        return [cv2.imread(filepath)]
+        return [cv2.imdecode(file)]
 
     def __response_to_lines(self, response: Any) -> List[Section]:
         if "Blocks" not in response:
@@ -82,13 +86,9 @@ class TextractImageLoader(DataLoaderInterface):
 
         return pages
 
-    def __call_textract(self, filepath: str) -> Any:
+    def __call_textract(self, file: Any, filepath: str) -> Any:
         '''Call AWS Textract services'''
-        
-        # Read image
-        with open(filepath, 'rb') as f:
-            image = f.read()
-        
+
         # Create AWS client
         self.logger.debug("Creating boto client")
         client = get_authenticated_client(self.config, self.logger,'textract')
@@ -96,7 +96,7 @@ class TextractImageLoader(DataLoaderInterface):
             self.logger.info("Sending Textract request for {}".format(filepath))
             response = client.detect_document_text(
                 Document={
-                    'Bytes':image
+                    'Bytes':file.read()
                 },
             )
         except Exception as e:
