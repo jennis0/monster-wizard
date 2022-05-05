@@ -101,7 +101,7 @@ function format_race_type_alignment(monster) {
 
     let parts = []
     if (monster.creature_type.swarm) {
-        if (monster.creature_type.swarm_size != null) {
+        if (monster.creature_type.swarm.swarm_size != null) {
             parts.push(`${size} swarm of ${monster.creature_type.swarm.swarm_size} ${type}s`)
         } else {
             parts.push(`${size} swarm of ${type}s`)

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Grid, Paper, Typography } from "@mui/material";
 
-import Statblock from '../components/Statblock';
+import Statblock from '../components/EditableStatblock';
 import StatblockList, { sortByAlphabet } from '../components/StatblockList';
 import UploadButton from '../components/UploadButton';
 import PDFDisplay from '../components/PDFDisplay';
 
 import { post_file } from '../libs/api';
+import { DataContext } from '../libs/store';
 
 
 

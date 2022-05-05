@@ -1,5 +1,5 @@
 export function post_file(data, callback) {
-    fetch("/process_file/",
+    fetch("http://localhost:8000/process_file/",
     {
         method:"POST", body: data
     })

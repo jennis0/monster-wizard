@@ -7,6 +7,8 @@ import UploadPage from './pages/old_upload';
 import { Routes, Route } from 'react-router-dom';
 import CssBaseline from '@mui/material/CssBaseline';
 
+import { LocalContext } from './libs/store';
+
 function App() {
 
   return (

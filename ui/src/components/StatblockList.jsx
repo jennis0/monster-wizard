@@ -18,9 +18,11 @@ export default function StatblockList( { title, statblocks, onClick, selected, f
 
     const index = statblocks && statblocks.creatures ? statblocks.creatures.filter(filter ? filter : () => true) : [];
     const sbs = [...index];
-    if(sort) {
-        sbs.sort(sort)
-    }
+    // if(sort) {
+    //     sbs.sort(sort)
+    // }
+
+    console.log(sbs)
 
     return (
       <List
