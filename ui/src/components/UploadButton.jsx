@@ -13,7 +13,7 @@ export default function UploadButton( { onChange, children } ) {
         onChange={onChange}
       />
       <label htmlFor="raised-button-file">
-        <Button variant="outlined" component="span">
+        <Button variant="outlined" component="span" sx={{m:2}}>
           {children ? children: "Upload"}
         </Button>
       </label> 

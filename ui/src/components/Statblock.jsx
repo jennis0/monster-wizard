@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Paper, Typography, Divider, Table, TableHead, TableBody, TableRow, TableCell } from "@mui/material"
+import React, { useState } from 'react';
+import { Typography, Divider, Table, TableHead, TableBody, TableRow, TableCell } from "@mui/material"
 
 import * as fmt from '../libs/creature_format.js'
 

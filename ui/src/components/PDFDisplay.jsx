@@ -1,18 +1,12 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 
 import { Document, Page } from 'react-pdf/dist/esm/entry.webpack5';
 
-import {ButtonGroup, Button} from "@mui/material";
-import { Paper } from "@mui/material"
-import ArrowBack from '@mui/icons-material/ArrowBackIosNew';
-import ArrowForward from '@mui/icons-material/ArrowForwardIos';
-
-
-import UploadButton from './UploadButton';
+import {ButtonGroup, Button, Stack} from "@mui/material";
 
 function highlightStatblocks(text, box, pageBox, page, statblocks) {
 
-  if (statblocks == null) {
+  if (!statblocks) {
     return text;
   }
 
@@ -22,7 +16,7 @@ function highlightStatblocks(text, box, pageBox, page, statblocks) {
   const y2 = y + box[3] / pageBox[2]; 
 
   for (let i = 0; i < statblocks.length; i+=1) {
-    if (statblocks[i][4] != page) {
+    if (statblocks[i][4] !== page) {
       continue;
     }
     const bound = statblocks[i][1];
@@ -33,9 +27,11 @@ function highlightStatblocks(text, box, pageBox, page, statblocks) {
   return text;
 }
 
-function PDFDisplay({ pdfContent, processedData, style, page, setPage }) {
+function PDFDisplay({pdfContent, page, setPage, processedData=null, scale=1.3, sendData=null}) {
   const [numPages, setNumPages] = useState(null);
-  const windowRef = useRef(null);
+  const [mouseHover, setMouseHover] = useState(false)
+  const canvasRef = useRef(null)
+  const [processed, setProcessed] = useState(false)
 
   const textRenderer = useCallback(
     (textItem) => { 
@@ -45,8 +41,19 @@ function PDFDisplay({ pdfContent, processedData, style, page, setPage }) {
   );
 
 
-  function onDocumentLoadSuccess({ numPages }) {
-    setNumPages(numPages);
+  function onDocumentLoadSuccess(pdfResult) {
+    console.log("pdfinfo", pdfResult)
+    const data = {"numPages":pdfResult._pdfInfo.numPages}
+    pdfResult.getMetadata().then(r => {
+      if (r.info.Title) {
+        data.title = r.info.Title
+      }
+      if (r.info.Author) {
+        data.author = r.info.Author
+      }
+      setNumPages(data.numPages)
+      sendData(data)
+    })
   }
 
   function onPageForward() {
@@ -57,20 +64,22 @@ function PDFDisplay({ pdfContent, processedData, style, page, setPage }) {
     setPage(page => Math.max(page - 1, 1));
   }
 
+
   return (
-    <div style={{
-        display:"flex", verticalAlign:"top", alignItems: "center", justifyContent:"center", flexDirection:"column", ...style, 
-    }} ref={windowRef}>
+    <div onMouseEnter={() => setMouseHover(true)} onMouseLeave={() => setMouseHover(false)} style={{padding:0, margin:0}}>
+    <Stack alignItems="center" >
           <Document file={pdfContent} onLoadSuccess={onDocumentLoadSuccess} onLoadError={console.error}>
-            <Page pageNumber={page} renderAnnotationLayer={false} customTextRenderer={textRenderer}/>
+            <Page pageNumber={page} renderAnnotationLayer={false} customTextRenderer={textRenderer} scale={scale} canvasRef={canvasRef}/>
           </Document>
-          <ButtonGroup variant="outlined" sx={{margin:1, alignItems:"center"}}>
-            <Button onClick={() => setPage(1)} disabled={page == 1}>First</Button>
-            <Button onClick={onPageBack} disabled={page == 1}>Back</Button>
+          {mouseHover ? 
+          <ButtonGroup variant="outlined" sx={{margin:1, marginTop:"-5%", alignItems:"center", zIndex:100, display:"block", backgroundColor: "white"}}>
+            <Button onClick={() => setPage(1)} disabled={page === 1}>First</Button>
+            <Button onClick={onPageBack} disabled={page === 1}>Back</Button>
             <Button>{page}/{numPages}</Button>
             <Button onClick={onPageForward} disabled={page >= numPages - 1}>Forward</Button>
             <Button onClick={() => setPage(numPages - 1)} disabled={page >= numPages - 1}>Last</Button>
-          </ButtonGroup>
+          </ButtonGroup> : <></>}
+          </Stack>
       </div>
   );
 }

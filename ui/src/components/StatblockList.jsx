@@ -16,23 +16,16 @@ export function sortByAlphabet(s1, s2, reverse=false) {
 
 export default function StatblockList( { title, statblocks, onClick, selected, filter, sort }) {
 
-    const index = statblocks && statblocks.creatures ? statblocks.creatures.filter(filter ? filter : () => true) : [];
+    const index = statblocks ? statblocks.filter(filter ? filter : () => true) : [];
     const sbs = [...index];
     // if(sort) {
     //     sbs.sort(sort)
     // }
 
-    console.log(sbs)
-
     return (
-      <List
-        sx={{
-          maxWidth:400,
-          bgcolor: 'background.paper',
-        }}
-      >
+      <List sx={{p:0, m:0}}>
         {title ? <>
-        <ListItem key={`item-header-${statblocks.source?.title?.name}`} sx={{topMargin:"10px", bottomMargin:"10px"}}>
+        <ListItem key={`sb-item-header-${title}`} sx={{topMargin:"10px", bottomMargin:"10px"}}>
             <ListItemText align="center">
                 {title}
             </ListItemText>
@@ -41,13 +34,13 @@ export default function StatblockList( { title, statblocks, onClick, selected, f
         }
 
         {sbs.map((sb,i) => (<>
-            <ListItemButton onClick={() => onClick(i)} selected={selected === i}>
-                <ListItem key={`item-${sb.name}-${i}`}>
+            <ListItemButton onClick={() => onClick(i)} selected={selected === i} key={`sb-item-button-${sb.name}-${i}`}>
+                <ListItem key={`sb-item-${sb.name}-${i}`}>
                   <ListItemText primary={sb.name} />
                 </ListItem>
           </ListItemButton>
-                          <Divider />
-                          </>
+          <Divider />
+            </>
               ))}
       </List>
     );
