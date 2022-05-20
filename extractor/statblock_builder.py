@@ -273,7 +273,7 @@ class StatblockBuilder(object):
                             found = True
                             break
                     
-                    # if not found:
-                    #     unused_lines.append(cluster)
+                    if not found:
+                        unused_lines.append(cluster)
 
         return filtered_statblocks, unused_lines

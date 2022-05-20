@@ -53,8 +53,10 @@ SpeedSchema = Schema(
 
 SkillSchema = Schema(
     {
-        "skill": enum_str(constants.SHORT_SKILLS),
-        "mod": int
+        "skill": Or(enum_str(constants.SHORT_SKILLS ), str),
+        "mod": int,
+        "prof": bool,
+        Optional("default"):bool
     }
 )
 
@@ -70,7 +72,7 @@ UsesSchema = Schema(
 
 SenseSchema = Schema(
     {
-        "sense":enum_str(constants.SENSES),
+        "type":enum_str(constants.SENSES),
         "distance":int,
         "measure": enum_str(constants.MEASURES)
     }

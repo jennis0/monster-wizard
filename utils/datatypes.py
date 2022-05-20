@@ -67,9 +67,9 @@ class Source:
                 while len(loaded_images[page]) <= image_num:
                     loaded_images[page].append(None)
                 
-                loaded_images[page][image_num] = image_dict[k]
+                loaded_images[page][image_num] = image_dict[k].tobytes()
             else:
-                page_images[int(k[5:])] = image_dict[k]
+                page_images[int(k[5:])] = image_dict[k].tobytes()
 
         ### Load 
         s = Source(

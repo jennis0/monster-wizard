@@ -303,5 +303,9 @@ class CreatureFactory():
         if not cr.is_valid():
             return None
 
+        ### Handle any final things that need to be done post-parsing
+        cr.finish()
+        cr.section = statblock
+
         return cr
 

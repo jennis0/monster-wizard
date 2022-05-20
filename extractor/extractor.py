@@ -4,9 +4,11 @@ from fastapi import File, UploadFile
 from configparser import ConfigParser
 from logging import Logger
 from typing import Tuple, Dict, List, Any, Optional
+import traceback
 
 from data_loaders.cached_loader_wrapper import CachedLoaderWrapper
 from data_loaders.data_loader_interface import DataLoaderInterface
+from extractor.enrichments import Enrichments
 
 from utils.datatypes import Section, Source
 
@@ -35,6 +37,7 @@ class StatblockExtractor(object):
         self.clusterer = Clusterer(config, logger)
         self.cluster_annotator = SectionAnnotator(config, logger)
         self.statblock_generator = StatblockBuilder(config, logger)
+        self.enrichments = Enrichments(config, logger)
 
         self.line_colour = (120, 0, 0, 120)
         self.column_colour = (0, 120, 0, 120)
@@ -133,118 +136,25 @@ class StatblockExtractor(object):
 
 
 
-    def parse(self, filepaths: List[str], pages: List[int]=None, draw_lines=False, draw_columns=False, draw_statblocks=False, draw_clusters=False, draw_final_columns=False) \
+    def parse(self, filepaths: List[str], pages: List[int]=None) \
             -> Tuple[Dict[str, Tuple[Source, Dict[str, List[Any]]]], Dict[int, List[Section]]]:
-        '''Load data from the file and try to find the statblocks. Use the draw options to show individual parts of the statblock discovery pipeline. Set output file
+        '''Load data from the file and try to find the statblocks. Set output file
         to a filename to write using the selected writer.'''
 
-        draw = draw_lines or draw_columns or draw_statblocks or draw_clusters
-
-        sources = []
-        for f in filepaths:
-            s = self.load_data(f)
-            if not s:
-                self.logger.error("Failed to load {}".format(f))
-            else:
-                sources += s
-
         finished_ps = {}
-        finished_sb = {}
-        for source in sources:
-            cp = CreatureFactory(self.config, self.logger)
+        for f in filepaths:
+            state = {}
+            statblocks, source = self.file_to_statblocks(f, f, pages, state)
+            creatures, errors = self.statblocks_to_creatures(source, statblocks, state)
 
-            self.logger.info("Loading {}".format(source.name))
-            self.logger.debug("Found {} page{}".format(source.num_pages, 's' if source.num_pages > 1 else ''))
+            print(creatures)
 
-            ### Override provided metadata with user input
-            if self.override_title:
-                source.name = self.override_title
-            if self.override_authors:
-                source.authors = self.override_authors
-            if self.override_url:
-                source.url = self.override_url
-            
-            statblocks = {}
-            parsed_statblocks = {}
+            finished_ps[source.name] = (source, creatures, statblocks, errors)
 
-            final_clusters = []
-
-            for i, page_data in enumerate(source.pages):
-                if pages and i+1 not in pages:
-                    continue
-                
-                self.logger.debug("Processing {} lines".format(len(page_data.lines)))
-
-                boxes = []
-                colours = []
-
-                if draw_lines:
-                    boxes += [x for x in page_data.lines]
-                    colours += [self.line_colour for i in range(len(page_data.lines))]
-
-                ### Parse data into sections
-                columns = self.columniser.find_columns(page_data.lines)
-
-                if draw_columns:
-                    boxes += [x for x in columns]
-                    colours += [self.column_colour for i in range(len(columns))]
-
-                ### Generate line annotations
-                for col in columns:
-                    self.line_annotator.annotate(col.lines)
-
-                if self.config.get("default", "debug"):
-                    self.logger.debug("Annotated Lines")
-                    for c in columns:
-                        self.logger.debug("COLUMN START")
-                        self.logger.debug(f"Has {len(c.lines)} lines")
-                        for l in c.lines:
-                            self.logger.debug(l)
-                        self.logger.debug("COLUMN END")
-                        
-                ### Combine lines into clusters
-                clusters = []
-                for col in columns:
-                    clusters.append(self.clusterer.cluster(col.lines))
-
-                for col in clusters:
-                    for clus in col:
-                        clus.page = i+1
-
-                if draw_clusters:
-                    for col in clusters:
-                        boxes += [x for x in col]
-                        colours += [self.hierarchy_colour for i in range(len(col))]
-
-                ### Combine line annotations into cluster annotations
-                for col in clusters:
-                    self.cluster_annotator.annotate(col)
-                    final_clusters.append(col)
-                    for cl in final_clusters[-1]:
-                        cl.page = i+1
-
-            ### Generate statblocks from clusters
-            statblocks,background = self.statblock_generator.create_statblocks(final_clusters)
-            
-            if len(statblocks) > 0:
-                parsed_statblocks = []
-                for sb in statblocks:
-                    cr = cp.statblock_to_creature(sb)
-                    if cr:
-                        cr.add_background(background)
-                        cr.set_source(source.name, sb.page+1)
-                        parsed_statblocks.append(cr)
-
-            self.logger.info("Found {} statblocks".format(len(parsed_statblocks)))
-
-            finished_ps[source.name] = (source, parsed_statblocks)
-            finished_sb[source.name] = statblocks
-
-        return finished_ps, finished_sb
+        return finished_ps
 
 
-    def file_to_statblocks(self, file: Any, filename: str, filetype:str, pages:Optional[List[int]]=None) -> Tuple[List[Section], Source]:
-
+    def file_to_statblocks(self, file: Any, filename: str, filetype:str, pages:Optional[List[int]]=None, state:Optional[Any] = None) -> Tuple[List[Section], Source]:
         sources = self.load_data(file, filename, filetype)
         if not sources or len(sources) == 0:
             self.logger.error("Failed to load {}".format(filename))
@@ -255,7 +165,10 @@ class StatblockExtractor(object):
 
         final_clusters = []
 
+        count = len(source.pages)
         for i, page_data in enumerate(source.pages):
+            if state:
+                state["progress"] = [i, count]
             if pages and i+1 not in pages:
                 continue
             
@@ -296,30 +209,48 @@ class StatblockExtractor(object):
         ### Generate statblocks from clusters
         statblocks,background = self.statblock_generator.create_statblocks(final_clusters)
 
+        for b in background:
+            print(b.get_section_text())
+
         return statblocks, source
 
 
-    def statblocks_to_creatures(self, source, statblocks: List[Section]) -> List[Any]:
+    def statblocks_to_creatures(self, source, statblocks: List[Section], state :Optional[Any] = None) -> List[Any]:
         
         cf = CreatureFactory(self.config, self.logger)
         parsed_creatures = []
+        errors = []
 
-        if len(statblocks) > 0:
-            for sb in statblocks:
+        count = len(statblocks)
+        if state:
+            state["progress"] = [0,count]
+
+        for i,sb in enumerate(statblocks):
+            creature = None
+            try:
                 creature = cf.statblock_to_creature(sb)
-                if creature:
-                    creature.set_source(source.name, sb.page+1)
-                    parsed_creatures.append(creature)
+            except Exception as e:
+                traceback.print_stack()
+                print()
+                traceback.print_exc()
+                errors.append([sb.lines[0].text, "Failed to parse: " + str(e)])
+            if creature:
+                creature.set_source(source.name, sb.page+1)
+                parsed_creatures.append(creature)
+            if state:
+                state["progress"] = [i,count]
 
-        return parsed_creatures
+        return parsed_creatures, errors
 
     def write_to_file(self, output_file: str, source: Source, parsed_statblocks: Dict[str, List[Any]]):
             # Write data to file
             self.logger.info("Writing to file {}".format(output_file))
             creatures = []
 
-            for page in parsed_statblocks:
-                creatures += parsed_statblocks[page]
+            print(parsed_statblocks)
+
+            for s in parsed_statblocks:
+                creatures += parsed_statblocks[s]
             
             self.writer.write(output_file, source, creatures)
             self.writer.append = True #Always append any additional creatures after the first

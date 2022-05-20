@@ -72,13 +72,12 @@ else:
 results = se.parse(args.target, pages=pages)
 if not results:
     exit()
-parsed_statblocks, statblocks = results
 
 p_func = print
 
 for source_name in parsed_statblocks:
-    source, ps = parsed_statblocks[source_name]
-    p_func("Found {} statblocks in {}".format(len(ps), source.name))
+    source, creatures, statblocks, errors = parsed_statblocks[source_name]
+    p_func("Found {} statblocks in {}".format(len(creatures), source.name))
 
     if output:
         if args.output:
@@ -86,7 +85,7 @@ for source_name in parsed_statblocks:
         else:
             outfile = "{}.{}".format(os.path.basename(source.name).split('.')[0], se.writer.get_filetype())
 
-        se.write_to_file(outfile, source, {0:ps})
+        se.write_to_file(outfile, source, {0:creatures})
 
     if args.print:
         for creature in ps:

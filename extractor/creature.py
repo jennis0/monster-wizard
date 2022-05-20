@@ -1,6 +1,7 @@
 from enum import Enum
 from fractions import Fraction
 from math import floor
+from random import random, randint
 from extractor.annotators import LineAnnotationTypes
 from typing import Any, List
 import configparser
@@ -24,6 +25,8 @@ class Creature():
         self.data = {}
         self.config = config
         self.logger = logger
+        self.errors = []
+        self.section = None
 
         add_damage_types = [
             "damage",
@@ -104,12 +107,13 @@ class Creature():
         '''Validate a subcomponent of the creature data against the schema'''
         try:
             if key in cs.CreatureSchema.schema:
-                schema.Schema(cs.CreatureSchema.schema[key]).validate(self.data[key])
+                schema.Schema(cs.CreatureSchema.schema[key], error=key).validate(self.data[key])
             elif schema.Optional(key) in cs.CreatureSchema.schema:
-                schema.Schema(cs.CreatureSchema.schema[schema.Optional(key)]).validate(self.data[key])
+                schema.Schema(cs.CreatureSchema.schema[schema.Optional(key)], error=key).validate(self.data[key])
             else:
                 raise schema.SchemaError("{}: Did not find correct key type in schema for key {}".format(self.data["name"], key))
-        except schema.SchemaError as e:
+        except Exception as e:
+            self.errors.append([key])
             self.logger.error("{}: Failed to validate parsed schema for {}.".format(self.data["name"], key))
             self.logger.error(e.__str__())
             self.logger.error(f"Data: {self.data[key]}\n")
@@ -322,7 +326,7 @@ class Creature():
         senses = []
         for match in sense_matches:
             senses.append({
-                "sense":match[0], 
+                "type":match[0], 
                 "distance":int(match[1]),
                 "measure":match[2]
             })
@@ -385,9 +389,11 @@ class Creature():
                 sk = constants.SHORTSKILLSMAP[skill[0].strip().lower()]
             else:
                 sk = skill[0].strip().lower()
+
             skills.append({
                 "skill": sk,
-                "mod": int(skill[2]) * (-1 if skill[1] == '-' else 1)
+                "mod": int(skill[2]) * (-1 if skill[1] == '-' else 1),
+                "prof":True
             })
 
         self.data["skills"] = skills
@@ -456,17 +462,27 @@ class Creature():
         recharge_re = re.compile("recharge\s*(\d+)(?:-+(\d+))?", re.IGNORECASE)
         uses_re = re.compile(f"(\d+)\s*/\s*({'|'.join(enum_values(TIME_MEASURES))})", re.IGNORECASE)
 
-        recharge = recharge_re.findall(title)
-        uses = uses_re.findall(title)
+        recharge = recharge_re.search(title)
+        uses = uses_re.search(title)
 
-        if len(recharge) == 1:
-            if recharge[0][1]:
-                feature["recharge"] = {"from":int(recharge[0][0]), "to":int(recharge[0][1])}
+        if recharge:
+            if recharge.group(2):
+                feature["recharge"] = {"from":int(recharge.group(1)), "to":int(recharge.group(2))}
             else:
-                feature["recharge"] = {"from":int(recharge[0][0]), "to":int(recharge[0][0])}
+                feature["recharge"] = {"from":int(recharge.group(1)), "to":6}
+            span = recharge.span()
+            feature["title"] = title[0:span[0]] + title[span[1]:]
 
-        if len(uses) == 1:
-            feature["uses"] = {"slots":int(uses[0][0]), "period":uses[0][1].lower()}
+        if uses:
+            span = uses.span()
+            feature["uses"] = {"slots":int(uses.group(1)), "period":uses.group(2).lower()}
+            feature["title"] = title[0:span[0]] + title[span[1]:]
+
+        feature["title"] = feature["title"].strip()
+        if feature["title"].endswith("."):
+            feature["title"] = feature["title"][:-1]
+        if feature["title"].endswith("()"):
+            feature["title"] = feature["title"][:-2]
 
         ### Append parsed action to data
         self.data["features"].append(feature)
@@ -985,23 +1001,32 @@ class Creature():
         uses_re = re.compile(f"(\d+)\s*/\s*({'|'.join(enum_values(TIME_MEASURES))})", re.IGNORECASE)
         cost_re = re.compile(f"costs\s*(\d+)\s*action", re.IGNORECASE)
 
-        recharge = recharge_re.findall(title)
-        uses = uses_re.findall(title)
-        costs = cost_re.findall(title)
+        costs = cost_re.search(title)
+        recharge = recharge_re.search(title)
+        uses = uses_re.search(title)
 
-        if len(recharge) == 1:
-            if recharge[0][1]:
-                action["recharge"] = {"from":int(recharge[0][0]), "to":int(recharge[0][1])}
+        if recharge:
+            if recharge.group(2):
+                action["recharge"] = {"from":int(recharge.group(1)), "to":int(recharge.group(2))}
             else:
-                action["recharge"] = {"from":int(recharge[0][0]), "to":int(recharge[0][0])}
+                action["recharge"] = {"from":int(recharge.group(1)), "to":6}
+            span = recharge.span()
+            action["title"] = title[0:span[0]] + title[span[1]:]
 
-        if len(uses) == 1:
-            action["uses"] = {"slots":int(uses[0][0]), "period":uses[0][1].lower()}
+        if uses:
+            span = uses.span()
+            action["uses"] = {"slots":int(uses.group(1)), "period":uses.group(2).lower()}
+            action["title"] = title[0:span[0]] + title[span[1]:]
 
-        if len(costs) == 1:
-            action["cost"] = int(costs[0])
+        if costs:
+            action["cost"] = int(costs.group(1))
         elif action_type == ACTION_TYPES.legendary:
             action["cost"] = 1
+
+
+        action["title"] = action["title"].strip()
+        if action["title"].endswith("."):
+            action["title"] = action["title"][:-1]
 
         ### Append parsed action to data
         self.data[action_type.name].append(action)
@@ -1130,3 +1155,23 @@ class Creature():
             self.add_spell_feature(section)
         else:
             self.add_normal_feature(title, text.replace("\n", " ").replace("  ", " "))
+
+    def finish(self):
+        ### Set proficiency bonus
+        if not "proficiency" in self.data and "cr" in self.data:
+            if self.data["cr"]["cr"] in PROF_BY_CR:
+                self.data["proficiency"] = PROF_BY_CR[self.data["cr"]["cr"]]
+
+        ### Set whether skills are calculated using proficiency
+        if "skills" in self.data:
+            for i,s in enumerate(self.data["skills"]):
+                if s["skill"] in SHORT_SKILL_ABILITY_MAP:
+                    if "proficiency" in self.data:
+                        ability = SHORT_SKILL_ABILITY_MAP[s["skill"]]
+                        ability = self.data["abilities"][ability]
+                        default_value = self.data["proficiency"] + floor((ability - 10)/2)
+                        self.data["skills"][i]["default"] = default_value == s["mod"]
+                else:
+                    self.data["skills"][i]["default"] = True
+                    self.data["skills"][i]["__custom_id"] = randint(10000,100000) #Needed for the statblock editor to give the skill a unique ID
+

@@ -1,6 +1,8 @@
-from fastapi import FastAPI, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
+from enum import Enum, auto
 import json
+from fastapi import FastAPI, Request, UploadFile, BackgroundTasks, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+import uuid
 
 from data_loaders.pdf_loader import PDFLoader
 from outputs.default_writer import DefaultWriter
@@ -51,7 +53,10 @@ app = FastAPI()
 origins = [
     "http://localhost",
     "http://localhost:8000",
-    "http://localhost:3000"
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8000/process/",
 ]
 
 app.add_middleware(
@@ -67,18 +72,70 @@ args = parser.parse_args()
 args.logs="logs\logs.txt"
 extractor = create_configured_extractor(args)
 
+CURRENT_JOBS = {}
 
+class JobState(Enum):
+    file_upload = auto()
+    text_extraction = auto()
+    parsing = auto()
+    finished = auto()
+    error = auto()
 
 @app.get("/")
 async def read_root():
     return {"Hello":"World"}
 
-@app.post("/process_file/")
-async def parse_file(file: UploadFile):
-    extractor.select_writer(DefaultWriter.get_name())
+@app.post("/process/")
+async def parse_file(file: UploadFile, request: Request, background_tasks: BackgroundTasks):
 
-    statblock_text,source = extractor.file_to_statblocks(file.file, file.filename, "pdf")
-    statblocks = extractor.statblocks_to_creatures(source, statblock_text)
-    json_statblocks = extractor.writer.write_to_json(source, statblocks)
+    job_id = str(uuid.uuid4())
+    CURRENT_JOBS[job_id] = {"id":job_id, "state":JobState.file_upload, "file":file.file, "filename":file.filename, "text":None, "statblocks":None, "source":None, "progress":[-1,-1], "errors":[]}
 
-    return {"file": file.filename, "statblock_text":[s.to_tuple() for s in statblock_text], "statblocks": json_statblocks}
+    background_tasks.add_task(handle_parse_file, job_id)
+
+    return {"id":job_id, "state":JobState.file_upload.name}
+
+@app.get("/process/")
+async def return_request(id:str):
+    if id not in CURRENT_JOBS:
+        raise HTTPException(404, "Job id not found")
+
+    state = CURRENT_JOBS[id]
+    if state["state"] == JobState.finished:
+        result = {"id":id, "state":JobState.finished.name, "statblocks":state["statblocks"], 
+                    "text":state["text"], "errors":state["errors"], 
+                    "frontpage":state["source"].page_images[0], 
+                    "images":state["source"].images, "version":1}
+        return result
+
+    return {"id":id, "state":state["state"].name, "progress":state["progress"], "errors":[]}
+
+
+def handle_parse_file(id):
+    try:
+        state = CURRENT_JOBS[id]
+        extractor.select_writer(DefaultWriter.get_name())
+
+        state["state"] = JobState.text_extraction
+
+        statblock_text,source = extractor.file_to_statblocks(state["file"], state["filename"], "pdf")
+
+        if statblock_text == None:
+            state["state"] = JobState.error
+            return
+        state["text"] = [st.to_tuple() for st in statblock_text]
+        state["source"] = source
+        state["state"] = JobState.parsing
+
+        statblocks,errors = extractor.statblocks_to_creatures(source, statblock_text, state)
+        state["errors"] += errors
+        if statblocks == None:
+            state["state"] = JobState.error
+            return
+
+        state["statblocks"] = [s.to_json() for s in statblocks]
+        state["state"] = JobState.finished
+    except Exception as e:
+        state["state"] = JobState.error
+        state["errors"].append(["overall",e])
+        print(e)

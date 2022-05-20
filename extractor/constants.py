@@ -189,6 +189,50 @@ SHORTSKILLSMAP = {
         SKILLS.survival.name: "sur"
 }
 
+SKILL_ABILITY_MAP = {
+            SKILLS.acrobatics.name: "dex",
+        SKILLS.animal_handling.name: "wis",
+        "animal handling": "wis",
+        SKILLS.arcana.name: "int",
+        SKILLS.athletics.name: "str",
+        SKILLS.deception.name: "cha",
+        SKILLS.history.name: "int",
+        SKILLS.insight.name: "wis",
+        SKILLS.intimidation.name: "cha",
+        SKILLS.investigation.name: "int",
+        SKILLS.medicine.name: "wis",
+        SKILLS.nature.name: "int",
+        SKILLS.perception.name: "wis",
+        SKILLS.performance.name: "cha",
+        SKILLS.persuasion.name: "cha",
+        SKILLS.religion.name: "int",
+        SKILLS.sleight_of_hand.name: "dex",
+        "sleight of hand": "dex",
+        SKILLS.stealth.name: "dex",
+        SKILLS.survival.name: "wis"
+}
+
+SHORT_SKILL_ABILITY_MAP = {
+    "acr" : "dex",
+    "ani" : "wis",
+    "arc" : "int",
+    "ath" : "str",
+    "dec" : "cha",
+    "his" : "int",
+    "ins" : "wis",
+    "itm" : "cha",
+    "inv" : "int",
+    "med" : "wis",
+    "nat" : "int",
+    "prc" : "wis",
+    "prf" : "cha",
+    "per" : "wis",
+    "rel" : "int",
+    "slt" : "dex",
+    "ste" : "dex",
+    "sur" : "wis",
+}
+
 class MEASURES(Enum):
     ft = auto()
     mi = auto()
@@ -278,3 +322,40 @@ XP_BY_CR = {
     "29":	135000,
     "30":	155000,
 }
+
+PROF_BY_CR = {
+    0:	2,
+    1/8:	2,
+    1/4:	2,
+    1/2:	2,
+    1:	2,
+    2:	2,
+    3:	2,
+    4:	2,
+    5:	3,
+    6:	3,
+    7:	3,
+    8:	3,
+    9:	4,
+    10:	4,
+    11:	4,
+    12:	4,
+    13:	5,
+    14:	5,
+    15:	5,
+    16:	5,
+    17:	6,
+    18:	6,
+    19:	6,
+    20:	6,
+    21:	7,
+    22:	7,
+    23:	7,
+    24:	7,
+    25:	8,
+    26:	8,
+    27:	8,
+    28:	8,
+    29:	9,
+    30:	9,
+} 

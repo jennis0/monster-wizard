@@ -1,6 +1,10 @@
 import configparser
+import io
 import logging
 import os
+import traceback
+import base64
+from matplotlib import pyplot as plt
 from tqdm import tqdm
 
 from pdfminer.pdfparser import PDFParser
@@ -8,11 +12,13 @@ from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdfpage import PDFPage
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFTextExtractionNotAllowed
-from pdfminer.layout import LAParams, LTTextBox, LTTextLine, LTChar
+from pdfminer.layout import LAParams, LTTextBox, LTTextLine, LTChar, LTImage
 from pdfminer.converter import PDFPageAggregator
 from pdfminer.pdffont import PDFCIDFont, PDFUnicodeNotDefined, PDFTrueTypeFont
 
-from pdf2image import convert_from_path
+from PIL import Image
+
+from pdf2image import convert_from_bytes
 
 import unicodedata
 
@@ -59,7 +65,6 @@ FONT_OVERRIDES = {
 	}
 }
 
-import json
 
 ### PDFMiner has been found to have some issues with rendering ligatures in at least one 
 ### pdf I tested. Here we manually override the character processing function so we can
@@ -98,10 +103,10 @@ def override_render_char(self, matrix, font, fontsize, scaling, rise, cid, ncs=N
 		if '\x00' in text:
 			logger.error("Found missing character {}".format(cid))
 
-		#item = LTChar(matrix, font, fontsize, scaling, rise, text, textwidth,
-		#			  textdisp, ncs, graphicstate)
 		item = LTChar(matrix, font, fontsize, scaling, rise, text, textwidth,
-					  textdisp)
+					  textdisp, ncs, graphicstate)
+		# item = LTChar(matrix, font, fontsize, scaling, rise, text, textwidth,
+		# 			  textdisp)
 		self.cur_item.add(item)
 
 		return item.adv
@@ -121,6 +126,8 @@ def determine_image_type (stream):
 		file_type = 'bmp'
 	elif bytes_as_hex.startswith("4949") or bytes_as_hex.startswith("4d4d"):
 		file_type = "tiff"
+	elif bytes_as_hex.startswith("52494646"):
+		file_type = "webp"
 	else:
 		file_type = "unknown"
 	return file_type
@@ -153,6 +160,14 @@ class PDFLoader(DataLoaderInterface):
 		parser = PDFParser(file)
 		document = PDFDocument(parser)
 
+		title = None
+		author = None
+		if len(document.info) > 0:
+			if "Title" in document.info:
+				title = document.info["Title"]
+			if "Author" in document.info:
+				author = document.info["Author"]
+
 		if not document.is_extractable:
 			raise PDFTextExtractionNotAllowed
 		
@@ -167,7 +182,8 @@ class PDFLoader(DataLoaderInterface):
 		interpreter = PDFPageInterpreter(rsrcmgr, device)   
 		
 		line_id = 0
-		name=os.path.basename(filepath).split(".")[0]
+		name= title if title else os.path.basename(filepath).split(".")[0]
+		authors = [author]
 
 		pages = []
 		all_images = []
@@ -190,10 +206,21 @@ class PDFLoader(DataLoaderInterface):
 			for im in possible_images:
 				try:
 					data = im.stream.get_data()
-					type = determine_image_type(data)
-					if type != 'unknown':
-						images.append(data)
-				except:
+					img_type = determine_image_type(data)
+					if img_type != 'unknown':
+						image = Image.open(io.BytesIO(data))
+						if image.width < x_size * 0.15 or image.height < y_size*0.15:
+							continue
+
+						buffer = io.BytesIO()
+						image.save(buffer, "WEBP")
+						images.append([
+							Bound(im.x0/x_size, im.y0/y_size, (im.x1-im.x0)/x_size, (im.y1-im.y0)/y_size), 
+							base64.b64encode(buffer.getvalue())])
+
+				except Exception as e:
+					print("Failed to load image", e)
+					print(traceback.format_exc())
 					self.logger.debug("Failed to load image on page {}".format(j))
 
 			all_images.append(images)
@@ -207,19 +234,30 @@ class PDFLoader(DataLoaderInterface):
 					page_text.add_line(l, sort=False)
 
 			page_text.sort()
+			
 			pages.append(page_text)
 		
+		#Get frontpage
+		file.seek(0)
+		frontpage = convert_from_bytes(file.read(), size=1080, single_file=True)
+		buffer = io.BytesIO()
+		frontpage[0].save(buffer, format="WEBP")
+		img_str = base64.b64encode(buffer.getvalue())
+
+
+		apply_size_labels(pages)
+
 		source = Source(
 			filepath=filepath,
 			name=name,
 			num_pages = len(pages),
 			pages = pages,
-			page_images = None,
+			page_images = [img_str],
 			images = all_images,
-			authors = None,
+			authors = authors,
 			url = None
 		)
-		
+	
 		return source
 
 	def __recursive_filter_to_lines_and_images(self, lt: Any) -> List[LTTextLine]:
@@ -230,8 +268,8 @@ class PDFLoader(DataLoaderInterface):
 
 		if isinstance(lt, LTTextLine):
 			lines.append(lt)
-		# elif isinstance(lt, LTImage):
-		# 	images.append(lt)
+		elif isinstance(lt, LTImage):
+			images.append(lt)
 
 		elif hasattr(lt, "_objs"):
 			for o in lt._objs:
@@ -267,13 +305,9 @@ class PDFLoader(DataLoaderInterface):
 			skip = False
 			for o in lt._objs:
 				if isinstance(o, LTChar):
+					annotations.append(f"size:{round(o.size)}")
 					if o.size < 6.1:
 						skip = True
-					elif o.size >= 20.:
-						annotations.append("very_large")
-					elif o.size >= 14.:
-						annotations.append("large")
-
 					size = o.size
 					break
 					
@@ -339,3 +373,38 @@ class PDFLoader(DataLoaderInterface):
 			lines.append(Line(line_id, escaped_text, bound, page, annotations))
 		
 		return lines
+
+	def apply_size_labels(self, pages):
+		line_sizes = []
+		for p in pages:
+			for l in p.lines:
+				for a in l.attributes:
+					vals = a.split(":")
+					if vals[0] == "size":
+						line_sizes.append(round(float(vals[1])))
+		
+		font_range = np.linspace(0, 30, 31)
+		x = plt.hist(line_sizes, font_range, density=True)[0]
+		plt.show()
+		standard = np.argmax(x)
+		large_boundry = -1
+		vl_boundry = -1
+		for i in range(standard, 30):
+			if x[i] <= 0.01 and x[i-1] >= 0.01:
+				if large_boundry < 0:
+					large_boundry = font_range[i]
+				else:
+					vl_boundry = font_range[i]
+					break
+
+		self.logger.debug(f"Set font size range to Standard={font_range[standard]}, Large={large_boundry}, Very Large={vl_boundry}")
+
+		for p in pages:
+			for l in p.lines:
+				for a in l.attributes:
+					vals = a.split(":")
+					if vals[0] == "size":
+						if float(vals[1]) > large_boundry:
+							l.attributes.append("large")
+						if (float(vals[1])) > vl_boundry:
+							l.attributes.append("very_large")
