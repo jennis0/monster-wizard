@@ -223,6 +223,16 @@ SourceSchema = Schema(
     }
 )
 
+ImageSchema = Schema(
+    {
+        Or(
+            {"source_ref":int},
+            {"ref": str},
+            {"data": str}
+        )
+    }
+)
+
 CreatureSchema = Schema(
     {
         ### Basics
@@ -285,7 +295,11 @@ CreatureSchema = Schema(
         Optional("description"): [str],
 
         #Monster Source
-        Optional("source"): SourceSchema
+        Optional("source"): SourceSchema,
+
+        #Monster Image reference
+        Optional("image"): ImageSchema,
+        Optional("token"): ImageSchema
 
     }
 )

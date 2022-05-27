@@ -24,7 +24,7 @@ def create_new_config() -> configparser.ConfigParser:
 
     return config
 
-def get_config(args : Dict[str, str]) -> configparser.ConfigParser:
+def get_config(args : Dict[str, str], cli=True) -> configparser.ConfigParser:
     '''Load a config file from the given path or generate a new one if it does not exists'''
     #If config doesn't exist, make one!
     if not os.path.exists(args.config):
@@ -53,18 +53,22 @@ def get_config(args : Dict[str, str]) -> configparser.ConfigParser:
     if args.logs:
         config.set("default", "logdir", args.logs)
 
-    config.set("default", "use_defaults", "true" if args.yes else 'false')
-
-    if args.source:
-        config.set("meta", "source", args.source)
-    if args.authors:
-        config.set("meta", "authors", ", ".join(args.authors))
-
     config.set("default", "debug", 'true' if args.debug else 'false')
+    config.set("default", "use_defaults", "false")
+    ### Handle CLI specific settings
+    if cli:
+        if args.yes:
+            config.set("default", "use_defaults", "true" if args.yes else 'false')
+
+        if args.source:
+            config.set("meta", "source", args.source)
+        if args.authors:
+            config.set("meta", "authors", ", ".join(args.authors))
+
     
     return config
 
-def get_argparser() -> argparse.ArgumentParser:
+def get_cli_argparser() -> argparse.ArgumentParser:
     '''Creates command line argument parser to control the app'''
 
     parser = argparse.ArgumentParser(
@@ -90,4 +94,20 @@ def get_argparser() -> argparse.ArgumentParser:
     
     parser.add_argument("--yes", '-y', action='store_true', default=False, help="Auto accept defaults")
     parser.add_argument("--print", "-p", action='store_true', default=False, help='Print parsed statblocks to console')
+    return parser
+
+
+def get_api_argparser() -> argparse.ArgumentParser:
+    '''Creates command line argument parser to control the app'''
+
+    parser = argparse.ArgumentParser(
+        description="Extract 5e statblocks from images and PDFs"
+    )   
+    parser.add_argument("--config", "-c", type=str, default="default.conf", help="Configuration file for controlling parser")
+    parser.add_argument("--logs", "-l", type=str, default=None, help="Optional output log file")
+    parser.add_argument("--debug", action='store_true', default=False, help="Print debug logging")
+    
+    parser.add_argument("--cache", "-C", type=str, default=".cache", help="Local cache directory to store API responses")
+    parser.add_argument("--no-cache", "-N", action='store_true', help="Don't use a cache to save the result (useful when debugging the data loader")
+    parser.add_argument("--flush-cache", "-F", action="store_true", help="Dont check the local cache but do save the result.")
     return parser

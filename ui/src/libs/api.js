@@ -6,13 +6,18 @@
  *   - Third retry: 2000 ms + <random> ms
  * and so forth until maximum retries are met, or the promise resolves.
  */
- const withRetries = ({ attempt, maxRetries }) => async (...args) => {
-    const slotTime = 500;
+const ADDRESS = "http://127.0.0.1:8000"
+
+ const withRetries = ({ attempt, maxRetries, onUpdateCallback=null }) => async (...args) => {
+    const slotTime = 250;
     let retryCount = 0;
     do {
       try {
-        console.log('Attempting...', Date.now());
+        console.log('Attempting...', Date.now(), onUpdateCallback);
         const result = await attempt(...args).then(r => r.json());
+        if (onUpdateCallback) {
+          onUpdateCallback(result)
+        }
         console.log("result", result);
         if (result.state === "error") {
             return Promise.reject(result)
@@ -29,19 +34,19 @@
           return Promise.reject(error);
         }
       }
-      const delay = 2 ** Math.min(retryCount, 4) * slotTime
+      const delay = 2 ** Math.min(retryCount, 5) * slotTime
       // Wait for the exponentially increasing delay period before retrying again.
       await new Promise(resolve => setTimeout(resolve, delay));
     } while (retryCount++ < maxRetries);
   }
 
 
-export function post_file(data, onSuccessCallback, onErrorCallback=null) {
+export function post_file(data, onSuccessCallback, onErrorCallback=null, onUpdateCallback=null) {
 
-    const getResult = (id) => fetch(`http://127.0.0.1:8000/process/?id=${id}`, {method:"GET"})
-    const getResultWithRetries = withRetries( {attempt:getResult, maxRetries:100} )
+    const getResult = (id) => fetch(`${ADDRESS}/process/?id=${id}`, {method:"GET"})
+    const getResultWithRetries = withRetries( {attempt:getResult, maxRetries:100, onUpdateCallback:onUpdateCallback} )
 
-    fetch("http://127.0.0.1:8000/process/",
+    fetch(`${ADDRESS}/process/`,
     {
         method:"POST", body: data
     })
@@ -54,5 +59,25 @@ export function post_file(data, onSuccessCallback, onErrorCallback=null) {
                 onErrorCallback(r)
             }
         }
-    })
+    }, () => {})
 };
+
+export function reparse_feature(title, text, onSuccessCallback, onErrorCallback=null) {
+  fetch(`${ADDRESS}/parse/`,
+  {
+    method:"POST", 
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({title:title, text:text, type:"feature"})
+  })
+    .then(r => r.json(), (e) => {console.log("error", e)})
+    .then(r => {
+      if (r.error) {
+        onErrorCallback(r)
+      } else {
+        onSuccessCallback(r)
+      }
+    })
+}

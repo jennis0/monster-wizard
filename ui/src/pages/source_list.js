@@ -6,6 +6,7 @@ import { useQuery, db, deleteSource } from '../libs/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigate } from 'react-router-dom';
 import { Delete } from '@mui/icons-material';
+import B64Image from '../components/B64Image';
 
 {/* <img
 src={`https://www.wargamer.com/wp-content/uploads/2021/01/dnd-5e-class-guide-main-image-adventuring-party-closeup.jpg?w=248&fit=crop&auto=format`}
@@ -47,12 +48,12 @@ export default function SourceListPage () {
         }}}
         >
 
-          {images && images.length  && source.frontpage > 0 ? <img
-            src={"data:image/webp;base64," + images.filter(i => i.source === source.id)[0].data}
-            alt={source.frontpage}
-            width={240}
-            loading="lazy"
-          /> : <></>}
+          {images && images.length && source.frontpage > 0 ? 
+            <B64Image 
+              image_data={images.filter(i => i.source === source.id)[0].data}
+              alt={source.frontpage}
+              width={240}
+            /> : <></>}
           <ImageListItemBar
             title={source.title}
             subtitle={source.author}

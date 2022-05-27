@@ -44,7 +44,7 @@ class LineAnnotator(object):
     def __is_race_type_string(self, line: Line) -> bool:
 
         #If it's anything else, skip
-        attrs = [a for a in line.attributes if a != 'large' and a != 'very_large']
+        attrs = [a for a in line.attributes if a != 'large' and a != 'very_large' and "size" not in a]
         if len(attrs) > 0:
             return False
            
@@ -75,7 +75,6 @@ class LineAnnotator(object):
         for b in LineAnnotator.banned_words:
             if b in line.text.lower():
                 return False
-
 
         return True
 
@@ -168,7 +167,19 @@ class LineAnnotator(object):
                                 lines[j].attributes.append("statblock_title")
                                 if 'text_title' in lines[j].attributes:
                                     lines[j].attributes.remove('text_title')
+
+                                ### Potentially merge line with previous one if it's spread over two lines
+                                if j > 0:
+                                    if abs(lines[j].bound.left - lines[j-1].bound.left) < 0.1:
+                                        if abs(lines[j].bound.top - lines[j-1].bound.top) < 0.1:
+                                            testSize = [a.split(":")[1] for a in lines[j].attributes if "size:" in a]
+                                            size = [a.split(":")[1] for a in lines[j-1].attributes if "size:" in a]
+                                            if len(size) == 1 and len(testSize) == 1:
+                                                if size[0] == testSize[0]:
+                                                    self.logger.debug("Merging previous line into title due to closeness")
+                                                    lines[j].text = lines[j-1].text + " " + lines[j].text
                                 break
+                                
                     j -= 1
 
             if "." in line.text and line.text[0].isupper() and len(line.text.split('.')[0].split()) < 5:

@@ -1,9 +1,9 @@
 from enum import Enum
 from fractions import Fraction
 from math import floor
-from random import random, randint
+from random import randint
 from extractor.annotators import LineAnnotationTypes
-from typing import Any, List
+from typing import Any, List, Dict
 import configparser
 import logging
 import schema
@@ -18,14 +18,14 @@ from utils.datatypes import Line, Section
 
 import traceback
 
-class Creature():
+class Creature:
     '''Class for constructing a validated creature schema'''
 
     def __init__(self, config: configparser.ConfigParser, logger: logging.Logger):
         self.data = {}
         self.config = config
         self.logger = logger
-        self.errors = []
+        self.errors = {}
         self.section = None
 
         add_damage_types = [
@@ -79,9 +79,6 @@ class Creature():
 
         return True
 
-    def to_json(self) -> Any:
-        return self.data
-
     def set_source(self, source_title: str, page: int=-1):
         self.data['source'] = {
             'title': source_title,
@@ -113,7 +110,7 @@ class Creature():
             else:
                 raise schema.SchemaError("{}: Did not find correct key type in schema for key {}".format(self.data["name"], key))
         except Exception as e:
-            self.errors.append([key])
+            self.errors[key] = e.__str__()
             self.logger.error("{}: Failed to validate parsed schema for {}.".format(self.data["name"], key))
             self.logger.error(e.__str__())
             self.logger.error(f"Data: {self.data[key]}\n")
@@ -481,8 +478,8 @@ class Creature():
         feature["title"] = feature["title"].strip()
         if feature["title"].endswith("."):
             feature["title"] = feature["title"][:-1]
-        if feature["title"].endswith("()"):
-            feature["title"] = feature["title"][:-2]
+        if feature["title"].strip().endswith("()"):
+            feature["title"] = feature["title"].strip()[:-2]
 
         ### Append parsed action to data
         self.data["features"].append(feature)
@@ -932,10 +929,25 @@ class Creature():
 
         return effects
 
-    def add_action(self, section: Section, action_type: ACTION_TYPES):
+
+    def get_title(self, text):
+        words = text.split()
+
+        ### Handle common feature titles
+        common_titles = ["Multiattack"]
+        for ct in common_titles:
+            if text.startswith(ct):
+                return (ct, text[len(ct):].strip())
         
-        ### Do some parsing to get the title from the text
-        parts = section.get_section_text(join_char=" ").split(".")
+        short_text = " ".join(words[:min(10, len(words))]).lower()
+        mwa = short_text.find("melee weapon attack")
+        if mwa > 1:
+            return (text[:mwa].strip(), text[mwa:].strip())
+        rwa = short_text.find("ranged weapon attack")
+        if rwa > 1:
+            return (text[:rwa].strip(), text[rwa:].strip())
+
+        parts = text.split(".")
         title = parts[0].strip()
         text = ". ".join(parts[1:]).strip()
 
@@ -943,7 +955,36 @@ class Creature():
         if has_colon > 0:
             title = title[:has_colon]
             text = title[has_colon:] + " " + text
-        
+# 
+        has_brackets = title.find("(")
+        if has_brackets > -1 and has_brackets < 30:
+            title_end = title.find(")")
+            text = title[title_end+1:] + " " + text
+            title = title[:title_end+1]
+
+        title_words = title.split()
+        if len(title_words) > 6:
+            stop_word = 1
+            for tw in title_words[1:]:
+                if tw[0].isupper():
+                    stop_word += 1
+                else:
+                    break
+
+            text = " ".join(title_words[stop_word-1:]) + " " + text
+            text.replace("  ", " ")
+            title = " ".join(title_words[:stop_word-1])
+
+        return (title, text)
+
+
+
+    def add_action(self, section: Section, action_type: ACTION_TYPES):
+
+        ### Do some parsing to get the title from the text
+        # First handle some common cases we don't need to rely on punctuation
+        text = section.get_section_text(join_char=" ")
+        title, text = self.get_title(text)        
         self.logger.debug("Adding action {}".format(title))
         
         if not self.data:
@@ -988,9 +1029,7 @@ class Creature():
             try:
                 action["attack"] = self.__create_attack(title, properties)
             except Exception as e:
-                print(text)
-                traceback.print_exc()
-                exit()
+                self.logger.error(traceback.format_exc())
         else:
             effects = self.__create_effects(properties)
             if len(effects) > 0:
@@ -1027,6 +1066,8 @@ class Creature():
         action["title"] = action["title"].strip()
         if action["title"].endswith("."):
             action["title"] = action["title"][:-1]
+        if action["title"].strip().endswith("()"):
+            action["title"] = action["title"].strip()[:-2]
 
         ### Append parsed action to data
         self.data[action_type.name].append(action)
@@ -1142,21 +1183,15 @@ class Creature():
 
 
     def add_feature(self, section : Section):
-        parts = section.get_section_text(join_char=" ").split(".")
-        title = parts[0].strip()
-        text = ". ".join(parts[1:]).strip()
-
-        has_colon = title.find(":")
-        if has_colon > 0:
-            title = title[:has_colon]
-            text = title[has_colon:] + " " + text
+        text = section.get_section_text(join_char=" ")
+        title, text = self.get_title(text)
 
         if "spellcasting" in title.lower():
             self.add_spell_feature(section)
         else:
             self.add_normal_feature(title, text.replace("\n", " ").replace("  ", " "))
 
-    def finish(self):
+    def finish(self) -> Dict[str, Any]:
         ### Set proficiency bonus
         if not "proficiency" in self.data and "cr" in self.data:
             if self.data["cr"]["cr"] in PROF_BY_CR:
@@ -1175,3 +1210,10 @@ class Creature():
                     self.data["skills"][i]["default"] = True
                     self.data["skills"][i]["__custom_id"] = randint(10000,100000) #Needed for the statblock editor to give the skill a unique ID
 
+        ### Store errors
+        self.data["errors"] = self.errors
+
+        if self.section:
+            self.data["section"] = self.section.serialise()
+
+        return self.data

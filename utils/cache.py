@@ -53,10 +53,10 @@ class CacheManager(object):
         true if found'''
         return self.__get_cache_path(filename) is not None
 
-    def write(self, filename: str, data: Optional[bytes]=None, json_data: Optional[Any]=None):
+    def write(self, filename: str, json_data: Optional[Any]=None):
         '''Writes a bytestream and json data into a local cache'''
 
-        if not data and not json_data:
+        if not json_data:
             self.logger.warning("Must have at least some data to cache")
             return
 
@@ -67,11 +67,6 @@ class CacheManager(object):
         path = os.path.join(self.cache_dir, id)
         if not os.path.exists(path):
             os.makedirs(path)
-
-        # Write the byte data
-        if data:
-            with open(os.path.join(path, "data.cache"), 'wb') as f:
-                f.write(data)
 
         #Write the structured data
         if json_data:
@@ -87,14 +82,7 @@ class CacheManager(object):
         if not cache_dir:
             self.logger.warning("Tried to read non-existant cache entry for {}".format(filename))
 
-        data_path = os.path.join(cache_dir, "data.cache")
         json_path = os.path.join(cache_dir, "json.cache")
-
-        if os.path.exists(data_path):
-            with open(data_path, 'rb') as f:
-                bytes_data = f.read()
-        else:
-            bytes_data = None
 
         if os.path.exists(json_path):
             with open(os.path.join(cache_dir, "json.cache"), 'r') as f:
@@ -102,11 +90,11 @@ class CacheManager(object):
         else:
             json_data = None
 
-        if not bytes_data and not json_data:
+        if not json_data:
             self.logger.warning("Cache directory for {} exists but contains no data.".format(filename))
             return None
 
-        return bytes_data, json_data
+        return json_data
 
         
         

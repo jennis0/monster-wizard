@@ -23,7 +23,7 @@ export const DAMAGE_TYPES = [
 export const CONDITIONS = [
     "blinded", "charmed", "deafened", "exhaustion", "frightened", "grappled", 
     "immobilized", "incapacitated", "invisible", "paralyzed","petrified", "poisoned", 
-    "prone", "restrained", "stunned",  "surprised", "unconcious"
+    "prone", "restrained", "stunned",  "surprised", "unconscious"
 ]
 
 export const SHORT_ABILITIES = [
@@ -158,6 +158,25 @@ export const MEASURES = [
 
 export const MOVEMENT_TYPES = [
     "walk","burrow","climb","fly","swim"
+]
+
+export const LANGUAGES = [ 
+    "Common",
+    "Dwarvish",
+    "Elvish",
+    "Giant",
+    "Gnomish",
+    "Goblin",
+    "Halfling",
+    "Orc",
+    "Abyssal",
+    "Celestial",
+    "Draconic",
+    "Deep Speech",
+    "Infernal",
+    "Primordial",
+    "Sylvan",
+    "Undercommon",
 ]
 
 export const CRTABLE = [

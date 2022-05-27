@@ -4,7 +4,11 @@ import { PLURAL_TYPES, SHORT_ABILITIES, TYPES, SKILL_MAP, CRTABLE } from "../con
 function to_cr(cr) {
     if (cr > 30) { cr = 30; }
     const cr_values = CRTABLE.filter(c => c[0] === cr)[0];
-    return `${cr_values[1]} (${cr_values[2]} XP)`
+    if (cr_values) {
+        return `${cr_values[1]} (${cr_values[2]} XP)`
+    } else {
+        return ""
+    }
 }
 
 function __do_cap(s, stopwords) {
@@ -154,7 +158,7 @@ function format_cr(monster) {
     }
 
     const lair = monster.cr?.lair ? `(${monster.cr.lair} in its lair)` : ""
-    const coven = monster.cr?.coven ? `(${monster.cr.lair} with its coven)` : ""
+    const coven = monster.cr?.coven ? `(${monster.cr.coven} with its coven)` : ""
     const cr = monster.cr ? to_cr(monster.cr.cr) : "Unknown"
     return `${cr} ${lair}${coven}`
 }
@@ -165,47 +169,80 @@ function title_with_uses(feat) {
     }
     if (feat.recharge) {
         if (Number(feat.recharge.to) === 6) {
-            return `${feat.title} Recharge ${feat.recharge.from}`
+            return `${feat.title} (Recharge ${feat.recharge.from})`
         } else {
-            return `${feat.title} Recharge ${feat.recharge.from}-${feat.rechange.to}`
+            return `${feat.title} (Recharge ${feat.recharge.from}-${feat.rechange.to})`
         }
     }
     return feat.title
 }
 
 function format_feature(feature) {
-    return (<Typography sx={{marginBottom:1}}><b>{title_with_uses(feature)}.</b> {feature.text}</Typography>)
+    return (<Typography variant="statblock" sx={{marginBottom:1}}><i><b>{title_with_uses(feature)}.</b></i> {feature.text}</Typography>)
+}
+
+const count_map = {
+    "1":"st", "2":"nd", "3":"rd", "4":"th", "5":"th", "6":"th", "7":"th", "8":"th", "9":"th"
+}
+
+function format_spell(spell) {
+    let post = ""
+    if (spell.level > 0) {
+        post = `at ${spell.level}${count_map[spell.level]} level`
+    }
+    if (spell.post_text) {
+        post += spell.post_text
+    }
+    return `${spell.name} ${post}`.trim()
+}
+
+function format_spellcasting_level(level) {
+    let slot_text = ""
+    if (level.frequency === "will" || level.frequency === "cantrip") {
+        slot_text = "at will"
+    } else if (level.frequency === "encounter") {
+        slot_text = `${level.slots}/encounter`
+    } else if (level.frequency === "daily") {
+        slot_text = `${level.slots}/day`
+    } else if (level.frequency === "weekly") {
+        slot_text = `${level.slots}/week`
+    } else if (level.frequency === "rest") {
+        slot_text = `${level.slots} per long or short rest`
+    } else if (level.frequency === "levelled") {
+        slot_text = `${level.slots} slots`
+    }
+
+    if (level.each) {
+        slot_text += "each"
+    }
+
+    if (slot_text.length > 0) {
+        slot_text = ` (${slot_text})`
+    }
+
+    let pre_text = ""
+    if (level.level === "cantrip") {
+        pre_text = "Cantrips"
+    } else if (level.level === "unlevelled") {
+        pre_text = ""
+    } else {
+        pre_text = `${level.level}${count_map[level.level]} level${slot_text}`
+    }
+    return (<>{pre_text}<i>: {level.spells.map(sp => format_spell(sp)).join(", ")}</i><br/></>)
+}
+
+function format_spellcasting(sp) {
+    return (
+    <>
+        <Typography variant="statblock" sx={{marginBottom:1, whiteSpace: "pre-wrap"}}>
+            <b>{sp.title}.</b>{sp.text}<br/></Typography>
+        {sp.levels.map(spl => (<Typography variant="statblock" sx={{lineHeight:1.5, whiteSpace:"pre-line"}}>{format_spellcasting_level(spl)}</Typography>))}
+        <Typography>{sp.post_text}</Typography>
+    </>)
 }
 
 function format_action(action) {
-    return (<Typography key={`action-${action.title}`} sx={{marginBottom:1}}><b>{title_with_uses(action)}.</b> {action.text}</Typography>)
-}
-
-function format_action_block(monster, type) {
-    if (!monster) {
-        return ""
-    }
-
-    const actions = monster.action?.filter(a => a.type === type)
-    if (!actions || actions.length === 0) { return "" }
-
-    const title = {
-        action: "ACTIONS", 
-        legendary: "LEGENDARY ACTIONS",
-        reaction: "REACTIONS"
-    };
-    
-    return (
-        <div key={`action-block-${title.type}`} style={{marginTop:10}}>
-        <Typography variant="h6">{title.type}</Typography>
-        <Divider />
-        {
-            type === "legendary" ? 
-            <Typography sx={{marginBottom:1}}>{monster.legendary_block}</Typography> : ""
-        }
-        {monster.action.filter(a => a.type === "action").map(format_action)}
-        </div>
-    );
+    return (<Typography variant="statblock" key={`action-${action.title}`} sx={{marginBottom:1}}><i><b>{title_with_uses(action)}.</b></i> {action.text}</Typography>)
 }
 
 export {
@@ -224,5 +261,6 @@ export {
     format_cr,
     format_feature,
     format_action,
-    format_action_block
+    title_with_uses,
+    format_spellcasting
 };

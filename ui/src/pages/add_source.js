@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Paper, Stack, Grid, Typography, Button} from "@mui/material"
 import UploadButton from "../components/UploadButton"
-import { StyledTextField } from '../components/FormFields'
+import { StyledTextField } from '../components/statblock/FormFields'
 import ReviewPanel from '../components/ReviewPanel'
 import { load_pdf } from '../libs/pdf'
 import PDFDisplay from '../components/PDFDisplay'
@@ -68,6 +68,6 @@ export default function UploadPage() {
     const [pdfContent, setPDFContent] = useState(null)
 
     return (
-        source ? <ReviewPanel source={source} pdfContent={pdfContent} /> : <AddSourcePage setSource={setSource} pdfContent={pdfContent} setPDFContent={setPDFContent}/>
+        source ? <ReviewPanel source={source} pdfContent={pdfContent} setSource={setSource} /> : <AddSourcePage setSource={setSource} pdfContent={pdfContent} setPDFContent={setPDFContent}/>
     )
 }

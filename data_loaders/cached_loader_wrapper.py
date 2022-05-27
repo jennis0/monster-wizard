@@ -24,25 +24,25 @@ class CachedLoaderWrapper(DataLoaderInterface):
         '''Returns a list of file types supported by this data loader'''
         return self.loader.get_filetypes()
 
-    def load_data_from_filepath(self, filepath: str) -> Source:
-        return self.loader.load_data_from_filepath(filepath)
+    def load_data_from_filepath(self, filepath: str, state:Optional[Any]=None) -> Source:
+        return self.loader.load_data_from_filepath(filepath, state)
 
-    def load_data_from_file(self, file: Any, filepath: Optional[str]="") -> Source:
+    def load_data_from_file(self, file: Any, filepath: Optional[str]="", state:Optional[Any]=None) -> Source:
         '''Reads file and extracts lines of texts. Returns one section per page'''
         if not self.use_cache:
-            return self.loader.load_data_from_file(file, filepath)
+            return self.loader.load_data_from_file(file, filepath, state)
 
         if not self.flush_cache and self.cache.check_cache(filepath):
-            data, json = self.cache.read(filepath)
-            if not data and not json:
+            json = self.cache.read(filepath)
+            if not json:
                 self.logger.warning("Found cache dir for {} but it contained no files. Falling back".format(filepath))
             else:
-                return Source.deserialise(data, json)
+                return Source.deserialise(json)
         
-        source = self.loader.load_data_from_file(file, filepath)
+        source = self.loader.load_data_from_file(file, filepath, state)
 
         self.logger.debug("Writing {} to cache".format(filepath))
-        self.cache.write(filepath, *source.serialise())
+        self.cache.write(filepath, source.serialise())
 
         return source
         

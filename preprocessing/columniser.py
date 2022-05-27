@@ -31,6 +31,8 @@ class Columniser(object):
         columns = []#[Section([lines[0]])]
 
         for line in lines:
+            self.logger.debug(line)
+            self.logger.debug(columns)
 
             #Filter out anything that approaches page width - is there a better way to do this to handle single column content?
             if line.bound.width > 0.7:
@@ -200,6 +202,7 @@ class Columniser(object):
         self.logger.debug("Received {} lines".format(len(lines)))
  
         columns = self.__split_lines_into_columns(lines)
+        self.logger.debug("columns")
         self.logger.debug("Initial pass found {} columns".format(len(columns)))
         if self.logger.level <= logging.DEBUG:
             for i, c in enumerate(columns):

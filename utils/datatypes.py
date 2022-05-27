@@ -1,9 +1,11 @@
 from __future__ import annotations
+from base64 import b64decode, b64encode
 
 import dataclasses
 from typing import Dict, List, Any, Tuple, Optional
 from enum import Enum
 import io
+from uuid import uuid4
 import numpy as np
 
 @dataclasses.dataclass
@@ -12,75 +14,46 @@ class Source:
     name: str
     num_pages: int
     pages: List[Section]
-    images: List[List[Any]]
-    page_images: List[Any]
+    images: List[PDFImage]
+    background_text: List[Section]
+    statblocks: List[Dict[str, Any]]
+    page_images: List[PDFImage]
     authors: str
     url: str
 
     def __str__(self):
         return "<Source file={}, num_pages={}, num_images={}>".format(self.name, len(self.pages), len(self.images))
 
-    def serialise(self) -> Tuple[bytes, Any]:
+    def serialise(self) -> Dict[str, Any]:
         '''Serialise the Source data into a tuple of raw byte data and structured json'''
-        meta = {
+        object = {
 			"source": self.name,
 			"authors": self.authors,
 			"url": self.url,
 			"filepath": self.filepath,
 			"num_pages": self.num_pages,
-			"pages": [s.to_tuple() for s in self.pages],
+			"pages": [s.serialise() for s in self.pages],
+            "images": [i.serialise() for i in self.images],
+            "background_text": [s.serialise() for s in self.background_text],
+            "page_images": [i.serialise() for i in self.page_images],
+            "statblocks": self.statblocks
 		}
-
-		### Write images to a compressed bytestream
-        ims = {}
-        if self.page_images:
-            for i,im in enumerate(self.page_images):
-                ims["page_{}".format(i)] = im
-
-        if self.images:
-            for i,images in enumerate(self.images):
-                for j,im in enumerate(images):
-                    ims["page_{}_image_{}".format(i, j)] = im
-
-        stream = io.BytesIO()
-        np.savez_compressed(stream, **ims)
-        stream.seek(0)
-        return [stream.read(), meta]
+        return object
 
     @staticmethod
-    def deserialise(images: bytes, data: Any) -> Source:
+    def deserialise(object: Dict[str, Any]) -> Source:
         '''Convert serialised data back into a source'''
-
-        ### Load images and make sure we order them correctly
-        stream = io.BytesIO(images)
-        image_dict = np.load(stream)
-
-        page_images = [None for i in range(int(data["num_pages"]))]
-        loaded_images = [[] for i in range(int(data["num_pages"]))]
-
-        for k in image_dict.keys():
-            if "image" in k:
-                parts = k.split("_")
-                page = int(parts[1])
-                image_num = int(parts[3])
-
-                while len(loaded_images[page]) <= image_num:
-                    loaded_images[page].append(None)
-                
-                loaded_images[page][image_num] = image_dict[k].tobytes()
-            else:
-                page_images[int(k[5:])] = image_dict[k].tobytes()
-
-        ### Load 
         s = Source(
-            name=data["source"],
-            authors=data["authors"],
-            url=data["url"],
-            filepath=data["filepath"],
-            num_pages = data["num_pages"],
-            pages=[Section.from_tuple(s) for s in data["pages"]],
-            page_images = page_images,
-            images=loaded_images
+            name=object["source"],
+            authors=object["authors"],
+            url=object["url"],
+            filepath=object["filepath"],
+            num_pages = object["num_pages"],
+            pages=[Section.deserialise(s) for s in object["pages"]],
+            images=[PDFImage.deserialise(i) for i in object["images"]],
+            background_text=[Section.deserialise(s) for s in object["background_text"]],
+            page_images = [PDFImage.deserialise(i) for i in object["page_images"]],
+            statblocks=object["statblocks"]
         )
         return s
 
@@ -103,8 +76,21 @@ class Bound:
         '''Returns top of bounding box'''
         return self.top + self.height
 
+    def center(self) -> Tuple[float, float]:
+        return (self.left + 0.5*self.width, self.top+0.5*self.height)
+
     @staticmethod
-    def from_dict(data: Dict[str, float]) -> Bound:
+    def overlap(b1, b2):
+        x_overlap = max(0, min(b1.right(), b2.right()) - max(b1.left, b2.left))
+        y_overlap = max(0, min(b1.bottom(), b2.bottom()) - max(b1.top, b2.top))
+        return x_overlap * y_overlap
+
+    @staticmethod
+    def distance(b1, b2):
+        return np.linalg.norm(b1.center(), b2.center())
+
+    @staticmethod
+    def deserialise(data: Dict[str, float]) -> Bound:
         return Bound(
             left=data["left"],
             top=data["top"],
@@ -112,7 +98,7 @@ class Bound:
             width=data["width"]
         )
 
-    def to_dict(self) -> Dict[str, float]:
+    def serialise(self) -> Dict[str, float]:
         return {
             "left":self.left,
             "top":self.top,
@@ -148,6 +134,13 @@ class Line:
     page: int
     attributes: List[str]
 
+    def __init__(self, text: str, bound: Bound, page: int, attributes: List[str], id:str):
+        self.id = uuid4().hex if not id else id
+        self.text = text
+        self.bound = bound
+        self.page = page
+        self.attributes = attributes
+
     @staticmethod
     def merge(lines: List[Line], join_char=" ") -> Line:
         text = join_char.join(l.text for l in lines)
@@ -161,11 +154,47 @@ class Line:
         return Line(id = lines[0].id, text=text, bound=bound, page=lines[0].page, attributes=attrib)
 
     @staticmethod
-    def from_tuple(tuple: List[Any]) -> Line:
-        return Line(id=str(tuple[0]), text=tuple[1], bound=Bound.from_dict(tuple[2]), page=tuple[3], attributes=tuple[4])
+    def deserialise(object: Dict[str, Any]) -> Line:
+        return Line(
+            id=object["id"], 
+            text=object["text"], 
+            bound=Bound.deserialise(object["bound"]), 
+            page=object["page"], 
+            attributes=object["attributes"]
+        )
 
-    def to_tuple(self) -> List[Any]:
-        return [self.id, self.text, self.bound.to_dict(), self.page, self.attributes]
+    def serialise(self) -> List[Any]:
+        return {"id":self.id, "text":self.text, "bound":self.bound.serialise(), "page":self.page, "attributes":self.attributes}
+
+@dataclasses.dataclass
+class PDFImage:
+    id: str
+    data: bytes
+    bound:Bound
+    page: int
+    attributes: List[str]
+
+    def __init__(self, data: str, bound: Bound, page: int, attributes: List[str], id:str=None):
+        self.id = uuid4().hex if not id else id
+        self.data = data
+        self.bound = bound
+        self.page = page
+        self.attributes = attributes
+
+    def serialise(self):
+        return {"id":self.id, "data":self.data.decode("utf-8"), "page":self.page, "bound":self.bound.serialise(), "attributes":self.attributes}
+
+    @staticmethod
+    def deserialise(object: Dict[str, Any]):
+        return PDFImage(
+            id=object["id"], 
+            data=object["data"].encode("utf-8"), 
+            bound=Bound.deserialise(object["bound"]), 
+            page=object["page"], 
+            attributes=object["attributes"]
+        )
+
+
 
 class Section:
     '''Container holding multiple lines with a single bounding box'''
@@ -271,20 +300,23 @@ class Section:
     def __len__(self) -> int:
         return len(self.lines)
 
-    def to_tuple(self) -> List[Any]:
-        lines = [l.to_tuple() for l in self.lines]
-        bound = self.bound.to_dict()
-        return [lines, bound, self.attributes, self.sort_order.value, self.page]
+    def serialise(self) -> List[Any]:
+        return {"lines":[l.serialise() for l in self.lines], 
+                "bound":self.bound.serialise(), 
+                "attributes":self.attributes, 
+                "sort":self.sort_order.value, 
+                "page":self.page
+        }
 
     @staticmethod
-    def from_tuple(data: Any) -> Section:
-        lines = [Line.from_tuple(l) for l in data[0]]
+    def deserialise(object: Dict[str, Any]) -> Section:
+        lines = [Line.deserialise(l) for l in object["lines"]]
         ids = [l.id for l in lines]
         return Section(
             lines=lines,
             ids=ids,
-            bound=Bound.from_dict(data[1]),
-            attributes=data[2],
-            sort_order=data[3],
-            page=data[4] if len(data) > 4 else -1
+            bound=Bound.deserialise(object["bound"]),
+            attributes=object["attributes"],
+            sort_order=Section.SortOrder(object["sort"]),
+            page=object["page"]
         )

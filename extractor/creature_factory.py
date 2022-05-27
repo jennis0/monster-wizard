@@ -2,7 +2,7 @@ from configparser import ConfigParser
 from logging import Logger
 import re
 
-from utils.datatypes import Section, Line
+from utils.datatypes import Section, Line, Source
 from extractor import constants
 from extractor.creature import Creature
 from extractor.annotators import LineAnnotationTypes
@@ -25,7 +25,6 @@ class CreatureFactory():
         self.config = config
         self.logger = logger.getChild("parser")
 
-
     def __update_feature_block(self, creature: Creature, current_section : Section, line: Line, is_end=False):
         # Get first sentence from text to treat as a potential title
         parts = line.text.split('.')
@@ -34,14 +33,22 @@ class CreatureFactory():
         if has_colon > 0:
             title = title[:has_colon]
 
+        is_spellcasting = False
+        if line.text.strip().startswith("Spellcasting The") or line.text.strip() == "Spellcasting":
+            title = "Spellcasting"
+            is_spellcasting = True
+
         ### Conditions for starting a new block
         #Easy case, new block
         new_block = len(current_section.lines) == 0
         #Check first sentence is less than 6 words (not including anything in brackets) and starts with a capital
-        has_title = len(re.sub("\(.+?\)", "", title).split()) < 6  and title[0].isupper()\
+        has_title = is_spellcasting or (len(re.sub("\(.+?\)", "", title).split()) < 6  and title[0].isupper()\
              and title.split()[0].lower() not in constants.enum_values(constants.ABILITIES)\
-             and len(parts) > 1 and parts[1] != ''
+             and len(parts) > 1 and parts[1] != '')
 
+        ### Look for a series of capitilised words
+        has_title = has_title or (len(current_section.lines) > 0 and current_section.lines[-1].text.strip().endswith(".") and re.match("^([A-Z][a-z']+\s){2,6}", title))
+        has_title = has_title or (title[0].upper() and (re.search(f"\d+\s?/\s?[day|long rest|short rest|encounter| long or short rest]", title) or re.search("Recharge\s+[23456]\s?", title)) )
 
         #Check if we're in a spell list
         spell_list = False
@@ -121,7 +128,7 @@ class CreatureFactory():
         return current_section, handled_action_block
 
 
-    def statblock_to_creature(self, statblock: Section) -> Creature:
+    def statblock_to_creature(self, statblock: Section, source: Source, page: int) -> Creature:
 
         cr = Creature(self.config, self.logger)
         state = CreatureFactory.ParserState.title
@@ -135,11 +142,6 @@ class CreatureFactory():
 
         # Guess the name for debugging purposes until we know it for sure
         name = statblock.lines[0].text
-
-        # print("++++++++++++++++++++++++++++++++++++++++++++++")
-        # for l in statblock.lines:
-        #     print(l)
-        # print("++++++++++++++++++++++++++++++++++++++++++++++")
 
         i = -1
         while i < len(statblock.lines) - 1:
@@ -216,8 +218,6 @@ class CreatureFactory():
                     name = cr.data["name"]
                 except:
                     self.logger.warning("Failed to parse name in {}".format(current_section.get_section_text()))
-                    for l in statblock.lines:
-                        print("Error", l.text, l.attributes)
                     return None
                 current_section = Section()
                 state = CreatureFactory.ParserState.defence
@@ -301,11 +301,13 @@ class CreatureFactory():
                         cr.add_lair_block(current_section)
 
         if not cr.is_valid():
+            self.logger.debug(f"Statblock beginning '{statblock.lines[0].text}' on page {statblock.page} was not valid")
             return None
 
         ### Handle any final things that need to be done post-parsing
-        cr.finish()
         cr.section = statblock
+        cr.set_source(source.name, page)
+        data = cr.finish()
 
-        return cr
+        return data
 

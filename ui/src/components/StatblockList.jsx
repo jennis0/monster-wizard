@@ -26,17 +26,15 @@ export default function StatblockList( { title, statblocks, onClick, selected, f
       <List sx={{p:0, m:0}}>
         {title ? <>
         <ListItem key={`sb-item-header-${title}`} sx={{topMargin:"10px", bottomMargin:"10px"}}>
-            <ListItemText align="center">
-                {title}
-            </ListItemText>
+            <ListItemText align="center" primaryTypographyProps={{variant:"statblock"}} primary={title} /> 
         </ListItem>
         <Divider /></> : <></>
         }
 
         {sbs.map((sb,i) => (<>
-            <ListItemButton onClick={() => onClick(i)} selected={selected === i} key={`sb-item-button-${sb.name}-${i}`}>
+            <ListItemButton onClick={() => onClick(i)} selected={selected === i} key={`sb-item-button-${sb.name}-${i}`} sx={{backgroundColor:Object.keys(sb.errors).length > 0 ? "secondary.light" : null}}>
                 <ListItem key={`sb-item-${sb.name}-${i}`}>
-                  <ListItemText primary={sb.name} />
+                  <ListItemText primary={sb.name} primaryTypographyProps={{variant:"statblock"}}/>
                 </ListItem>
           </ListItemButton>
           <Divider />

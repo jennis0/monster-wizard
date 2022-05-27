@@ -2,7 +2,7 @@ import os
 import json
 from configparser import ConfigParser
 from logging import Logger
-from typing import Any, List
+from typing import Any, List, Dict
 
 from outputs.writer_interface import WriterInterface
 from outputs.creature_printer import pretty_format_creature
@@ -46,14 +46,14 @@ class PrintWriter(WriterInterface):
         capped_words[0] = capped_words[0][0].upper() + capped_words[0][1:]
         return " ".join(capped_words)
 
-    def write_p2v(self, out_filename: str, p2vdata: List[Any], append: bool=None) -> bool:
-        '''Writes the information from the existing p2vdata into a human readable text file'''
+    def write_pdf2vtt(self, out_filename: str, pdf2vtt_data: List[Any], append: bool=None) -> bool:
+        '''Writes the information from the existing pdf2vttdata into a human readable text file'''
 
         ### Apply configuration overrides
         if append is None:
             append = self.append
 
-        with open(p2vdata, 'r') as f:
+        with open(pdf2vtt_data, 'r') as f:
             data = json.load(f)
 
         ret = True
@@ -113,4 +113,4 @@ if __name__ == "__main__":
     f_o = sys.argv[2]
     pw = PrintWriter(get_config({}), Logger(), False)
     with open(f, 'r') as fr:
-        pw.write_p2v(f, json.load(fr))
+        pw.write_pdf2vtt(f, json.load(fr))

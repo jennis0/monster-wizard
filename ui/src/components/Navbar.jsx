@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
-import InboxIcon from '@mui/icons-material/MoveToInbox';
+import {  Paper, Typography } from '@mui/material';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
@@ -12,7 +12,8 @@ import ListItemText from '@mui/material/ListItemText';
 import MailIcon from '@mui/icons-material/Mail';
 import Toolbar from '@mui/material/Toolbar';
 
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+
 
 const drawerWidth = 240;
 
@@ -20,68 +21,59 @@ export function NavDrawer(props) {
   const { window, pages } = props;
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const path = location.pathname.split("/")[1];
+  console.log(path)
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
-  const drawer = (
-    <div>
-      <Toolbar />
-      <Divider />
-      <List>
+  const drawer = (<>
+      <Box sx={{height:50}}></Box>
+      <Toolbar>
+      </Toolbar>
+      <List sx={{width:"100%", m:0, p:0}}>
         {pages.map(p => (
-          <ListItem key={p.path} disablePadding>
+          <ListItem key={p.path} disablePadding={true} sx={{backgroundColor: path === p.path ? "primary.light" : null}}>
             <ListItemButton onClick={() => {navigate(`/${p.path}`)}}>
-              <ListItemIcon>
+              <ListItemIcon sx={{color:'background.default'}}>
                 {p.icon}
               </ListItemIcon>
-              <ListItemText primary={p.label} />
+              <ListItemText primaryTypographyProps={{variant:"nav"}} primary={p.label} />
             </ListItemButton>
+            <Divider />
+
           </ListItem>
+
         ))}
       </List>
-      <Divider />
-    </div>
+      <Box sx={{position:"absolute", top:"95%"}}>
+        <img src="/icons/homebrew_banner.webp" width={250}/>
+      </Box>
+      </>
   );
 
   const container = window !== undefined ? () => window().document.body : undefined;
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      <Box
-        component="nav"
-        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
-        aria-label="mailbox folders"
-      >
-        {/* The implementation can be swapped with js to avoid SEO duplication of links. */}
-        <Drawer
-          container={container}
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true, // Better open performance on mobile.
-          }}
-          sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-          }}
-        >
-          {drawer}
-        </Drawer>
         <Drawer
           variant="permanent"
+          PaperProps={{variant:"elevation", elevation:2, boxSizing: 'border-box' }}
           sx={{
             display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+            '& .MuiDrawer-paper': {
+              backgroundColor:"primary.main", 
+              color:"background.default",
+              width: drawerWidth,
+              p:0, m:0
+            },
           }}
           open
         >
           {drawer}
         </Drawer>
-      </Box>
-    </Box>
   );
 }
 

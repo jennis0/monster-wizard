@@ -29,14 +29,14 @@ class WriterInterface(object):
         '''Writes the creatures to the specified file. If append is set to true, creatures will be inserted into the existing file. Returns True if write is successful'''
         raise NotImplementedError("users must define a function to write to a file.")
 
-    def write_p2v(self, out_filename: str, p2vdata: List[Any], append: bool=None) -> bool:
-        '''Converts from an existing p2v file into the writer format'''
+    def write_pdf2vtt(self, out_filename: str, pdf2vtt_data: List[Any], append: bool=None) -> bool:
+        '''Converts from an existing pdf2vtt file into the writer format'''
 
         ### Apply configuration overrides
         if append is None:
             append = super().append
 
-        with open(p2vdata, 'r') as f:
+        with open(pdf2vtt_data, 'r') as f:
             data = json.load(f)
 
         ret = True

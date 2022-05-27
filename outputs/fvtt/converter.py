@@ -16,7 +16,7 @@ from extractor.creature import Creature
 
 import utils.text_format as fmt
 
-from typing import Any
+from typing import Any, Dict
 
 class FVTTConverter(object):
 
@@ -327,11 +327,10 @@ class FVTTConverter(object):
                         custom.append(d)
         return {"value":dis, "custom":",".join(custom)}
 
-    def convert_creature(self, creature: Creature) -> Any:
+    def convert_creature(self, cr: Dict[str, Any]) -> Any:
         '''Converts a creature from the default format to the FoundryVTT Actor format'''
 
         new_creature = {}
-        cr = creature.data
 
         #### Header ####
         new_creature["name"] = cr["name"]
@@ -434,7 +433,7 @@ class FVTTConverter(object):
         senses = {"darkvision": 120,"blindsight": 0,"tremorsense": 0,"truesight": 0,"units": "ft","special": ""}
         if "senses" in data:
             for entry in data["senses"]:
-                senses[entry["sense"]] = entry["distance"]
+                senses[entry["type"]] = entry["distance"]
                 senses["units"] = entry["measure"]
         conv["senses"] = senses
     

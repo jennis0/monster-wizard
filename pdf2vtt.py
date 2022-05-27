@@ -6,7 +6,7 @@ from outputs.default_writer import DefaultWriter
 from outputs.print_writer import PrintWriter
 from outputs.fvtt_writer import FVTTWriter
 
-from utils.config import get_config, get_argparser
+from utils.config import get_config, get_cli_argparser
 from utils.logger import get_logger
 
 from data_loaders.textract_image_loader import TextractImageLoader
@@ -18,11 +18,11 @@ from outputs.creature_printer import pretty_format_creature
 
 
 # Get arguments
-parser = get_argparser()
+parser = get_cli_argparser()
 args = parser.parse_args()
 
 # Get config file
-config = get_config(args)
+config = get_config(args, cli=True)
 
 if not config.has_section("source"):
     config.add_section("source")
@@ -61,23 +61,22 @@ else:
     se.select_writer(FVTTWriter.get_name())
 
 ### Run over provided targets 
-parsed_statblocks = []
 logger.info("Loading creatures from {}".format(args.target))
 
 if args.pages:
-    pages = [int(p) for p in args.pages.split(",")]
+    pages = [[int(p) for p in pages.split(",")] for pages in args.pages.split(";")]
 else:
     pages = None
 
-results = se.parse(args.target, pages=pages)
+results = se.parse_multiple(args.target, pages=pages)
 if not results:
     exit()
 
 p_func = print
 
-for source_name in parsed_statblocks:
-    source, creatures, statblocks, errors = parsed_statblocks[source_name]
-    p_func("Found {} statblocks in {}".format(len(creatures), source.name))
+for source_name in results:
+    source, errors = results[source_name]
+    p_func("Found {} statblocks in {}".format(len(source.statblocks), source.name))
 
     if output:
         if args.output:
@@ -85,11 +84,11 @@ for source_name in parsed_statblocks:
         else:
             outfile = "{}.{}".format(os.path.basename(source.name).split('.')[0], se.writer.get_filetype())
 
-        se.write_to_file(outfile, source, {0:creatures})
+        se.write_to_file(outfile, source, {0:source.statblocks})
 
     if args.print:
-        for creature in ps:
-            p_func("\n" + pretty_format_creature(creature) + "\n")
+        for statblock in source.statblocks:
+            p_func("\n" + pretty_format_creature(statblock) + "\n")
 
 
         

@@ -149,8 +149,8 @@ class FVTTWriter(WriterInterface):
                 short_label= "".join([w[0].upper() if w in stop_words else w[0].lower() for w in label.split()])
 
             for cr in creatures:
-                cr.data["source"]["title"] = label
-                cr.data["source"]["short_title"] = short_label
+                cr["source"]["title"] = label
+                cr["source"]["short_title"] = short_label
         else:
             label = source.name
 

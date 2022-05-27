@@ -3,7 +3,7 @@ import json
 from schema import Schema, Optional
 from configparser import ConfigParser
 from logging import Logger
-from typing import Any, List
+from typing import Any, List, Dict
 
 from utils.datatypes import Source
 from extractor.creature_schema import CreatureSchema
@@ -55,7 +55,7 @@ class DefaultWriter(WriterInterface):
         capped_words[0] = capped_words[0][0].upper() + capped_words[0][1:]
         return " ".join(capped_words)
 
-    def write_to_json(self, source, creatures: List[Any]) -> Any:
+    def write_to_json(self, source, creatures: List[Dict[str, Any]]) -> Any:
         '''Writes the creatures to JSON, ready to be written to a file'''
 
         pretty_name = DefaultWriter.prettify_name(source.name)
@@ -63,7 +63,6 @@ class DefaultWriter(WriterInterface):
         source_data = {
             'title': pretty_name,
         }
-        data = []
 
         if source.num_pages > 0:
             source_data['pages'] = source.num_pages
@@ -72,17 +71,14 @@ class DefaultWriter(WriterInterface):
         if source.authors is not None and len(source.authors) > 0:
             source_data['authors'] = source.authors
 
-        data.append(
-            {
+        return {
                 "source": source_data,
                 'title': source_data['title'],
-                "creatures": [c.to_json() for c in creatures]
-            }
-        )
+                "creatures": creatures
+        }
 
-        return data
 
-    def write(self, filename: str, source: Source, creatures: List[Any], append: bool=None) -> bool:
+    def write(self, filename: str, source: Source, creatures: List[Dict[str, Any]], append: bool=None) -> bool:
         '''Writes the creatures to the specified file. If append is set to true, creatures will be inserted into the existing file. Returns True if write is successful'''
 
         ### Apply configuration overrides
@@ -115,15 +111,16 @@ class DefaultWriter(WriterInterface):
         written = False
         for source_entry in old_data:
             if source_entry['source']["title"] == pretty_name:
-                crs = {c["name"]:i for c,i in enumerate(source_entry["creatures"])}
-                for c in new_data[0]["creatures"]:
+
+                crs = {c["name"]:i for i,c in enumerate(source_entry["creatures"])}
+                for c in new_data["creatures"]:
 
                     # Overwrite existing monsters
                     if c["name"] in crs:
-                        source_entry["creatures"][crs[c["name"]]] = c.to_json()
+                        source_entry["creatures"][crs[c["name"]]] = c
                     # Or right new ones
                     else:
-                        source_entry["creatures"].append(c.to_json())
+                        source_entry["creatures"].append(c)
                     
                 source_entry['source'] = new_data["source"]
                 written = True
