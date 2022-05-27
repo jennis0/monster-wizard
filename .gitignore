@@ -24,3 +24,5 @@ poppler-*
 
 *.conf
 
+logs/
+
