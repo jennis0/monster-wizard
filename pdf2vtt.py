@@ -1,19 +1,19 @@
 import os
 
-from data_loaders.pdf_loader import PDFLoader
-from outputs.pluto_writer import PlutoWriter
-from outputs.default_writer import DefaultWriter
-from outputs.print_writer import PrintWriter
-from outputs.fvtt_writer import FVTTWriter
+from extractor.data_loaders.pdf_loader import PDFLoader
+from extractor.outputs.default_writer import DefaultWriter
+from extractor.outputs.print_writer import PrintWriter
+from extractor.outputs.fvtt_writer import FVTTWriter
 
-from utils.config import get_config, get_cli_argparser
-from utils.logger import get_logger
+from extractor.utils.config import get_config, get_cli_argparser
+from extractor.utils.logger import get_logger
 
-from data_loaders.textract_image_loader import TextractImageLoader
-from data_loaders.pdf_loader import PDFLoader
+from extractor.data_loaders.textract_image_loader import TextractImageLoader
+from extractor.data_loaders.pdf_loader import PDFLoader
 
-from extractor.extractor import StatblockExtractor
-from outputs.creature_printer import pretty_format_creature
+from extractor.core.extractor import StatblockExtractor
+from extractor.outputs.creature_printer import pretty_format_creature
+
 
 
 
