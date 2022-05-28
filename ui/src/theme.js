@@ -5,9 +5,11 @@ const theme = createTheme({
         type: 'light',
         primary: {
           main: '#455a64',
+          transparent: '#455a6455'
         },
         secondary: {
           main: '#c93f3f',
+          transparent: '#c93f3f55'
         },
         error: {
           main: '#ff3d00',
@@ -19,6 +21,7 @@ const theme = createTheme({
           default: '#f0f0f0',
           paper: '#fafafa',
         },
+
       },
       shape: {
         borderRadius: 0,
@@ -62,6 +65,10 @@ const theme = createTheme({
         nav: {
           fontFamily:"Scaly Sans Caps",
           fontSize:18
+        },
+        smallNav: {
+          fontFamily:"Scaly Sans Caps",
+          fontSize:14
         },
         logo: {
           fontFamily:"Scaly Sans",

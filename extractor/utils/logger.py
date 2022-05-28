@@ -1,5 +1,6 @@
 import logging
-import sys
+import os
+from pathlib import Path
 
 def get_logger(debug: bool, log_path: str=None) -> logging.Logger:
     '''Helper function to create a standardised logger'''
@@ -15,6 +16,7 @@ def get_logger(debug: bool, log_path: str=None) -> logging.Logger:
         logger.removeHandler(hdl)
         
     if log_path:
+        os.makedirs(Path(log_path).parent.absolute(), exist_ok=True)
         logger.addHandler(logging.FileHandler(log_path, encoding='utf-8'))
 
     for handler in logger.handlers:

@@ -37,26 +37,24 @@ export default function SourceListPage () {
 
   return (
       <Box>
-      <Paper square sx={{width:"100%", height:"5vh", display:"flex", alignItems:"center"}}>
-          <Typography variant="h6" sx={{m:0, p:1}}>Sources</Typography>
-      </Paper>
-      <ImageList sx={{ width: "50%", height: "100%", p:1}}>
+      <ImageList sx={{ width: "100%", height: "100%", p:17, pl:25, pr:25}} rowHeight={400} gap={16} cols={6}>
       {sources?.map((source) => (
+        <Paper>
         <ImageListItem key={source.id} cols={1} onClick={onClick(source.id)}
         sx={{ filter:"grayscale(15%)", "&:hover": {
-          filter:"grayscale(0%) contrast(125%)",
-        }}}
+          filter:"grayscale(0%) contrast(125%)"},
+          }
+        }
         >
 
           {images && images.length && source.frontpage > 0 ? 
             <B64Image 
               image_data={images.filter(i => i.source === source.id)[0].data}
               alt={source.frontpage}
-              width={240}
             /> : <></>}
           <ImageListItemBar
-            title={source.title}
-            subtitle={source.author}
+            title={(<Typography variant="nav" sx={{fontSize:20}}>{source.title}</Typography>)}
+            subtitle={(<Typography variant="nav"><i>{source.author}</i></Typography>)}
             actionIcon={
               <IconButton
                 sx={{ color: 'rgba(255, 255, 255, 0.54)' }}
@@ -66,8 +64,10 @@ export default function SourceListPage () {
                 <Delete />
               </IconButton>
             }
+            sx={{backgroundColor:"primary.dark", height:70, opacity:0.8}}
           />
         </ImageListItem>
+        </Paper>
       ))}
     </ImageList>
     </Box>

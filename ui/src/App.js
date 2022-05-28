@@ -2,7 +2,7 @@ import React from 'react';
 
 import { Paper, Box } from "@mui/material"
 
-import UploadPage from './pages/add_source_2';
+import UploadPage from './pages/add_source';
 import SourceListPage from './pages/source_list';
 import SourcePage from './pages/source'
 

@@ -4,7 +4,7 @@ import { Add,Delete } from "@mui/icons-material";
 
 import { StyledTextAndOptField, LabelledCheckboxField, StyledDropdown } from "./FormFields";
 
-export function EffectPopper( {effect, setEffect, removeEffect} ) {
+export function EditEffect( {effect, setEffect, removeEffect} ) {
 
     const setValue = (field, subfield, is_num) => (e) => {
         const newEffect = {...effect}

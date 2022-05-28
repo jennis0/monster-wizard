@@ -13,14 +13,16 @@ def pre_post_schema(options: Enum) -> Schema:
             "type": [enum_str(options)],
             "pre_text": str,
             "post_text": str
-        }
+        },
+        error="Failed to validate list text"
     )
 
 AverageDiceSchema = Schema(
     {
         "average": int,
         "formula": str
-    }
+    },
+    error="Failed to validate dice roll text"
 )
 
 HPSchema = Or(AverageDiceSchema, Schema({"special":str}))
@@ -30,7 +32,8 @@ CreatureTypeSchema = Schema(
         "type": [Or('any', enum_str(constants.CREATURE_TYPES))],
         "swarm": bool,
         "swarm_size": Or(enum_str(constants.SIZES), None)
-    }
+    },
+    error="Failed to validate creature type"
 )
 
 SizeSchema = [enum_str(constants.SIZES)]
@@ -40,7 +43,8 @@ ACSchema = Schema(
         "ac":int,
         "from":[str],
         "condition":str
-    }
+    },
+    error="Failed to validate AC text"
 )
 
 SpeedSchema = Schema( 
@@ -48,7 +52,8 @@ SpeedSchema = Schema(
         "type": enum_str(constants.MOVEMENT_TYPES),
         "distance": int,
         "measure": enum_str(constants.MEASURES)
-    }
+    },
+    error="Failed to validate speed text"
 )
 
 SkillSchema = Schema(
@@ -57,7 +62,8 @@ SkillSchema = Schema(
         "mod": int,
         "prof": bool,
         Optional("default"):bool
-    }
+    },
+    error="Failed to validate skill"
 )
 
 DamageResistSchema = pre_post_schema(constants.DAMAGE_TYPES)
@@ -67,7 +73,8 @@ UsesSchema = Schema(
     {
         "slots": int,
         "period": enum_str(constants.TIME_MEASURES)
-    }
+    },
+    error="Failed to validate uses"
 )
 
 SenseSchema = Schema(
@@ -75,7 +82,8 @@ SenseSchema = Schema(
         "type":enum_str(constants.SENSES),
         "distance":int,
         "measure": enum_str(constants.MEASURES)
-    }
+    },
+    error="Failed to validate senses"
 )
 
 CRSchema = Schema(
@@ -83,28 +91,32 @@ CRSchema = Schema(
         "cr": Or(float, int),
         Optional("lair"): Or(float, int),
         Optional("coven"):  Or(float, int)
-    }
+    },
+    error="Failed to validate Challenge Rating"
 )
 
 DurationSchema = Schema(
     {
         "length":int,
         "measure":enum_str(constants.TIME_MEASURES)
-    }
+    },
+    error="Failed to validate effect duration"
 )
 
 DamageSchema = Schema(
     {
         "damage": AverageDiceSchema,
         "type": enum_str(constants.DAMAGE_TYPES),
-    }
+    },
+    error="Failed to validate damage text"
 )
 
 ConditionSchema = Schema(
     {
         "condition": enum_str(constants.CONDITIONS),
         Optional("duration"): DurationSchema,
-    }
+    },
+    error="Failed to validate contition text"
 )
 
 EffectSchema = Schema({
@@ -120,7 +132,8 @@ EffectSchema = Schema({
             "ability": Or(enum_str(constants.SHORT_ABILITIES), enum_str(constants.SKILLS), enum_str(constants.SHORT_SKILLS), "ath or acr"),
             "value": int
         },
-    }
+    },
+    error="Failed to validate effect text"
 )
 
 RangeSchema = Schema(
@@ -128,7 +141,8 @@ RangeSchema = Schema(
         "distance": int,
         Optional("long_distance"): int,
         "measure": enum_str(constants.MEASURES)
-    }
+    },
+    error="Failed to validate range text"
 )
 
 TargetSchema = Schema(
@@ -136,7 +150,8 @@ TargetSchema = Schema(
         "count": Or(int, "all", "any"),
         "type": Or("creature", "target", "object"),
         Optional("post_text"): str
-    }
+    },
+    error="Failed to validate target text"
 )
 
 AttackSchema = Schema(
@@ -158,7 +173,8 @@ AttackSchema = Schema(
         "damage": DamageSchema,
         Optional("versatile"): DamageSchema,
         Optional("effects"): [EffectSchema]
-    }
+    },
+    error="Failed to validate attack"
 )
 
 FeatureSchema = Schema(
@@ -168,7 +184,8 @@ FeatureSchema = Schema(
         Optional("attack"): AttackSchema,
         Optional("effects"): [EffectSchema],
         Optional("uses"): UsesSchema
-    }
+    },
+    error="Failed to validate feature"
 )
 
 ActionSchema = Schema(
@@ -181,7 +198,8 @@ ActionSchema = Schema(
         Optional("cost"): int,
         Optional("uses"): UsesSchema,
         Optional("recharge"): {"from": int, "to":int}
-    }
+    },
+    error="Failed to validate action"
 )
 
 SpellSchema = Schema(
@@ -189,7 +207,8 @@ SpellSchema = Schema(
         "name": str,
         Optional("level"): int,
         Optional("post_text"): str
-    }
+    },
+    error="Failed to validate spell"
 )
 
 SpellLevelSchema = Schema(
@@ -199,7 +218,8 @@ SpellLevelSchema = Schema(
         "level": Or('unlevelled','cantrip','1','2','3','4','5','6','7','8','9'),
         Optional("each"): bool,
         Optional("slots"): int
-    }
+    },
+    error="Failed to validate spell level"
 )
 
 SpellcastingSchema = Schema(
@@ -211,26 +231,29 @@ SpellcastingSchema = Schema(
         "spellcastingLevel": int,
         Optional("save"):int,
         Optional("post_text"):str
-    }
+    },
+    error="Failed to validate spellcasting text"
 )
 
 SourceSchema = Schema(
     {
         "title":str,
         Optional("short_title"):str,
-        Optional("page"):int,
+        Optional("pages"):[int],
         Optional("authors"):[str]
-    }
+    },
+    error="Failed to validate source"
 )
 
 ImageSchema = Schema(
     {
         Or(
-            {"source_ref":int},
+            {"source_ref":str},
             {"ref": str},
             {"data": str}
         )
-    }
+    },
+    error="Failed to validate image"
 )
 
 CreatureSchema = Schema(
@@ -301,5 +324,6 @@ CreatureSchema = Schema(
         Optional("image"): ImageSchema,
         Optional("token"): ImageSchema
 
-    }
+    },
+    error="Failed to validate creature"
 )

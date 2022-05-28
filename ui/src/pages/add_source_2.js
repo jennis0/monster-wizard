@@ -17,6 +17,7 @@ function ImageButton ( {icon, children, onClick, width="100%", height="100%"}) {
 
 
 export default function UploadPage () {
+    
     return (
         <Grid container width="100%" height="100vh" direction="row">
             <Grid item xs={0} md={2}></Grid>

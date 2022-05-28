@@ -2,8 +2,9 @@ from enum import Enum
 from fractions import Fraction
 from math import floor
 from random import randint
+
 from .annotators import LineAnnotationTypes
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
 import configparser
 import logging
 import schema
@@ -96,20 +97,79 @@ class Creature:
         else:
             return matches
 
+    def __create_error(self, key, type, error, detail, severity="error"):
+        return {    
+                "key":key,
+                "type":type,
+                "error":error,
+                "detail":detail,
+                "handled":False,
+        }
 
-    def __validate_part(self, key: str) -> bool:
-        '''Validate a subcomponent of the creature data against the schema'''
+    def __do_validate(self, key, data:Any, test_schema:Any) -> List[Any]:
+        errors = []
         try:
-            if key in cs.CreatureSchema.schema:
-                schema.Schema(cs.CreatureSchema.schema[key], error=key).validate(self.data[key])
-            elif schema.Optional(key) in cs.CreatureSchema.schema:
-                schema.Schema(cs.CreatureSchema.schema[schema.Optional(key)], error=key).validate(self.data[key])
+            schema.Schema(test_schema).validate(data)
+        except schema.SchemaError as e:
+            errors.append(self.__create_error(
+                key,
+                "schema",
+                e.errors[-1],
+                e.autos[-1]
+            ))
+
+        return errors
+            
+
+    def __validate_part(self, key: str, index: Optional[int]=None) -> bool:
+        '''Validate a subcomponent of the creature data against the schema'''
+
+        errors = []
+
+        if key in cs.CreatureSchema.schema:
+            test_schema = cs.CreatureSchema.schema[key]
+            data = self.data[key]
+        elif schema.Optional(key) in cs.CreatureSchema.schema:
+            test_schema = cs.CreatureSchema.schema[schema.Optional(key)]
+            data = self.data[key]
+        else:
+            test_schema = None
+            errors = [self.__create_error(key, "unknown_key", f"Unknown key {key}", "")]
+
+        if key:
+            ### Handle checking one item in a list
+            if index:
+                if index == -1:
+                    index = len(data) - 1
+                if not isinstance(data, list):
+                    errors.append(self.__create_error(f"{key}[{index}]", "not_list", "", ""))
+                    test_schema = None
+                else:
+                    test_schema = test_schema[0]
+                    errors += self.__do_validate(f"{key}[{index}]", data[index], test_schema)
+            
+            ### Handle checking all items in a list
+            elif isinstance(test_schema, list):
+                if not isinstance(data, list):
+                    errors.append(self.__create_error(key, "not_list", "", ""))
+                    test_schema = None
+                else:
+                    test_schema = test_schema[0]
+                    for i in range(len(self.data[key])):
+                        errors += self.__do_validate(f"{key}[{i}]", data[i], test_schema)
+
+            ### Basic case of not a list
             else:
-                raise schema.SchemaError("{}: Did not find correct key type in schema for key {}".format(self.data["name"], key))
-        except Exception as e:
-            self.errors[key] = e.__str__()
+                errors += self.__do_validate(f"key", data, test_schema)
+
+        if len(errors) > 0:
+            if key in self.errors:
+                self.errors[key] += errors
+            else:
+                self.errors[key] = errors
+
             self.logger.error("{}: Failed to validate parsed schema for {}.".format(self.data["name"], key))
-            self.logger.error(e.__str__())
+            self.logger.error(errors)
             self.logger.error(f"Data: {self.data[key]}\n")
             return False
 
@@ -480,7 +540,7 @@ class Creature:
 
         ### Append parsed action to data
         self.data["features"].append(feature)
-        self.__validate_part("features")
+        self.__validate_part("features", -1)
 
 
     def __parse_spell_names(self, spells: List[str]) -> List[Any]:
@@ -1068,7 +1128,7 @@ class Creature:
 
         ### Append parsed action to data
         self.data[action_type.name].append(action)
-        self.__validate_part(action_type.name)
+        self.__validate_part(action_type.name, -1)
 
     def add_background(self, sections: List[Section]):
         self.data["background"] = [s.get_section_text() for s in sections]

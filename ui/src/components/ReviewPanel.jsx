@@ -130,7 +130,7 @@ export default function ReviewPanel( {source, setSource} ) {
                 </Grid>
                 <Grid item xs={4} md={5}>
                     <Paper variant="outlined" square sx={{p:2, m:0, overflowY:"auto", height:"100%", width:"100%"}}>
-                        <Statblock statblock={processedData.source.statblocks[selected]}/>
+                        <Statblock statblock={processedData.source.statblocks[selected]} allowEdit={true} defaultEdit={true}/>
                     </Paper>
                 </Grid>
                 <Grid item xs={4} md={5} >

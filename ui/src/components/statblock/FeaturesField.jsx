@@ -7,7 +7,7 @@ import {  TIME_MEASURES } from '../../constants.js';
 
 import { StyledTextField,  StyledTextAndOptField } from './FormFields.jsx';
 import PoppableField from "./PoppableField.jsx";
-import { EffectPopper } from "./EffectPopper.jsx";
+import { EditEffect } from "./EditEffect.jsx";
 import TitleField from "./TitleField.jsx";
 import SpellcastingField from "./SpellcastingFIeld.jsx";
 
@@ -134,7 +134,7 @@ function FeaturePopper( {feature, setFeature, deleteFeature} ) {
         
         <Button onClick={addFeatureEffect} startIcon={<Add />} sx={{ borderRadius:0,width:"100%"}}>Add Effect</Button>
         {feature.effects ? feature.effects.map((e,j) =>
-                <EffectPopper 
+                <EditEffect 
                     effect={e} 
                     setEffect={setFeatureEffect(j)} 
                     removeEffect={removeFeatureEffect(j)} 
@@ -179,8 +179,6 @@ export default function FeaturesField( {statblock, setStatblock, editable}) {
       setStatblock({...statblock})
     }))
   }
-
-  console.log(statblock.features)
 
   if (statblock && statblock.features) {
     return (<> 

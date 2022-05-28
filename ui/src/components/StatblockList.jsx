@@ -22,22 +22,30 @@ export default function StatblockList( { title, statblocks, onClick, selected, f
     //     sbs.sort(sort)
     // }
 
+    const is_error = statblocks.map(sb => Object.keys(sb.errors).length > 0)
+
     return (
       <List sx={{p:0, m:0}}>
         {title ? <>
         <ListItem key={`sb-item-header-${title}`} sx={{topMargin:"10px", bottomMargin:"10px"}}>
             <ListItemText align="center" primaryTypographyProps={{variant:"statblock"}} primary={title} /> 
         </ListItem>
-        <Divider /></> : <></>
+        <Divider sx={{".MuiDivider-root":{color:"pink", backgroundColor:"pink", background:"pink"}}}/></> : <></>
         }
 
         {sbs.map((sb,i) => (<>
-            <ListItemButton onClick={() => onClick(i)} selected={selected === i} key={`sb-item-button-${sb.name}-${i}`} sx={{backgroundColor:Object.keys(sb.errors).length > 0 ? "secondary.light" : null}}>
-                <ListItem key={`sb-item-${sb.name}-${i}`}>
+            <ListItemButton onClick={() => onClick(i)} selected={selected === i} key={`sb-item-button-${sb.name}-${i}`} 
+              sx={{backgroundColor:is_error[i] ? "secondary.transparent" : null, m:0, 
+                  "&.Mui-selected": {
+                backgroundColor:!is_error[i] ? "primary.transparent" : "secondary.transparent"
+              }}}>
+                <ListItem key={`sb-item-${sb.name}-${i}`} sx={{"&.Mui-selected": {
+                backgroundColor:"black"
+              }}}>
                   <ListItemText primary={sb.name} primaryTypographyProps={{variant:"statblock"}}/>
                 </ListItem>
           </ListItemButton>
-          <Divider />
+          <Divider sx={{backgroundColor: (is_error[i] || is_error[Math.min(i+1,is_error.length)]) ? "secondary.main" : "primary.main", opacity:0.5}}  />
             </>
               ))}
       </List>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Typography, Divider, Box, Stack, IconButton } from "@mui/material"
+import { Typography, Divider, Box, Stack, IconButton, Alert} from "@mui/material"
 import { Lock } from '@mui/icons-material';
+import _ from 'lodash'
 
 import { MOVEMENT_TYPES, DAMAGE_TYPES, CONDITIONS, SENSES } from '../../constants.js';
 import * as fmt from '../../libs/creature_format.js'
@@ -14,18 +15,9 @@ import AttrTable from './AttrTable.jsx';
 import ImmVulnField from './ImmVulnField.jsx'
 import FeaturesField from './FeaturesField.jsx';
 import LanguagesField from './LanguageField.jsx';
-import SpellcastingField from './SpellcastingFIeld.jsx';
 import ActionField from './ActionField.jsx';
 import ChallengeField from './ChallengeField.jsx';
 import { LockOpen } from '@mui/icons-material';
-
-
-
-function OptTypography (props) {
-  return (
-    props.statblock[props.label] ? <Typography>{props.children}</Typography> : <></>
-  )
-}
 
 function Statblock( { statblock, style, allowEdit=false, defaultEdit=false, splitLength=3000 }) {
 
@@ -78,11 +70,35 @@ function Statblock( { statblock, style, allowEdit=false, defaultEdit=false, spli
     }
   }, [])
 
+  console.log(statblock)
+  console.log("errors", statblock?.errors)
+  if (Object.keys(statblock?.errors)?.length > 0) {
+    const k = Object.keys(statblock.errors)[0]
+    console.log(k)
+    console.log("test", _.get(statblock, statblock.errors[k].key))
+  }
+
+  console.log("action", _.get(statblock, "action[0]"))
+
   return (
   <Stack spacing={1} ref={ref}>
+    {Object.keys(statblock?.errors)?.map(k =>
+        statblock?.errors[k]?.map(e => {
+          let title = k
+          if (k === "action" || k === "features") {
+            title = `${k[0].toUpperCase()}${k.slice(1)} - ${_.get(statblock, e.key).title}`
+          }
+          return (
+            <Alert severity="warning">
+              <Typography variant="statblock">
+                {`Unexpected error in ${title}: ${e.error} - ${e.detail}`}
+              </Typography>
+            </Alert>)
+        })
+    )}
     <Box sx ={{display:"flex", flexDirection:"row", justifyContent:"space-between"}}>
       <Stack style={{width:"100%", padding:2, display:"flex", flexDirection:"column", ...style}} >
-                  <HighlightText sx={{m:0}} color="primary.main" editable={editable} variant="statblockTitle" suppressContentEditableWarning={editable} contentEditable={editable}>{statblock.name}</HighlightText>
+                  <HighlightText sx={{m:0}} color="primary.main" editable={editable} variant="statblockTitle" suppressContentEditableWarning={editable} contentEditable={editable}>{statblock?.name}</HighlightText>
                   <RaceTypeAlignmentField editable={editable} statblock={sb} setStatblock={setStatblock} />
       </Stack>
       {allowEdit ? <IconButton onClick={() => setEditable(!editable)}>{editable ? <LockOpen sx={{fontSize:40, color:"primary.light"}} /> : <Lock sx={{fontSize:40, color:"primary.light"}}/>}</IconButton> : <></>}
