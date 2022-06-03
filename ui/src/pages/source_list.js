@@ -8,14 +8,6 @@ import { useNavigate } from 'react-router-dom';
 import { Delete } from '@mui/icons-material';
 import B64Image from '../components/B64Image';
 
-{/* <img
-src={`https://www.wargamer.com/wp-content/uploads/2021/01/dnd-5e-class-guide-main-image-adventuring-party-closeup.jpg?w=248&fit=crop&auto=format`}
-srcSet={`https://www.wargamer.com/wp-content/uploads/2021/01/dnd-5e-class-guide-main-image-adventuring-party-closeup.jpg?w=248&fit=crop&auto=format&dpr=2 2x`}
-alt={source.title}
-loading="lazy"
-onMouseEnter={() => console.log("mouse")}
-/> */}
-
 
 export default function SourceListPage () {
   const navigate = useNavigate()
@@ -35,13 +27,15 @@ export default function SourceListPage () {
 
   console.log("ims", images?.length, sources?.map(s => [s.id, s.frontpage]))
 
+  const mw = 310 * 4
+
   return (
       <Box>
-      <ImageList sx={{ width: "100%", height: "100%", p:17, pl:25, pr:25}} rowHeight={400} gap={16} cols={6}>
+      <ImageList sx={{ width: "100%", maxWidth:{mw}, height: "100%", p:17, pl:25, pr:25}} rowHeight={400} gap={16} cols={4}>
       {sources?.map((source) => (
-        <Paper>
+        <Paper sx={{width:"310px"}}>
         <ImageListItem key={source.id} cols={1} onClick={onClick(source.id)}
-        sx={{ filter:"grayscale(15%)", "&:hover": {
+        sx={{ width:"310px", alignItems:"center", p:0, filter:"grayscale(15%)", "&:hover": {
           filter:"grayscale(0%) contrast(125%)"},
           }
         }
@@ -51,6 +45,8 @@ export default function SourceListPage () {
             <B64Image 
               image_data={images.filter(i => i.source === source.id)[0].data}
               alt={source.frontpage}
+              width="100%"
+              style={{alignItems:"center", overflowY:"clip"}}
             /> : <></>}
           <ImageListItemBar
             title={(<Typography variant="nav" sx={{fontSize:20}}>{source.title}</Typography>)}

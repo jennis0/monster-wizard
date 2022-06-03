@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FormGroup, Typography, Button } from "@mui/material"
+import { FormGroup, Typography, Button, Grid } from "@mui/material"
 
 import { LANGUAGES } from '../../constants.js';
 
@@ -11,14 +11,15 @@ import PoppableField from "./PoppableField.jsx";
 import * as fmt from '../../libs/creature_format.js'
 import { Add } from '@mui/icons-material';
 import { Delete } from '@mui/icons-material';
+import EditBlock from './EditBlock.jsx';
 
 
-export default function LanguagesField( {statblock, setStatblock, editable=true }) {
+export default function LanguagesField( {statblock, setStatblock, editable=true, resetFunc }) {
 
-    const onAddLanguage = () => {
+    const onAddLanguage = (i) => () => {
     setStatblock(s =>{
       const languages = s.languages
-      languages.push("Common")
+      languages.splice(i+1, 0, "Common")
       return {...s, languages:languages}
     })
   }
@@ -40,21 +41,28 @@ export default function LanguagesField( {statblock, setStatblock, editable=true 
 
   }
 
+  const onReset = () => {
+    resetFunc((sb) => {
+      return sb.languages
+    })
+  }
+
   return ( 
-    <PoppableField editable={editable} text={<><b>Languages</b> {fmt.format_languages(statblock)}</>} hide={!editable && !statblock?.languages?.length > 0}>
-      <FormGroup sx={{marginBottom:-4}}>
-        <Typography variant="h6">Languages</Typography>
+    <PoppableField editable={editable} text={<><b>Languages</b> {fmt.format_languages(statblock)}</>} 
+                    hide={!editable && !statblock?.languages?.length > 0} onReset={onReset}>
+        <EditBlock title="Languages">
         {statblock.languages?.map((lg, i) => (
+          <Grid item xs={12}>
             <StyledTextField 
                 label="Language" 
                 value={lg}
                 onChange={onSetLanguage(i)} 
-                endButton={<Delete />} 
-                onEndButtonClick={onDeleteLanguage(i)}
+                endButton={[<Add />, <Delete />]} 
+                onEndButtonClick={[onAddLanguage(i), onDeleteLanguage(i)]}
              />
+          </Grid>
         ))}
-        <Button onClick={onAddLanguage}><Add />Add Language</Button>
-      </FormGroup>
+        </EditBlock>
       </PoppableField>
   );
 } 

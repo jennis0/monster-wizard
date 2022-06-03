@@ -6,11 +6,11 @@ import { useLiveQuery } from 'dexie-react-hooks'
 
 export const db = new Dexie('pdf2vtt');
 db.version(1).stores({
-  sources: '++id, title, author, pages, file, upload, version, status, frontpage, pdf',
+  sources: '++id, title, type, author, pages, file, upload, version, status, errors, frontpage, pdf',
   statblocks: '++id, source, original_data, modified_data, image',
   images: "++id, source, page, reference, data, bound",
   pdfs: "++id, source, file",
-  uploads: "++id, filename, file, time, status, progress, errors"
+  uploads: "++id, title, time, status, progress, file_progress, errors, raw, store_images, source, request_id"
 });
 
 export function useSource(id, watch_params=[]) {
@@ -22,11 +22,14 @@ export function useSource(id, watch_params=[]) {
 }
 
 
-export async function addSource(title, author, pages, file, upload, version, status, frontpage=null, pdf=null) {
-  return await db.sources.add({title, author, pages, file, upload, version, status, frontpage:null, pdf:null})
+export async function addSource(title, author, pages, file, upload, version, status, errors, frontpage=null, pdf=null) {
+  return await db.sources.add({title, author, pages, file, upload, version, status, errors, frontpage:null, pdf:null})
     .then(s_id => {
+      console.log("frontpage", frontpage)
       if (frontpage) {
-        db.images.add({source:s_id, page:0, reference: frontpage.id, data:frontpage.data, bound:frontpage.bound})
+        const img_data = {source:s_id, page:0, reference: frontpage.id, data:frontpage.data, bound:frontpage.bound}
+        console.log("id", img_data)
+        db.images.add(img_data)
           .then(im_id => db.sources.update(s_id, {frontpage:im_id}))
       }
       if (pdf) {
@@ -59,7 +62,15 @@ export async function addStatblock(source, statblock, image=null) {
     return await db.statblocks.add({source:source, original_data:statblock, modified_data:statblock, image:image})
 }
 
-export async function addUpload(filename, file, time, status, progress, errors) {
-  return await db.uploads.add({filename, file, time, status, progress, errors})
+export async function addUpload(title, time, status, progress, file_progress, errors, raw, store_images, source, request_id) {
+  return await db.uploads.add({title, time, status, progress, file_progress, errors, raw, store_images, source, request_id})
+}
+
+export async function updateUpload(upload, update) {
+  return await db.uploads.update(upload, update)
+}
+
+export async function deleteUpload(upload) {
+  return await db.uploads.delete(upload)
 }
 

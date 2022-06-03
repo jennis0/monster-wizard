@@ -1,7 +1,8 @@
 import React from 'react'
-import { Box, CircularProgress, Typography, Paper, Button } from "@mui/material"
+import { Box, CircularProgress, Typography, Paper, Button, IconButton, Tooltip, LinearProgress } from "@mui/material"
 import { Stack } from '@mui/material';
-import { Replay } from '@mui/icons-material';
+import { Cancel, CancelOutlined, Replay } from '@mui/icons-material';
+import { db, deleteUpload } from '../libs/db';
 
 function CircularProgressWithLabel(props) {
     return (
@@ -27,6 +28,35 @@ function CircularProgressWithLabel(props) {
       </Box>
     );
   }
+
+export function ImportProgress ( {upload} ) {
+
+  const onCancel = (e) => {
+    deleteUpload(upload.id)
+    
+  }
+
+  const error = upload.status === "error"
+  const stage_progress = 100* upload.progress[0] / upload.progress[1]
+  console.log(stage_progress)
+
+  return (
+    <Box sx={{w:"100%"}}>
+      <Box sx={{w:"100%", justifyContent:"space-between", display:"flex", flexDirection:"row", alignItems:"center"}}>
+        <Typography fontFamily="Scaly Sans" fontSize={12}>{STAGE_TEXT_MAP[upload.status]}</Typography>
+        <Typography fontFamily="Scaly Sans" fontSize={12}>{`File: ${upload.file_progress[0]}/${upload.file_progress[1]}`}</Typography>
+        <Tooltip title="Cancel import">
+          <IconButton sx={{mt:-2}} onClick={onCancel}>
+            <CancelOutlined sx={{color:"background.default"}}/>
+          </IconButton>
+        </Tooltip>
+      </Box>
+      <LinearProgress value={stage_progress} color={error ? "secondary" : "success"} variant="determinate" />
+    </Box>
+  )
+}
+  
+
   
   const STAGE_TEXT_MAP = {
       "file_upload":"Uploading File...",

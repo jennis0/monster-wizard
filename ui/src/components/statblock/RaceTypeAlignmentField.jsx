@@ -1,6 +1,6 @@
-import { FormGroup,  FormControlLabel,  Checkbox,  } from "@mui/material"
+import { FormGroup,  FormControlLabel,  Checkbox, Grid,  } from "@mui/material"
 import { TYPES, SIZES,  } from '../../constants.js';
-import { StyledTextField, StyledDropdown } from './FormFields.jsx';
+import { StyledTextField, StyledDropdown, StyledCheckbox } from './FormFields.jsx';
 import PoppableField from "./PoppableField.jsx";
 
 import * as fmt from '../../libs/creature_format.js'
@@ -29,13 +29,21 @@ export default function RaceTypeAlignmentField({ statblock, setStatblock, editab
   
     return (
       <PoppableField editable={editable} textProps={{variant:"statblockRaceType"}} text={(<i>{fmt.format_race_type_alignment(statblock)}</i>)} {...props}>
-          <FormGroup sx={{p:0, marginBottom:0}}>
+        <Grid container spacing={1}>
+          <Grid item xs={12} lg={4}>
             <StyledDropdown id="size-dropdown" label="Size" value={statblock?.size} onChange={setSize} options={SIZES} />
-            <FormControlLabel sx={{alignContent:"left", justifyContent:"left"}} labelPlacement="start" control={<Checkbox checked={statblock?.creature_type?.swarm} onChange={setSwarm} />} label="Swarm" />
-            {statblock?.creature_type?.swarm === true ? <StyledDropdown label="Swarm Size" value={statblock?.creature_type?.swarm_size ? statblock?.creature_type?.swarm_size : "-"} onChange={setSwarmSize} options={["-"].concat(SIZES)} /> : <></>}
+          </Grid>
+          <Grid item xs={12} lg={4}>
             <StyledDropdown label="Type" value={statblock?.creature_type?.type} onChange={setType} options={TYPES} />
-            <StyledTextField label="Alignment" value={statblock?.alignment} onChange={setAlignment} />
-          </FormGroup>
+          </Grid>
+          <Grid item xs={12} lg={4}>
+            <StyledTextField label="Alignment" value={statblock?.alignment} onChange={setAlignment}/>
+          </Grid>
+          <Grid item xs={12} lg={4}>
+            <StyledCheckbox label="Swarm" checked={statblock?.creature_type?.swarm} onCheckChange={setSwarm} tooltip="Swarm of smaller creatures"/>
+            {statblock?.creature_type?.swarm === true ? <StyledDropdown label="Swarm Size" value={statblock?.creature_type?.swarm_size ? statblock?.creature_type?.swarm_size : "-"} onChange={setSwarmSize} options={["-"].concat(SIZES)} /> : <></>}
+          </Grid>
+        </Grid>
       </PoppableField>  
     )
   }

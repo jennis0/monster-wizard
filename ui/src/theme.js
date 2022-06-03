@@ -1,28 +1,33 @@
 import { createTheme } from "@mui/material/styles";
 
-const theme = createTheme({
-    palette: {
-        type: 'light',
-        primary: {
-          main: '#455a64',
-          transparent: '#455a6455'
-        },
-        secondary: {
-          main: '#c93f3f',
-          transparent: '#c93f3f55'
-        },
-        error: {
-          main: '#ff3d00',
-        },
-        warning: {
-          main: '#fb8c00',
-        },
-        background: {
-          default: '#f0f0f0',
-          paper: '#fafafa',
-        },
+const palette = createTheme({
+  palette: {
+    type: 'light',
+    primary: {
+      main: '#455a64',
+      transparent: '#455a6455'
+    },
+    secondary: {
+      main: '#c93f3f',
+      transparent: '#c93f3f55'
+    },
+    error: {
+      main: '#ff3d00',
+    },
+    warning: {
+      main: '#fb8c00',
+    },
+    background: {
+      default: '#f0f0f0',
+      dark: '#c0c0c0',
+      contrastText:"#050505",
+      paper: '#fafafa',
 
-      },
+    },
+  }
+})
+
+const theme = createTheme({
       shape: {
         borderRadius: 0,
       },
@@ -104,26 +109,37 @@ const theme = createTheme({
         },
         MuiButton: {
             defaultProps: {
-                variant:"contained",
-                elevation:1
+                variant:"text",
+                elevation:0,
+                fontFamily:"Scaly Sans",
             },
             styleOverrides: {
-                root: {
-                  borderRadius: 0
-                }
+              root: {
+                borderRadius: 2,
+                textTransform:"none",
+                fontFamily:"Scaly Sans",
+                fontSize:17,
+              },
               }
         },
-        MuiListItem: {
-            root: {
-              "&:selected": {
-                backgroundColor: "red",
-                "&:hover": {
-                  backgroundColor: "orange",
-                },
-              },
+        MuiTooltip: {
+          defaultProps:{
+            enterDelay:300,
+            enterNextDelay:100,
+            arrow:true,
+            disableFocusListener:true
+          },
+          styleOverrides:{
+            tooltip: {
+                backgroundColor:palette.palette.primary.light,
+                fontSize: 15,
+                fontFamily:"Scaly Sans",
+                textAlign:"center",
+                alignItems:"center"
             },
-        },
+        }
+      },
     }
-});
-console.log(theme);
+}, palette);
+
 export default theme;

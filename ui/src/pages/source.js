@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Grid, Paper, Typography, Box, Stack, Button, IconButton, Popper } from "@mui/material";
+import { Grid, Paper, Typography, Box, Stack, Button, IconButton, Popper, Dialog } from "@mui/material";
 import SaveIcon from '@mui/icons-material/Save';
 import EditIcon from '@mui/icons-material/Edit';
 
@@ -96,45 +96,50 @@ function SourceTitlePart( {source} ) {
     }
 
 return (<>
-        <Popper 
+        <Dialog
         id={"edit-source-meta-popper"} 
         open={Boolean(anchorEl)} 
-        anchorEl={anchorEl} 
-        placement="bottom"
-        disablePortal={false}
         keepMounted={false}
     >
         <Paper 
             square variant="outlined" 
             sx={{p:1, display:"flex", flexDirection:"column", backgroundColor:"white", width:"500px"}}
         >
-            <StyledTextField id="source-meta-update-title-field" 
-                label="Title" 
-                variant="statblockTitle"
-                value={tmpMeta?.title} 
-                onChange={updateTmpMeta("title")}    
-            />
-            <StyledTextField id="source-meta-update-author-field" 
-                label="Author" 
-                value={tmpMeta?.author} 
-                onChange={updateTmpMeta("author")}
-            />
-            <Box sx={{display:"flex", flexDirection:"row", justifyContent:"space-between"}}>
-                <Button 
-                    startIcon={<Close />} 
-                    onClick={() => {setAnchorEl(null); setTmpMeta(source)}}
-                >
-                    Cancel
-                </Button>
-                <Button 
-                    startIcon={<Done />} 
-                    onClick={updateSourceMeta}
-                >
-                    Accept
-                </Button>
-            </Box>
+            <Grid container spacing={1}>
+                <Grid item xs={12}>
+                    <StyledTextField id="source-meta-update-title-field" 
+                        label="Title" 
+                        variant="statblockTitle"
+                        value={tmpMeta?.title} 
+                        onChange={updateTmpMeta("title")}    
+                    />
+                </Grid>
+                <Grid item xs={12}>
+                    <StyledTextField id="source-meta-update-author-field" 
+                        label="Author" 
+                        value={tmpMeta?.author} 
+                        onChange={updateTmpMeta("author")}
+                    />
+                </Grid>
+                <Grid item xs={12}>
+                    <Box sx={{display:"flex", flexDirection:"row", justifyContent:"space-between"}}>
+                        <Button 
+                            startIcon={<Close />} 
+                            onClick={() => {setAnchorEl(null); setTmpMeta(source)}}
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            startIcon={<Done />} 
+                            onClick={updateSourceMeta}
+                        >
+                            Accept
+                        </Button>
+                    </Box>
+            </Grid>
+            </Grid>
         </Paper>
-    </Popper>
+    </Dialog> 
     <Box sx={{height:"100px", width:"100%", p:0, m:0, overflow:"clip"}}>
         <Box
             sx={{height:"200px", position:"relative", leftMargin:-50, left:-50, width:"120%", top:-50, 

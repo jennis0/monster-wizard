@@ -1,4 +1,4 @@
-import { Paper,Button, Box } from "@mui/material"
+import { Paper,Button, Box, Grid, Divider, ButtonGroup, IconButton } from "@mui/material"
 
 import { StyledTextField } from './FormFields.jsx';
 import PoppableField from "./PoppableField.jsx";
@@ -7,6 +7,7 @@ import * as fmt from '../../libs/creature_format.js'
 import { Delete } from '@mui/icons-material';
 import { Add } from '@mui/icons-material';
 import { Typography } from "@mui/material";
+import EditBlock from "./EditBlock.jsx";
 
 export default function ACField({ statblock, setStatblock, editable, resetFunc, width }) {
     const setACField = (field, i, j=null) => (event) => {
@@ -61,38 +62,43 @@ export default function ACField({ statblock, setStatblock, editable, resetFunc, 
   
     return(
       <PoppableField editable={editable} onReset={applyReset} text={<>
-      <b>Armour Class</b> {fmt.format_ac(statblock)}</>} >
+        <b>Armour Class</b> {fmt.format_ac(statblock)}</>} 
+      >
           {statblock?.ac?.map((ac, i) => 
-            (<Box key={`ac-set-value-${i}`} 
-              sx={{flexDirection:"column", display:"flex", mb:0, mt:0, width:"100%"}}
-            >
-              <StyledTextField label="AC" value={ac.ac} onChange={setACField("ac", i)} number/>
-              <StyledTextField label="Conditions" value={ac.condition} onChange={setACField("condition", i)}/>
+            (
+            <EditBlock title="Armour Class" onAdd={addAC} onDelete={removeAC(i)} first={i === 0}>
+              <Grid item xs={12} md={3}>
+                <StyledTextField short label="AC" value={ac.ac} onChange={setACField("ac", i)} number/>
+              </Grid>
+              <Grid item xs={12} md={9}>
+                <StyledTextField label="Condition" value={ac.condition} onChange={setACField("condition", i)}/>
+              </Grid>
               {ac.from.map((f,j) =>
-                (<StyledTextField key={`ac-set-value-${i}-from-${j}`} label="From" value={f}
-                   onChange={setACField("from", i, j)} 
-                   endButton={<Delete />}
-                   onEndButtonClick={removeACFrom(i,j)} />)
+                (
+                <Grid item xs={12}>
+                  <StyledTextField key={`ac-set-value-${i}-from-${j}`} label="Source" value={f}
+                    onChange={setACField("from", i, j)} 
+                    endButton={[<Add />, <Delete />]}
+                    onEndButtonClick={[addACFrom(i), removeACFrom(i,j)]} />
+                </Grid>
+                  )
               )}
-              <Button 
-                variant="contained"
-                startIcon={<Add />} 
-                onClick={(addACFrom(i))} 
-                sx={{width:200, textAlign:"left"}}
-              >
-                Add AC Source
-              </Button>
-              {i > 0 ? 
-              <Button 
-                startIcon={<Delete />} 
-                variant="contained"
-                onClick={removeAC(i)}
-                sx={{width:200, alignItems:"left"}}
-              >Remove AC</Button> : <></>}
-              </Box>
-            )
+              {ac.from.length === 0 ?
+              <Grid container item xs={12} justifyContent="flex-end">
+                <Grid item xs={4} >
+                  <Button 
+                    endIcon={<Add />} 
+                    onClick={(addACFrom(i))} 
+                    sx={{width:"100%"}}
+                  >
+                    Add Source
+                  </Button>
+                </Grid>
+                </Grid>
+                
+              : <></>}
+            </EditBlock>)
           )}
-          <Button variant="contained" startIcon={<Add />} sx={{width:200, textAlign:"left"}} onClick={addAC}>Add Armor Class</Button>
       </PoppableField>
     )
   }

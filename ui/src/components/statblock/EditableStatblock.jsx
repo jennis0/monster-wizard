@@ -10,7 +10,7 @@ import RaceTypeAlignmentField from './RaceTypeAlignmentField.jsx';
 import HPField from './HPField.jsx';
 import ACField from './ACField.jsx';
 import DistanceField from './DistanceField.jsx';
-import SkillsField from './SkillsField_old.jsx';
+import SkillsField from './SkillsField.jsx';
 import AttrTable from './AttrTable.jsx';
 import ImmVulnField from './ImmVulnField.jsx'
 import FeaturesField from './FeaturesField.jsx';
@@ -48,9 +48,12 @@ function Statblock( { statblock, style, allowEdit=false, defaultEdit=false, spli
   },[statblock])
 
   const resetFunc = (field) => (fieldResetFunc) => {
-    const newStatblock = {...sb}
-    newStatblock[field] = fieldResetFunc(statblock)
-    setStatblock(newStatblock)
+    const result = fieldResetFunc(statblock)
+    setStatblock(s => {
+      const newS = {...s}
+      newS[field] = result
+      return newS
+    })
   }
 
  
@@ -71,14 +74,10 @@ function Statblock( { statblock, style, allowEdit=false, defaultEdit=false, spli
   }, [])
 
   console.log(statblock)
-  console.log("errors", statblock?.errors)
   if (Object.keys(statblock?.errors)?.length > 0) {
     const k = Object.keys(statblock.errors)[0]
-    console.log(k)
-    console.log("test", _.get(statblock, statblock.errors[k].key))
   }
 
-  console.log("action", _.get(statblock, "action[0]"))
 
   return (
   <Stack spacing={1} ref={ref}>
@@ -109,7 +108,7 @@ function Statblock( { statblock, style, allowEdit=false, defaultEdit=false, spli
           <ACField editable={editable}  statblock={sb} setStatblock={setStatblock} resetFunc={resetFunc("ac")} width={400}/>
           <HPField editable={editable}  statblock={sb} setStatblock={setStatblock} resetFunc={resetFunc("hp")}/>
           <DistanceField editable={editable} statblock={sb} setStatblock={setStatblock} title="speed" 
-                          text="Speed" singular="Speed" fmt_func={fmt.format_speed} 
+                          text="Speed" singular="Speed" fmt_func={fmt.format_speed} default_option={{type:"walk", distance:"30", measure:"ft"}}
                           min_items={1}
                           options={MOVEMENT_TYPES} default_options={{type:"walk",distance:"30",measure:"ft"}} resetFunc={resetFunc("speed")} />
           <Divider  sx={{marginTop:1}}/>
@@ -117,24 +116,24 @@ function Statblock( { statblock, style, allowEdit=false, defaultEdit=false, spli
           <Divider  sx={{marginBottom:1}}/>
           <SkillsField editable={editable}  statblock={sb} setStatblock={setStatblock} resetFunc={resetFunc("skills")}/>
           <ImmVulnField statblock={sb} setStatblock={setStatblock} options={DAMAGE_TYPES} 
-                        title_text="Resistances" title="resistances" 
+                        title_text="Resistances" title="resistances"  singular="Resistance"
                         fmt_func={fmt.format_resistances} editable={editable} resetFunc={resetFunc}/>
           <ImmVulnField statblock={sb} setStatblock={setStatblock} options={DAMAGE_TYPES} 
-                        title_text="Damage Immunities" title="damage_immunities" 
+                        title_text="Damage Immunities" title="damage_immunities" singular="Immunity"
                         fmt_func={fmt.format_damage_immunities} editable={editable} resetFunc={resetFunc} />
           <ImmVulnField statblock={sb} setStatblock={setStatblock} options={CONDITIONS} 
-                        title_text="Condition Immunities" title="condition_immunities" 
+                        title_text="Condition Immunities" title="condition_immunities" singular="Immunity"
                         fmt_func={fmt.format_condition_immunities} editable={editable} resetFunc={resetFunc}/>
           <ImmVulnField statblock={sb} setStatblock={setStatblock} options={DAMAGE_TYPES} 
-                        title_text="Vulnerabilities" title="vulnerabilities" 
+                        title_text="Vulnerabilities" title="vulnerabilities" singular="Vulnerability"
                         fmt_func={fmt.format_vulnerabilities} editable={editable} resetFunc={resetFunc} />
           <DistanceField statblock={sb} setStatblock={setStatblock} title="senses" 
-                          text="Senses" singular="Sense" fmt_func={fmt.format_senses} 
+                          text="Senses" fmt_func={fmt.format_senses} singular="Sense"
                           options={SENSES} default_options={{type:"darkvision",distance:"60",measure:"ft"}} editable={editable} resetFunc={resetFunc("senses")}/>
           <LanguagesField statblock={sb} setStatblock={setStatblock} editable={editable} resetFunc={resetFunc("languages")}/>
           <ChallengeField statblock={sb} setStatblock={setStatblock} editable={editable} resetFunc={resetFunc("cr")}/>
           <div style={{marginTop:10}} />
-          <FeaturesField statblock={sb} setStatblock={setStatblock} editable={editable}  resetFunc={resetFunc}/>
+          <FeaturesField statblock={sb} setStatblock={setStatblock} editable={editable}  resetFunc={resetFunc("features")}/>
           <ActionField statblock={sb} setStatblock={setStatblock} editable={editable} resetFunc={resetFunc}/>
           <div style={{marginTop:10}} />
           <Typography align="right" variant="subtitle2" sx={{margin:1}}><i>Source: {statblock.source.title}, pg.{statblock.source.page}</i></Typography>

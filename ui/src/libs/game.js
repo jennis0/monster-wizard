@@ -13,8 +13,8 @@ export function get_proficiency(statblock) {
 export function get_default_skill_bonus(statblock, skill, proficient) {
     const ability = SHORT_SKILL_ABILITY_MAP[skill]
     let mod = 0;
-    if (ability & statblock.abilities && statblock.abilities) {
+    if (ability && statblock.abilities) {
         mod = Math.floor((statblock.abilities[ability] - 10) / 2)
     }
-    return {skill:skill, mod:(proficient ? 1 : 0) * Number(get_proficiency(statblock)) + Number(mod), default:"true", prof:proficient}
+    return {skill:skill, skill_mod:Number(mod), mod:(proficient ? 1 : 0) * Number(get_proficiency(statblock)) + Number(mod), default:"true", prof:proficient}
 }

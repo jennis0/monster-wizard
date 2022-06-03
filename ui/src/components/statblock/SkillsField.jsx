@@ -1,153 +1,155 @@
 import React, { useState, useEffect } from 'react';
-import { FormGroup, Typography, Button } from "@mui/material"
+import { FormGroup, Typography, Button, Grid, Checkbox } from "@mui/material"
 
-import { SHORT_SKILLS } from '../../constants.js';
+import { REVERSE_SKILL_MAP, SHORT_SKILLS, SHORT_SKILL_ABILITY_MAP, SKILLS, SKILL_MAP } from '../../constants.js';
 
 
-import {SkillField, CustomSkillField } from './FormFields.jsx';
+import {SkillField, CustomSkillField, StyledTextAndOptField, StyledDropdown, StyledTextField, StyledCheckbox } from './FormFields.jsx';
 import PoppableField from "./PoppableField.jsx";
 
 
 import * as fmt from '../../libs/creature_format.js'
 import { Add } from '@mui/icons-material';
 import { get_default_skill_bonus, get_proficiency } from '../../libs/game.js';
+import EditBlock from './EditBlock.jsx';
 
 
-export default function SkillsField( {statblock, setStatblock, editable=true }) {
+export default function SkillsField( {statblock, setStatblock, editable=true, resetFunc }) {
 
-  const [customSkills, setCustomSkills] = useState([])
-
-  const onCheckChange = (skill) => () => {
+  const onProfChange = (i) => () => {
       setStatblock(s => {
         let skills = s.skills;
-        const old_skill = skills.filter(sk => sk.skill === skill)
-        if (old_skill.length === 1) {
-          skills = skills.filter(sk => sk.skill !== skill)
-          if (old_skill[0].prof === false) {
-            old_skill[0].prof = true
-            old_skill[0].mod = Number(old_skill[0].mod) + get_proficiency(statblock)
-            skills.push(old_skill[0])
-          } else {
-            if (!old_skill[0].default) {
-              old_skill[0].prof = false
-              old_skill[0].mod = Number(old_skill[0].mod) - get_proficiency(statblock)
-              skills.push(old_skill[0])
-            }
-          }
+        const skill = skills[i]
+        const prof = get_proficiency(s)
+        if (skill.prof) {
+          skill.mod -=prof
+          skill.prof = false 
         } else {
-          skills.push(get_default_skill_bonus(statblock, skill, true))
+          skill.mod += prof
+          skill.prof = true
         }
+        skills[i] = skill
         return {...s, skills:skills}
     })
   }
+  
+  const onCustomChange = (i) => () => {
+    setStatblock(s => {
+      const skills = [...s.skills]
+      const skill = skills[i]
+      skill.is_custom = !skill.is_custom
+      skill.skill = ""
+      skill.mod = 0
+      skills[i] = skill
+      return {...s, skills:skills}
+    })
+  }
 
-  const onValueChange = (skill) => (event) => {
+
+  const onSkillChange = (i) => (event) => {
     setStatblock(s =>{
-      const old_skill = s.skills.filter(sk => sk.skill === skill)
-      let skills = s.skills
-      if (old_skill.length === 0) {
-        if (event.target.value.trim() !== "") {
-          skills.push(get_default_skill_bonus(statblock, skill, false))
-          skills[-1].mod = event.target.value
-          skills[-1].default = false
-        } else if (old_skill.__custom_id >= 0) {
-          skills.push(old_skill)
-          skills[-1].mod = event.target.value
-        }
+      const skills = [...s.skills]
+      const skill = skills[i]
+
+      if (skill.is_custom) {
+        skill.skill = event.target.value
       } else {
-        for(const sk of skills) {
-          if (sk.skill === skill) {
-            if (event.target.value.trim() === "" && !(sk.__custom_id >= 0)) {
-              skills = skills.filter(sk => sk.skill != skill)
-            } else {
-              sk.mod = event.target.value
-              sk.default = false
-            }
-          }
+        const skill_name = REVERSE_SKILL_MAP[event.target.value]
+        if (skill_name) {
+          const dsb_old = get_default_skill_bonus(s, skill.skill, skill.prof)
+          skill.skill = skill_name
+          const dsb = get_default_skill_bonus(s, skill.skill, skill.prof)
+          skill.mod -= dsb_old.skill_mod + dsb.skill_mod
+        } else {
+          skill.skill = event.target.value
         }
       }
+      skills[i] = skill
+
       return {
         ...s, skills:skills
       }
     })
   }
 
-  const onAddSkill = (event) => {
+  const onAddSkill = (i) => () => {
     setStatblock(s =>{
-      const skills = s.skills
-      skills.push({
+      let skills = []
+      if (s.skills) {
+        skills = [...s.skills]
+      }
+      const new_skill = {
         skill:"",
         mod:get_proficiency(statblock),
         default:false,
         prof:true,
-        __custom_id:Math.floor(Math.random()*100000)
-      })
+      }
+      skills.splice(i+1, 0, new_skill)
       return {...s, skills:skills}
     })
   }
 
-  const onDeleteSkill = (id) => (event) => {
-    setStatblock(s => 
-      {return {...s, skills:s.skills.filter(sk => sk.__custom_id !== id)}}
-    )
-  }
-
-  const onSetSkillName = (id) => (event) => {
+  const onDeleteSkill = (i) => () => {
     setStatblock(s => {
-      const skills = s.skills
-      const sk_index = skills.findIndex(sk => sk.__custom_id === id)
-      skills[sk_index].skill = event.target.value;
+      const skills = [...s.skills]
+      skills.splice(i, 1)
       return {...s, skills:skills}
     })
-
   }
 
-  useEffect(() => {
-    setCustomSkills(() => 
-      statblock.skills?.filter(sk => !SHORT_SKILLS.includes(sk.skill)).map(sk => sk.__custom_id)
-    )
+  const onReset = () => {
+    resetFunc((sb) => {
+      return sb.skills
+    })
   }
-  ,[statblock])
 
   const skills_text = fmt.format_skills(statblock).map(s => `${s[0]} ${s[1]}`).join(", ");
   
   return ( 
-    <PoppableField editable={editable} text={<><b>Skills</b> {skills_text}</>} hide={!editable && skills_text.trim().length === 0}>
-      <FormGroup sx={{marginBottom:-2}}>
-        <Typography variant="h6">Skills</Typography>
-        {SHORT_SKILLS.map(s => {
-          const current = statblock?.skills?.filter(sk => sk.skill === s); 
-          let default_skill = null;
-          let sk = null
-          if (current?.length === 1) {
-            sk = current[0];
-            default_skill = get_default_skill_bonus(statblock, s, sk.prof)            
-          } else {
-            sk = get_default_skill_bonus(statblock, s, false)
-            default_skill = sk
-          }
-          return (
-            <SkillField skill={sk.skill} value={sk.mod} key={`skill-${sk.skill}`}
-                        checked={sk.prof} is_default={sk.default} width="400px"
-                        default_value={default_skill.mod}
-                        onCheckChange={onCheckChange(sk.skill)}
-                        onValueChange={onValueChange(sk.skill)}/>
-        )})}
-        {customSkills?.map(s => {
-          const sks = statblock?.skills?.filter(sk => sk.__custom_id === s)
-          if (sks && sks.length === 1) {
-            const sk = sks[0]
-          return (<CustomSkillField skill={sk.skill} value={sk.mod} 
-                                    onNameChange={onSetSkillName(s)} 
-                                    onValueChange={onValueChange(sk.skill)}
-                                    onDelete={onDeleteSkill(s)}
-                                    id={sk.__custom_id}
-                                    key={`custom-skill-field-${sk.__custom_id}`}
-          />
-            )}
-        })}
-        <Button onClick={onAddSkill}><Add />Add Custom Skill</Button>
-      </FormGroup>
+    <PoppableField editable={editable} text={<><b>Skills</b> {skills_text}</>} hide={!editable && skills_text.trim().length === 0} onReset={onReset}>
+      {statblock.skills && statblock.skills.length > 0 ? 
+      
+      statblock.skills.map((sk,i) => { 
+        let skill_name = SKILL_MAP[sk.skill]?.toLowerCase()
+        let short_ability = SHORT_SKILL_ABILITY_MAP[sk.skill]?.toUpperCase()
+        if (skill_name === null | skill_name === undefined) {
+            skill_name = sk.skill
+            short_ability = ""
+        }
+        const default_skill = get_default_skill_bonus(statblock, sk.skill, sk.prof)            
+    
+        return (
+          <Grid item container spacing={1} xs={12}>
+            <EditBlock title="Skill" onAdd={onAddSkill(i)} onDelete={onDeleteSkill(i)}>
+              <Grid item xs={6}>
+                <StyledCheckbox
+                  checked={sk.prof}
+                  onCheckChange={onProfChange(i)}
+                  label="Proficient" />
+              </Grid>
+              <Grid item xs={6}>
+                <StyledCheckbox
+                  checked={sk.is_custom}
+                  onCheckChange={onCustomChange(i)}
+                  label="Custom" />
+              </Grid>
+              <Grid item xs={12}>
+                <SkillField skill={sk.skill} set_value={sk.mod} key={`skill-${i}`}
+                          is_custom={sk.is_custom}
+                          is_proficient={sk.prof} is_default={sk.default} width="400px"
+                          default_value={default_skill.mod} skill_mod={default_skill.skill_mod}
+                          onSkillChange={onSkillChange(i)}/>
+              </Grid>
+            </EditBlock>
+          </Grid>
+        )
+      }) : 
+      <Grid item xs={12} lg={6}>
+        <Button sx={{height:"40px"}} startIcon={<Add />} 
+                onClick={onAddSkill(0)}>Add Skill</Button>
+      </Grid>
+    }
+      
       </PoppableField>
   );
 }

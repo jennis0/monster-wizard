@@ -3,9 +3,10 @@ import { useEffect, useState } from "react";
 import { format_cr } from "../../libs/creature_format";
 import { StyledTextField } from "./FormFields";
 import PoppableField from "./PoppableField";
-import { Stack } from "@mui/material";
+import { Grid } from "@mui/material";
+import EditBlock from "./EditBlock";
 
-export default function ChallengeField ( {statblock, setStatblock, editable }) {
+export default function ChallengeField ( {statblock, setStatblock, editable, resetFunc }) {
 
     const [lastState, setLastState] = useState(statblock.cr)
 
@@ -49,14 +50,26 @@ export default function ChallengeField ( {statblock, setStatblock, editable }) {
         setStatblock({...statblock, cr:cr})
     }
 
+    const onReset = () => {
+        resetFunc((sb) => {
+            return sb.cr
+          })
+    }
+
     const challenge_text = (<><b>Challenge</b> {format_cr(statblock)}</>)
     return (
-        <PoppableField text={challenge_text} editable={editable}>
-            <Stack sx={{width:"100%"}}>
-                <StyledTextField label="Challenge" value={lastState?.cr} width="100%" onChange={onUpdateValue("cr")}/>
-                <StyledTextField checkbox checked={statblock.cr?.lair >= 0} onCheckChange={toggleField("lair")} label="Lair CR" value={lastState?.lair} onChange={onUpdateValue("lair")}/>
-                <StyledTextField checkbox checked={statblock.cr?.coven >= 0} onCheckChange={toggleField("coven")} label="Coven CR" value={lastState?.coven} onChange={onUpdateValue("coven")}/>
-            </Stack>
+        <PoppableField text={challenge_text} editable={editable} onReset={onReset}>
+            <EditBlock title="Challenge Rating">
+                <Grid item xs={12} md={12} lg={3}>
+                    <StyledTextField short label="CR" value={lastState?.cr} width="100%" onChange={onUpdateValue("cr")}/>
+                </Grid>
+                <Grid item xs={12} lg={4.5}>
+                    <StyledTextField short checkbox checked={statblock.cr?.lair >= 0} onCheckChange={toggleField("lair")} label="Lair" value={lastState?.lair} onChange={onUpdateValue("lair")}/>
+                </Grid>
+                <Grid item xs={12} lg={4.5}>
+                    <StyledTextField checkbox checked={statblock.cr?.coven >= 0} onCheckChange={toggleField("coven")} label="Coven" value={lastState?.coven} onChange={onUpdateValue("coven")}/>
+                </Grid>
+            </EditBlock>
         </PoppableField>
     )
 }

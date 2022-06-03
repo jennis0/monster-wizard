@@ -1,27 +1,81 @@
-import * as React from 'react';
+import React, {useState, useEffect} from 'react';
 import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
-import {  Paper, Typography } from '@mui/material';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import MailIcon from '@mui/icons-material/Mail';
 import Toolbar from '@mui/material/Toolbar';
 
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../libs/db';
+import { IconButton, LinearProgress, Stack, Typography } from '@mui/material';
+import { ImportProgress } from './Loader';
+import { ExpandLess, ExpandMore } from '@mui/icons-material';
+import { get_request_status } from '../libs/upload';
 
 
 const drawerWidth = 240;
+
+function ImportProgressViewer( {uploads} ) {
+  const [open, setOpen] = useState(uploads?.length > 0)
+  
+  useEffect(() => {
+    const timer = setTimeout(() => get_request_status(uploads), open ? 1e3 : 1e4)
+    return () => clearTimeout(timer)
+   })
+
+  return (
+    <Box sx={{width:"100%", m:0, p:0, alignItems:"end", direction:"column"}}>
+    {uploads && uploads.length > 0 ? 
+    <>
+    <Divider sx={{mb:0}}/>
+      <Box onClick={() => setOpen(!open)} 
+        sx={{w:"100%", alignItems:"center", justifyContent:"space-between", display:"flex", p:1,
+        "&:hover":{backgroundColor:"primary.dark"}}}
+      >
+        <Typography variant="nav">Import Progress</Typography>
+        {open ? <ExpandLess sx={{color:"background.default"}}/> : <ExpandMore sx={{color:"background.default"}}/>}
+      </Box>
+    {open ? 
+    <>
+    <Divider sx={{mb:0}}/>
+      <List sx={{width:"100%", m:0, p:2, height:"400px", overflowY:"auto"}}>
+        {uploads?.map(u => {
+          console.log(u.source)
+          return (
+          <ListItem key={u.id} sx={{m:0, p:0}}>
+            <Stack sx={{width:"100%"}} spacing={0}>
+              <Box sx={{width:"100%", mt:-1}}>
+              <ListItemText primaryTypographyProps={{fontFamily:"Scaly Sans", fontSize:13}}
+                primary={u.source?.title}/>
+              </Box>
+              <Box sx={{w:"100%"}}>
+                <ImportProgress upload={u} />
+              </Box>
+            <Divider sx={{mt:1, mb:1, h:5, ml:-2, mr:-2 }}/>
+            </Stack>
+          </ListItem>
+
+        )})}
+      </List></> : <></>}
+      <Divider sx={{mb:0}}/>
+    </>: <></>}
+    </Box>
+  )
+}
 
 export function NavDrawer(props) {
   const { window, pages } = props;
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const navigate = useNavigate()
   const location = useLocation()
+
+  const uploads = useLiveQuery(() => db.uploads.toArray())
 
   const path = location.pathname.split("/")[1];
   console.log(path)
@@ -30,9 +84,11 @@ export function NavDrawer(props) {
     setMobileOpen(!mobileOpen);
   };
 
+  console.log("uploads", uploads, db.uploads.toArray())
+
   const drawer = (<>
-      <Box sx={{height:50}}></Box>
-      <Toolbar>
+      <Box sx={{height:50, width:"100%"}}></Box>
+      <Toolbar sx={{width:"100%"}}>
       </Toolbar>
       <List sx={{width:"100%", m:0, p:0}}>
         {pages.map(p => (
@@ -49,8 +105,9 @@ export function NavDrawer(props) {
 
         ))}
       </List>
-      <Box sx={{position:"absolute", top:"95%"}}>
-        <img src="/icons/homebrew_banner.webp" width={250}/>
+      
+      <Box sx={{position:"absolute", bottom:"0", left:0, width:"100%"}}>
+      {uploads && <ImportProgressViewer uploads={uploads}/>}
       </Box>
       </>
   );
@@ -60,7 +117,7 @@ export function NavDrawer(props) {
   return (
         <Drawer
           variant="permanent"
-          PaperProps={{variant:"elevation", elevation:2, boxSizing: 'border-box' }}
+          PaperProps={{variant:"elevation", elevation:2}}
           sx={{
             display: { xs: 'none', sm: 'block' },
             '& .MuiDrawer-paper': {

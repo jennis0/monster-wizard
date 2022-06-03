@@ -1,45 +1,19 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 
 import { Document, Page } from 'react-pdf/dist/esm/entry.webpack5';
 
 import {ButtonGroup, Button, Stack} from "@mui/material";
+import { ArrowLeft, ArrowRight, FirstPage, LastPage } from '@mui/icons-material';
 
-function highlightStatblocks(text, box, pageBox, page, statblocks) {
-
-  if (!statblocks) {
-    return text;
-  }
-
-  const x = box[0] / pageBox[2];
-  const y = 1 - box[1] / pageBox[3];
-  const x2 = x + box[2] / pageBox[2];
-  const y2 = y + box[3] / pageBox[2]; 
-
-  for (let i = 0; i < statblocks.length; i+=1) {
-    if (statblocks[i][4] !== page) {
-      continue;
-    }
-    const bound = statblocks[i][1];
-    if (x >= bound.left && y <= (bound.top+bound.height) && x2 <= (bound.left+bound.width) && y2 >= bound.top) {
-      return <mark>{text}</mark>
-    }
-  }
-  return text;
-}
-
-function PDFDisplay({pdfContent, page, setPage, processedData=null, scale=1.3, sendData=null}) {
+function PDFDisplay({pdfContent, startPage=1, processedData=null, scale=1.3, sendData=null}) {
   const [numPages, setNumPages] = useState(null);
   const [mouseHover, setMouseHover] = useState(false)
+  const [page, setPage] = useState(startPage)
   const canvasRef = useRef(null)
-  const [processed, setProcessed] = useState(false)
 
-  const textRenderer = useCallback(
-    (textItem) => { 
-      return highlightStatblocks(textItem.str, [textItem.transform[4], textItem.transform[5], textItem.width, textItem.height], textItem.page._pageInfo.view, textItem.page._pageIndex, processedData?.statblock_text);
-    },
-    [processedData]
-  );
-
+  useEffect(() => {
+    setPage(startPage)
+  },[pdfContent])
 
   function onDocumentLoadSuccess(pdfResult) {
     console.log("pdfinfo", pdfResult)
@@ -66,21 +40,23 @@ function PDFDisplay({pdfContent, page, setPage, processedData=null, scale=1.3, s
 
 
   return (
+    <>{pdfContent ? 
     <div onMouseEnter={() => setMouseHover(true)} onMouseLeave={() => setMouseHover(false)} style={{padding:0, margin:0}}>
     <Stack alignItems="center" >
           <Document file={pdfContent} onLoadSuccess={onDocumentLoadSuccess} onLoadError={console.error}>
-            <Page pageNumber={page} renderAnnotationLayer={false} customTextRenderer={textRenderer} scale={scale} canvasRef={canvasRef}/>
+            <Page pageNumber={page} renderAnnotationLayer={false} scale={scale} canvasRef={canvasRef}/>
           </Document>
           {mouseHover ? 
-          <ButtonGroup variant="outlined" sx={{margin:1, marginTop:"-5%", alignItems:"center", zIndex:100, display:"block", backgroundColor: "white"}}>
-            <Button onClick={() => setPage(1)} disabled={page === 1}>First</Button>
-            <Button onClick={onPageBack} disabled={page === 1}>Back</Button>
-            <Button>{page}/{numPages}</Button>
-            <Button onClick={onPageForward} disabled={page >= numPages - 1}>Forward</Button>
-            <Button onClick={() => setPage(numPages - 1)} disabled={page >= numPages - 1}>Last</Button>
+          <ButtonGroup variant="outlined" sx={{margin:1, height:"100%", marginTop:"-40px", marginBottom:"auto", alignItems:"center", zIndex:100, display:"block", backgroundColor: "white"}}>
+            <Button sx={{height:40}} onClick={() => setPage(1)} disabled={page === 1}><FirstPage /></Button>
+            <Button sx={{height:40}} onClick={onPageBack} disabled={page === 1}><ArrowLeft /></Button>
+            <Button sx={{height:40}}>{page}/{numPages}</Button>
+            <Button sx={{height:40}} onClick={onPageForward} disabled={page >= numPages - 1}><ArrowRight /></Button>
+            <Button sx={{height:40}} onClick={() => setPage(numPages - 1)} disabled={page >= numPages - 1}><LastPage /></Button>
           </ButtonGroup> : <></>}
           </Stack>
       </div>
+       : <></>}</>
   );
 }
 

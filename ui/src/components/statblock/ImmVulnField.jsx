@@ -1,12 +1,13 @@
-import { Button, Paper } from "@mui/material"
+import { Button, Grid } from "@mui/material"
 import { StyledTextField, StyledDropdown } from './FormFields.jsx';
 import PoppableField from "./PoppableField.jsx";
 
 import { Delete } from '@mui/icons-material';
 import { Add } from '@mui/icons-material';
+import EditBlock from "./EditBlock.jsx";
 
 
-export default function ImmVulnField({ statblock, setStatblock, options, title_text, title, fmt_func, editable }) {
+export default function ImmVulnField({ statblock, setStatblock, options, title_text, title, singular, fmt_func, editable, resetFunc }) {
   const setField = (field, i, j=null) => (event) => {
     console.log("setfield")
     setStatblock(s => {
@@ -47,12 +48,16 @@ export default function ImmVulnField({ statblock, setStatblock, options, title_t
     });
   }
 
-  const addType = (i) => () => {
+  const addType = (i, j) => () => {
     console.log("addtype")
     setStatblock(s => {
       let val = s[title]
       if (val) {
-        val[i].type.push("")
+        if (val[i].type) {
+          val[i].type.splice(j+1, 0, "")
+        } else {
+          val[i].type = [""]
+        }
       }
       const newS = {...s}
       newS[title] = val
@@ -71,36 +76,58 @@ export default function ImmVulnField({ statblock, setStatblock, options, title_t
     })
   }
 
+  const applyReset = () => {
+    resetFunc((sb) => {
+      return sb[title]
+    })
+  }
+
   return(
-    <PoppableField editable={editable} text={<><b>{title_text}</b> {fmt_func(statblock)}</>}>
-        { statblock && statblock[title] ? statblock[title].map((val, i) => {
+    <PoppableField editable={editable} text={<><b>{title_text}</b> {fmt_func(statblock)}</>} onReset={applyReset}>
+        { statblock && statblock[title] && statblock[title].length > 0 ? statblock[title].map((val, i) => {
           return (
-            <Paper key={`${title}-set-value-${i}`} square variant="outlined" 
-                  sx={{padding:1, flexDirection:"column", display:"flex", mb:1}}>
-              <StyledTextField label="Pre-text" value={val.pre_text} 
-                                onChange={setField("pre_text", i)}/>
-              <StyledDropdown id={`condition-dropdown-${i}-0`} label="Type" 
-                value={val.type[0]} onChange={setField("type", i, 0)} options={options} />
-              { val.type.length > 1 ? 
-                val.type.slice(1).map((v,j) => (
-                  <StyledDropdown id={`condition-dropdown-${i}-${j+1}`} label="Type" 
+            <EditBlock title={singular} onAdd={addEntry} onDelete={removeEntry(i)}>
+              <Grid item xs={12}>
+                <StyledTextField label="Pre-text" value={val.pre_text} 
+                                  onChange={setField("pre_text", i)}/>
+              </Grid>
+              {val.type.map((v,j) => (
+                  <Grid item xs={12} xl={12}>
+                  <StyledDropdown id={`condition-dropdown-${i}-${j}`} label="Type" 
                     value={v} 
-                    onChange={setField("type", i, j+1)} 
+                    short
+                    onChange={setField("type", i, j)} 
                     options={options}
                     textFieldProps = {{
-                      endButton:<Delete />,
-                      onEndButtonClick:removeType(i,j+1)
+                      endButton:[<Add />, <Delete />],
+                      onEndButtonClick:[addType(i, j), removeType(i,j)]
                     }}
                  />
-                )) : <></>
+                 </Grid>
+                ))
               }
-              <Button startIcon={<Add />} onClick={addType(i)}>Add Type</Button>
-              <StyledTextField label="Post-text" value={val.post_text} onChange={setField("post_text", i)} />
-              <Button startIcon={<Delete />} onClick={removeEntry(i)}>Remove {title_text}</Button>
-            </Paper>
+              {val.type.length === 0 ?
+              <Grid container item xs={12} justifyContent="flex-end">
+                <Grid item xs={12}>
+                  <Button 
+                    endIcon={<Add />} 
+                    onClick={(addType(i, 0))} 
+                    sx={{width:"100%", height:"40px"}}
+                  >
+                    {`Add ${singular} Type`}
+                  </Button>
+                </Grid>
+                </Grid>
+                
+              : <></>}
+              <Grid item xs={12}>
+                <StyledTextField label="Post-text" value={val.post_text} onChange={setField("post_text", i)} />
+              </Grid>
+            </EditBlock>
           )
-        } ) : <></> }
-        <Button startIcon={<Add />} onClick={addEntry}>Add {title_text}</Button>
+        } ) : 
+        <EditBlock title={singular} onAdd={addEntry} onDelete={null} first={true} />
+       }
     </PoppableField>
   )
 }

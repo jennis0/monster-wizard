@@ -52,8 +52,8 @@ function format_race_type_alignment(monster) {
 
     let parts = []
     if (monster.creature_type?.swarm) {
-        if (monster.creature_type.swarm.swarm_size != null) {
-            parts.push(`${size} swarm of ${monster.creature_type.swarm.swarm_size} ${type}s`)
+        if (monster.creature_type.swarm_size != null) {
+            parts.push(`${size} swarm of ${monster.creature_type.swarm_size} ${type}s`)
         } else {
             console.log(type)
             const tIndex = TYPES.findIndex(t => t === type.toLowerCase());
@@ -116,9 +116,9 @@ function format_skills(monster) {
     return monster.skills ? monster.skills?.map((s) => {
         let skill_name = SKILL_MAP[s.skill]
         if (!skill_name) {
-            skill_name = capitalise(s.skill, true);
+            skill_name = s.skill;
         }
-        return [skill_name, `${s.mod >= 0 ? '+' : ''}${s.mod}`]
+        return [capitalise(skill_name, true), `${s.mod >= 0 ? '+' : ''}${s.mod}`]
     }) : []
 }
 
@@ -213,10 +213,10 @@ function format_spellcasting_level(level) {
     }
 
     if (level.each) {
-        slot_text += "each"
+        slot_text += " each"
     }
 
-    if (slot_text.length > 0) {
+    if (level.level !== "unlevelled" && slot_text.length > 0) {
         slot_text = ` (${slot_text})`
     }
 
@@ -224,7 +224,7 @@ function format_spellcasting_level(level) {
     if (level.level === "cantrip") {
         pre_text = "Cantrips"
     } else if (level.level === "unlevelled") {
-        pre_text = ""
+        pre_text = capitalise(slot_text, false)
     } else {
         pre_text = `${level.level}${count_map[level.level]} level${slot_text}`
     }
@@ -234,10 +234,10 @@ function format_spellcasting_level(level) {
 function format_spellcasting(sp) {
     return (
     <>
-        <Typography variant="statblock" sx={{marginBottom:1, whiteSpace: "pre-wrap"}}>
+        <Typography variant="statblock" sx={{whiteSpace: "pre-wrap"}}>
             <b>{sp.title}.</b>{sp.text}<br/></Typography>
         {sp.levels.map(spl => (<Typography variant="statblock" sx={{lineHeight:1.5, whiteSpace:"pre-line"}}>{format_spellcasting_level(spl)}</Typography>))}
-        <Typography>{sp.post_text}</Typography>
+        <Typography variant="statblock" sx={{mt:1.5, whiteSpace: "pre-wrap"}}>{sp.post_text}</Typography>
     </>)
 }
 

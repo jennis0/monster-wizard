@@ -90,24 +90,45 @@ export const SHORT_SKILLS = [
 ]
 
 export const SKILL_MAP = {
-    acr: "Acrobatics",
-    ani: "Animal Handling",
-    arc: "Arcana",
-    ath: "Athletics",
-    dec: "Deception",
-    his: "History",
-    ins: "Insight",
-    itm: "Intimidation",
-    inv: "Investigation",
-    med: "Medicine",
-    nat: "Nature",
-    prc: "Perception",
-    prf: "Performance",
-    per: "Persuasion",
-    rel: "Religion",
-    slt: "Sleight of Hand",
-    ste: "Stealth",
-    sur: "Survival"
+    acr: "acrobatics",
+    ani: "animal handling",
+    arc: "arcana",
+    ath: "athletics",
+    dec: "deception",
+    his: "history",
+    ins: "insight",
+    itm: "intimidation",
+    inv: "investigation",
+    med: "medicine",
+    nat: "nature",
+    prc: "perception",
+    prf: "performance",
+    per: "persuasion",
+    rel: "religion",
+    slt: "sleight of hand",
+    ste: "stealth",
+    sur: "survival"
+};
+
+export const REVERSE_SKILL_MAP = {
+    acrobatics:"acr",
+    "animal handling":"ani",
+    arcana:"arc",
+    athletics:"ath",
+    deception:"dec",
+    history:"his",
+    insight:"ins",
+    intimidation:"itm",
+    investigation:"inv",
+    medicine:"med",
+    nature:"nat",
+    perception:"prc",
+    performance:"prf",
+    persuasion:"per",
+    religion:"rel",
+    "sleight of hand":"slt",
+    stealth:"str",
+    survival:"sur",
 };
 
 export const SHORT_SKILL_ABILITY_MAP = {

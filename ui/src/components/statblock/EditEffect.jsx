@@ -1,8 +1,9 @@
-import { Stack, Button, Paper, Divider, Typography} from "@mui/material"
+import { Button, Divider, Grid, Typography} from "@mui/material"
 import {  DAMAGE_TYPES, CONDITIONS, SHORT_ABILITIES } from "../../constants";
 import { Add,Delete } from "@mui/icons-material";
 
-import { StyledTextAndOptField, LabelledCheckboxField, StyledDropdown } from "./FormFields";
+import { StyledTextAndOptField, StyledDropdown, StyledCheckbox, StyledTextField } from "./FormFields";
+import { Damage, Roll } from "./ComplexParts";
 
 export function EditEffect( {effect, setEffect, removeEffect} ) {
 
@@ -24,15 +25,6 @@ export function EditEffect( {effect, setEffect, removeEffect} ) {
         } else {
             newEffect[field] = default_value
         }
-        setEffect(newEffect)
-    }
-
-    const addDamage = () => {
-        const newEffect = {...effect}
-        if (newEffect.damage === null || newEffect.damage === undefined) {
-            newEffect.damage = []
-        }
-        newEffect.damage.push({"damage":{"average":"3", "formula":"1d6"}, "type":"slashing"})
         setEffect(newEffect)
     }
 
@@ -71,43 +63,50 @@ export function EditEffect( {effect, setEffect, removeEffect} ) {
         setEffect(newEffect)
     }
 
+    const setEffectPart = (part) => (val) => {
+        const newEffect = {...effect}
+        newEffect[part] = val
+        setEffect(newEffect)
+    }
+
     console.log(effect)
 
     return (
-        <Paper square variant="outlined" sx={{p:1, marginTop:1, alignItems:"center"}}>                  
-                <Stack>
-                  <Typography sx={{m:1, ml:0.5}}><b>Effect {1}</b></Typography>
-                  <Button startIcon={<Add />} onClick={addStructField("damage")}>Add Damage</Button>
-                {effect.damage ? effect.damage.map((ed,i) => (
-                <StyledTextAndOptField 
-                    label="Damage"
-                    textValue={ed.damage.formula}
-                    selectValue={ed.type}
-                    onTextChange={setValue("damage","damage",true)}
-                    onSelectChange={setValue("damage","type",false)}
-                    endButton={<Delete />}
-                    onEndButtonClick={deleteStructField("damage", i)}
-                    options={DAMAGE_TYPES}
-                    width="410px"
-                    />))  : <></>
-                }
+            <>
+                <Damage damage={effect.damage} setDamage={setEffectPart("damage")} />
+                <Roll roll={effect.rolls} setRoll={setEffectPart("rolls")} />
+                {effect.save ? 
+                <Grid item xs={12} xl={8}>
                   <StyledTextAndOptField 
                     label="Save"
-                    checkbox
-                    checked={effect.save != undefined}
+                    short
                     preText={"DC"}
                     textValue={effect.save ? effect.save.value : ""}
                     selectValue={effect.save ? effect.save.ability.toUpperCase() : ""}
                     onTextChange={setValue("save","value",true)}
                     onSelectChange={setValue("save","ability",false)}
-                    onCheckChange={addRemoveField("save", {"value":10, "ability":"wis"})}
                     options={SHORT_ABILITIES.map(a => a.toUpperCase())}
-                    width="410px"
-                    />
+                    endButton={[<Delete />]}
+                    onEndButtonClick={[addRemoveField("save", {"value":10, "ability":"wis"})]}
+                   />
+                </Grid> :
+                <Grid item xs={6}>
+                   <Button sx={{height:"40px"}} startIcon={<Add />} 
+                        onClick={addRemoveField("save", {"value":10, "ability":"wis"})}>Add Save</Button>
+                </Grid>
+                }
+                {effect.save ? 
+                <Grid item xs={12} xl={4}>
+                  <StyledCheckbox
+                    label="Half damage on save" 
+                    checked={effect.on_save ? effect.on_save === "half" : false}
+                    onCheckChange={setHalfDamage}
+                  /> 
+                </Grid> : <></>}
+                {effect.end_save ? 
+                <Grid item xs={12}>
                     <StyledTextAndOptField 
                     label="Save to End"
-                    checkbox
-                    checked={effect.end_save != undefined}
                     preText={"DC"}
                     textValue={effect.end_save ? effect.end_save.value : ""}
                     selectValue={effect.end_save ? effect.end_save.ability.toUpperCase() : ""}
@@ -115,28 +114,35 @@ export function EditEffect( {effect, setEffect, removeEffect} ) {
                     onSelectChange={setValue("end_save","ability",false)}
                     onCheckChange={addRemoveField("end_save", {"value":10, "ability":"wis"})}
                     options={SHORT_ABILITIES.map(a => a.toUpperCase())}
-                    width="410px"
-                    />
-                  <LabelledCheckboxField 
-                    label="Half damage on save" 
-                    checked={effect.on_save ? effect.on_save === "half" : false}
-                    onChange={setHalfDamage}
-                  />
-                  <Button onClick={addStructField("conditions", {"condition":""})} startIcon={<Add />} >Add Condition</Button>
-                  {effect.conditions ? effect.conditions.map((c,i) => (
+                    endButton={[<Delete />]}
+                    onEndButtonClick={[addRemoveField("end_save", {"value":10, "ability":"wis"})]}
+                    /> 
+                </Grid>:
+                <Grid item xs={6}>
+                    <Button sx={{height:"40px"}} startIcon={<Add />}
+                        onClick={addRemoveField("end_save", {"value":10, "ability":"wis"})}>Add Save to End
+                    </Button>
+                </Grid>
+                    }
+
+
+                {effect.conditions && effect.conditions.length > 0 ? effect.conditions.map((c,i) => (
+                    <Grid item xs={12}>
                         <StyledDropdown  
                         label="Condition" 
                         options={CONDITIONS} 
                         value={c.condition}
                         onChange={updateStructField("conditions", i, "condition")}
-                        textFieldProps={{endButton:(<Delete />),
-                                        onEndButtonClick:deleteStructField("conditions", i)}}
-                    />
-                  )) : <></>}
-
-                  <Divider />
-                  <Button startIcon={<Delete />} sx={{mt:1}} onClick={removeEffect}>Remove Effect</Button>
-                  </Stack>
-                </Paper>
+                        textFieldProps={{endButton:[<Add />,<Delete />],
+                                        onEndButtonClick:[addStructField("conditions", {"condition":""}), deleteStructField("conditions", i)]}}
+                        />
+                    </Grid>
+                  )) : 
+                  <Grid item xs={6}>
+                    <Button sx={{height:"40px"}} label="test" onClick={addStructField("conditions", {"condition":""})} startIcon={<Add />} >Add Condition</Button>
+                  </Grid>
+                  }
+                  
+                  </>
     )
 }

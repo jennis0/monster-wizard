@@ -2,7 +2,7 @@ import React from 'react';
 
 import { Paper, Box } from "@mui/material"
 
-import UploadPage from './pages/add_source';
+import UploadPage from './pages/add_source_2';
 import SourceListPage from './pages/source_list';
 import SourcePage from './pages/source'
 
@@ -33,7 +33,7 @@ function App() {
               <Routes>
               <Route path={"/sources/:id"} element={<SourcePage />}/>
                 {ROUTES.map(r => 
-                  <Route path={`/${r.path}`} element={r.element}/>
+                  <Route key={`route-${r.path}`} path={`/${r.path}`} element={r.element}/>
                   )}
               </Routes>
             </Box>
