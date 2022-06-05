@@ -64,6 +64,10 @@ export async function updateStatblock(id, statblock, image=null) {
 
 }
 
+export async function deleteStatblock(id) {
+  return await db.statblocks.delete(id)
+}
+
 export async function addUpload(title, time, status, progress, file_progress, errors, raw, store_images, source, request_id) {
   return await db.uploads.add({title, time, status, progress, file_progress, errors, raw, store_images, source, request_id})
 }

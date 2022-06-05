@@ -17,7 +17,7 @@ export function sortByAlphabet(s1, s2, reverse=false) {
     return s1.name.localeCompare(s2.name) * reverse ? -1 : 1
 }
 
-export default function StatblockList( { title, sources, statblocks, selected, filter, sort }) {
+export default function StatblockResultList( { title, sources, statblocks, selected, filter, sort }) {
 
     const boxRef = useRef()
     const [page, setPage] = useState(1);

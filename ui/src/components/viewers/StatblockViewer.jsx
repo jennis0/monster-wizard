@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Typography, Divider, Box, Stack, IconButton, Alert, Tooltip} from "@mui/material"
-import { AddToPhotos, Lock, Restore, Save } from '@mui/icons-material';
+import { Typography, Divider, Box, Stack, IconButton, Alert, 
+    Tooltip, Dialog, DialogContent, DialogActions, DialogTitle, Button} from "@mui/material"
+import { AddToPhotos, Delete, Lock, Restore, Save } from '@mui/icons-material';
 import _ from 'lodash'
 
 import { MOVEMENT_TYPES, DAMAGE_TYPES, CONDITIONS, SENSES } from '../../constants.js';
 import * as fmt from '../../libs/creature_format.js'
-import { HighlightText } from '../FormFields.jsx';
+import { HighlightText, StyledTextField } from '../FormFields.jsx';
 import RaceTypeAlignmentField from '../statblock/RaceTypeAlignmentField.jsx';
 import HPField from '../statblock/HPField.jsx';
 import ACField from '../statblock/ACField.jsx';
@@ -18,15 +19,73 @@ import LanguagesField from '../statblock/LanguageField.jsx';
 import ActionField from '../statblock/ActionField.jsx';
 import ChallengeField from '../statblock/ChallengeField.jsx';
 import { LockOpen } from '@mui/icons-material';
-import { updateStatblock } from '../../libs/db.js';
+import { deleteStatblock, updateStatblock } from '../../libs/db.js';
+import StatblockTitle from '../statblock/StatblockTitle.jsx';
 
-function StatblockViewer( { statblock, style, allowEdit=false, defaultEdit=false, splitLength=3000, onSave }) {
+function DeleteStatblockDialog( {statblockId, statblock, open, setOpen} ) {
+
+  const onDelete = () => {
+    deleteStatblock(statblockId)
+    setOpen(false)
+  }
+
+  return (
+    <Dialog open={open}>
+      <DialogTitle variant="nav">
+        {`Delete ${statblock?.name}`}
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="statblock">{`Are you sure you want to permanently delete ${statblock?.name}?`}</Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setOpen(false)}>No! Cancel This</Button>
+        <Button onClick={onDelete}>Yes! Delete It</Button>
+      </DialogActions>
+    </Dialog>
+  )
+}
+
+function StatblockControlButtons( {statblock, editable, allowEdit, setEditable, edited, 
+    setEdited, setDeleteDialogOpen, setStatblockWithoutEdit, save} ) {
+  return (
+    <Stack direction="row" alignItems="center">
+    {statblock && <Tooltip title="Add to Collection">
+      <IconButton>
+        <AddToPhotos sx={{fontSize:30, color:"primary.light"}}/>
+      </IconButton>
+    </Tooltip>}
+    {statblock && allowEdit && <><Tooltip title="Enable Edit Mode">
+      <IconButton onClick={() => setEditable(!editable)}>
+        {editable ? <LockOpen sx={{fontSize:30, color:"primary.light"}} /> : <Lock sx={{fontSize:30, color:"primary.light"}}/>}
+        </IconButton>
+    </Tooltip>
+    <Tooltip title="Reset">
+      <IconButton disabled={edited ? null : true} onClick={() => {setStatblockWithoutEdit(statblock); setEdited(false)}}>
+        <Restore sx={{fontSize:30, color:edited ? "primary.light": null}} />
+        </IconButton>
+    </Tooltip>
+    <Tooltip title="Save Changes">
+      <IconButton disabled={edited ? null : true} onClick={save}>
+        <Save sx={{fontSize:30, color:edited ? "secondary.main" : null}}/>
+      </  IconButton>
+    </Tooltip>
+    <Tooltip title="Delete Statblock">
+      <IconButton  onClick={() => {console.log("deleting"); setDeleteDialogOpen(true)}}>
+        <Delete sx={{fontSize:30, color:"secondary.dark"}}/>
+      </IconButton>
+    </Tooltip></>}
+  </Stack>
+  )
+}
+
+function StatblockViewer( { statblockId, statblock, style, allowEdit=false, defaultEdit=false, splitLength=3000, onSave }) {
 
   const [numColumns, setNumColumns] = useState(1);
   const [editable, setEditable] = useState(allowEdit)
   const [sb, setStatblockWithoutEdit] = useState(null);
   const [edited, setEdited] = useState(false);
   const ref = useRef(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   const updateColumns = () => {
     if (statblock) {
@@ -85,14 +144,15 @@ function StatblockViewer( { statblock, style, allowEdit=false, defaultEdit=false
   }, [])
 
   console.log(statblock)
-  if (statblock && Object.keys(statblock?.errors)?.length > 0) {
+  if (statblock && statblock.errors && Object.keys(statblock?.errors)?.length > 0) {
     const k = Object.keys(statblock?.errors)[0]
   }
 
 
   return (
+    <>
   <Stack spacing={1} ref={ref}>
-    {statblock && Object.keys(statblock?.errors)?.map(k =>
+    {statblock && statblock.errors && Object.keys(statblock?.errors)?.map(k =>
         statblock?.errors[k]?.map((e,i) => {
           let title = k
           if (k === "action" || k === "features") {
@@ -107,36 +167,29 @@ function StatblockViewer( { statblock, style, allowEdit=false, defaultEdit=false
         })
     )}
     <Box sx ={{display:"flex", flexDirection:"row", justifyContent:"space-between"}}>
-      <Stack style={{width:"100%", padding:2, display:"flex", flexDirection:"column", ...style}} >
-                  <HighlightText sx={{m:0}} color="primary.main" editable={editable} variant="statblockTitle" suppressContentEditableWarning={editable} contentEditable={editable}>{statblock?.name}</HighlightText>
-                  <RaceTypeAlignmentField editable={editable} statblock={sb} setStatblock={setStatblock} />
+      <Stack direction="column" width="100%">
+      <Stack style={{width:"100%", padding:2, display:"flex", flexDirection:"row", 
+        justifyItems:"space-between", 
+        alignItems:"center",
+      ...style}} >
+                  {/* <HighlightText sx={{m:0}} onChange={console.log("change")} color="primary.main" editable={editable} variant="statblockTitle" suppressContentEditableWarning={editable} contentEditable={editable}>{statblock?.name}</HighlightText>  */}
+                  <StatblockTitle statblock={sb} editable={editable} setStatblock={setStatblock}/>
+                  <StatblockControlButtons 
+                    statblock={statblock}
+                    editable={editable}
+                    allowEdit={allowEdit}
+                    setEditable={setEditable}
+                    setEdited={setEdited}
+                    edited={edited}
+                    setDeleteDialogOpen={setDeleteDialogOpen}
+                    setStatblockWithoutEdit={setStatblockWithoutEdit}
+                    save={save}
+                  />
       </Stack>
-      {allowEdit &&
-        <Stack direction="row">
-          <Tooltip title="Add to Collection">
-            <IconButton>
-              <AddToPhotos sx={{fontSize:30, color:"primary.light"}}/>
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Enable Edit Mode">
-            <IconButton onClick={() => setEditable(!editable)}>
-              {editable ? <LockOpen sx={{fontSize:30, color:"primary.light"}} /> : <Lock sx={{fontSize:30, color:"primary.light"}}/>}
-              </IconButton>
-          </Tooltip>
-          <Tooltip title="Reset">
-            <IconButton disabled={edited ? null : true} onClick={() => {setStatblockWithoutEdit(statblock); setEdited(false)}}>
-              <Restore sx={{fontSize:30, color:edited ? "primary.light": null}} />
-              </IconButton>
-          </Tooltip>
-          <Tooltip title="Save Changes">
-            <IconButton disabled={edited ? null : true} onClick={save}>
-              <Save sx={{fontSize:30, color:edited ? "secondary.main" : null}}/>
-            </  IconButton>
-          </Tooltip>
-        </Stack>
-      }
+      <RaceTypeAlignmentField editable={editable} statblock={sb} setStatblock={setStatblock} />
+      </Stack>
       </Box>
-      <Divider sx={{width:1}}/>
+      {sb && <Divider sx={{width:1}}/>}
       <Box style={{columnCount:numColumns, width:"100%", padding:2, overflow:"auto",...style}} >
           {sb ?<>
           <ACField editable={editable}  statblock={sb} setStatblock={setStatblock} resetFunc={resetFunc("ac")} width={400}/>
@@ -175,6 +228,9 @@ function StatblockViewer( { statblock, style, allowEdit=false, defaultEdit=false
         : <></>}
       </Box>
       </Stack>
+      <DeleteStatblockDialog statblockId={statblockId} open={deleteDialogOpen} statblock={sb} setOpen={setDeleteDialogOpen}/>
+
+      </>
   );
 }
 

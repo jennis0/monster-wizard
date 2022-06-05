@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Paper, TextField, Stack, Box, Container, Grid, Divider, Typography } from '@mui/material'
 import StatblockResultList from '../components/StatblockResultList'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useSearch, filterCR } from '../libs/search'
+import { useStatblockSearch, filterCR } from '../libs/search'
 import SearchForm from '../components/SearchForm'
 
 
@@ -36,7 +36,7 @@ export default function SearchPage() {
                         display:"flex", flexGrow:1, flex:1, backgroundColor:"primary.light"}}>
                     <SearchForm setResults={setResults} sources={sources}/>
                 </Box>
-                </Paper>
+            </Paper>
 
             <Paper variant="elevation" square
                     sx={{width:"100%", height:"90vh", p:0, m:0}}>

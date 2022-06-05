@@ -1,7 +1,7 @@
 import { Button, Divider, Grid, IconButton, Stack, TextField, Typography } from "@mui/material"
 import { Box } from "@mui/system"
 import { useEffect, useState } from "react"
-import { filterCR, filterType, filterSource, useSearch } from "../libs/search"
+import { filterCR, filterType, filterSource, useStatblockSearch } from "../libs/search"
 import { LazyTextField, StyledCheckbox, StyledMultiSelect, StyledTextField } from "./FormFields"
 
 import { SIZES, TYPES } from "../constants"
@@ -22,7 +22,7 @@ export default function SearchForm(
     const [complexQuery, setComplexQuery] = useState(defaultQuery)
     const [open, setOpen] = useState(false)
 
-    const results = useSearch(complexQuery)
+    const results = useStatblockSearch(complexQuery)
 
     useEffect(() => {
         setResults(results)

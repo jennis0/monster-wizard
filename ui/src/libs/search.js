@@ -90,7 +90,7 @@ function createQueryFilters(query) {
     return filterList
 }
 
-export function useSearch(query) {
+export function useStatblockSearch(query) {
     console.log("query", query)
     console.log("rerunning search")
     return useLiveQuery(() => {

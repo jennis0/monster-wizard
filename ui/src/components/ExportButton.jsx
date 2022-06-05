@@ -1,3 +1,4 @@
+import { FileDownload } from "@mui/icons-material";
 import { Button, CircularProgress } from "@mui/material"
 import { useState } from "react"
 import { convert } from '../libs/api';
@@ -29,7 +30,11 @@ export default function ExportButton ( {title, statblocks, ...props} ) {
     }
 
     return (
-        <Button variant="contained" sx={{width:"150px", height:"50px"}} onClick={onExport} {...props}>
+        <Button 
+            variant="contained" 
+            sx={{width:"150px", height:"50px"}} 
+            startIcon={<FileDownload />}
+            onClick={onExport} {...props}>
             {converting ? <CircularProgress sx={{color:"primary.light", fontSize:"20px"}} size={30}/> : "Export"}
         </Button>
     )

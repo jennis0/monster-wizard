@@ -7,13 +7,17 @@ import { Add } from "@mui/icons-material";
 import { useEffect, useState } from "react";
 
 
-export function LazyTextField({value, onChange, transform=(t) => t, ...props}) {
+export function LazyTextField({value, onChange, transform=(t) => t, editable=true, ...props}) {
     const [textValue, setTextValue] = useState(value)
     const onEnter = (e) => {
         if(e.keyCode == 13){
            onChange(e);
         }
      }
+
+     useEffect(() => {
+         setTextValue(value)
+     },[value])
 
      let text = transform(textValue)
      if (!text) {
@@ -24,9 +28,9 @@ export function LazyTextField({value, onChange, transform=(t) => t, ...props}) {
         <TextField
             {...props}
             value={text}
-            onChange={(e) => setTextValue(e.target.value)}
-            onBlur={onChange}
-            onKeyDown={onEnter}
+            onChange={editable ? (e) => setTextValue(e.target.value): null}
+            onBlur={editable ? onChange : null}
+            onKeyDown={editable ? onEnter: null}
         />
      )
 }
@@ -346,7 +350,7 @@ export function StyledDropdown ({ id, label, value, onChange, options, capitalis
             value={value} onChange={onChange} 
             {...textFieldProps} {...props}
         >
-        {!Array.isArray(options) ? 
+        {options && (!Array.isArray(options) ? 
             Object.keys(options).map(k => {
                 return [
                     <ListSubheader height="40px" disableSticky disableGutters
@@ -365,9 +369,9 @@ export function StyledDropdown ({ id, label, value, onChange, options, capitalis
                     )
                 ]})
              : 
-            options.map((s) => 
+            options?.map((s) => 
                     (<MenuItem  key={`${label}-${s}`} value={s}>{capitalise ? do_capitalise(s) : s}</MenuItem>)
-        )}
+        ))}
         </StyledTextField>
   )}
 

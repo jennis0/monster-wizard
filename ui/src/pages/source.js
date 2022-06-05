@@ -12,13 +12,14 @@ import { StyledTextField } from '../components/FormFields';
 import { Navigate, useParams } from 'react-router-dom'
 import {db, updateSource, updateStatblock, useSource} from '../libs/db'
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Close, Done } from '@mui/icons-material';
+import { Add, Close, Done } from '@mui/icons-material';
 import ImageViewer from '../components/viewers/ImageViewer';
 import TabContext from '@mui/lab/TabContext';
 import TabPanel from '@mui/lab/TabPanel';
 import TabList from '@mui/lab/TabList';
-import { useSearch } from '../libs/search';
+import { useStatblockSearch } from '../libs/search';
 import ExportButton from '../components/ExportButton';
+import { createStatblock } from '../libs/create';
 
 function AdditionalDataTabs( {image, imageOptions, pdf, page} ) {
     const [value, setValue] = useState("image")
@@ -61,8 +62,12 @@ function SourcePagePart( {source_id, source, statblocks, setStatblocks} ) {
     const [currentImage, setCurrentImage] = useState(null);
     const [currentSource, setCurrentSource] = useState(null);
 
-    const selectStatblock = (index) => {
-        setSelected(index);
+    const selectStatblock = (id) => {
+        const candidates = statblocks.map((s,i) => [s, i]).filter(s => s[0].id === id)
+        if (candidates.length >= 0) {
+            setSelected(candidates[0][1])
+        }
+        //setSelected(index);
     }
 
     useEffect(() => {
@@ -103,7 +108,7 @@ function SourcePagePart( {source_id, source, statblocks, setStatblocks} ) {
                     <Paper square variant="outlined" sx={{p:0,m:0, overflowY:"auto", width:"100%", height:"calc(100vh - 100px)"}}>
                         <StatblockList width={250} 
                             selected={selected} 
-                            statblocks={statblocks?.map(s => s.modified_data)} 
+                            statblocks={statblocks} 
                             onClick={selectStatblock} 
                             title="" 
                             sort={sortByAlphabet} 
@@ -116,7 +121,7 @@ function SourcePagePart( {source_id, source, statblocks, setStatblocks} ) {
                 </Grid>
                 <Grid item md={12} lg={4.5}>
                     <Paper variant="elevation" elevation={0} square sx={{p:2, m:0, overflowY:"auto", height:"calc(100vh - 100px)", width:"100%"}}>
-                        {statblocks && <StatblockViewer statblock={statblocks[selected]?.modified_data} allowEdit={true} onSave={onSave(statblocks[selected]?.id)}/>}
+                        {statblocks && <StatblockViewer statblockId={statblocks[selected]?.id} statblock={statblocks[selected]?.modified_data} allowEdit={true} onSave={onSave(statblocks[selected]?.id)}/>}
                     </Paper>
                 </Grid>
                 <Grid item sx={12} lg={5}>
@@ -136,7 +141,8 @@ function SourcePagePart( {source_id, source, statblocks, setStatblocks} ) {
 
 function SourceTitlePart( {source, statblocks} ) {
     const [tmpMeta, setTmpMeta] = useState()
-    const frontpage = useLiveQuery(() => db.images.where("id").equals(source?.frontpage >= 0 ? source.frontpage : -1).toArray(), [source])
+    const frontpage = null
+    // const frontpage = useLiveQuery(() => db.images.where("id").equals(source?.frontpage >= 0 ? source.frontpage : -1).toArray(), [source])
 
     useEffect(() => {
         if (source) {
@@ -225,7 +231,18 @@ return (<>
                     {source?.author}
                 </Typography>
             </Stack>
+            
             <Box sx={{alignContent:"center", pt:1.5, pr:1}}>
+                <Button
+                    variant="contained"
+                    disabled={!source}
+                    startIcon={<Add />}
+                    sx={{height:"50px", mr:2}}
+                    width={200}
+                    onClick={() => createStatblock(source?.id)}
+                >
+                    Add Statblock
+                </Button>
                 <ExportButton title={source?.title} statblocks={statblocks} width={200} />
             </Box>
         </Paper>
