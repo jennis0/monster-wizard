@@ -14,7 +14,8 @@ export default function SearchForm(
     {
         defaultQuery={text:{value:"", opts:{name:true, action:true, feature:true}}}, 
         setResults, 
-        sources
+        sources,
+        disabled=[]
     }) 
 {
     const [filters, setFilters] = useState([]) 
@@ -66,7 +67,7 @@ export default function SearchForm(
                             variant="standard"
                             sx={{ m:0, p:0, mb:-0.5, flex: 1 }}
                             fullWidth
-                            defaultValue={complexQuery.text.value} 
+                            defaultValue={complexQuery.text?.value} 
                             textProps={{placeholder:"Search Statblocks"}}
                             center={false}
                             onChange={(e) => {updateCQ("text.value")(e.target.value.toLowerCase())}}
@@ -81,50 +82,56 @@ export default function SearchForm(
                     </Stack>
                 </Grid> 
                 {open && <>
-                <Grid item xs={4} xl={2}>
+                <Grid item xs={"auto"}>
                     <StyledCheckbox label="Search Name" long onCheckChange={setTextOption("name")} 
                     checked={complexQuery.text?.opts?.name}/>
                 </Grid>
-                <Grid item xs={4} xl={2}>
+                <Grid item xs={"auto"}>
                     <StyledCheckbox label="Search Features"  long onCheckChange={setTextOption("feature")}
                     checked={complexQuery.text?.opts?.feature}/>
                 </Grid>
-                <Grid item xs={4} xl={2}>
+                <Grid item xs={"auto"}>
                     <StyledCheckbox label="Search Actions"  long onCheckChange={setTextOption("action")}
                     checked={complexQuery.text?.opts?.action}/>
                 </Grid>
                 <Grid item xs={12}>
                     <Divider />
                 </Grid>
-                <Grid item xs={6} lg={4} xl={3}>
-                    <Stack direction="row" spacing={1}>
+                <Grid item width="250px" >
+                    <Stack direction="row" spacing={2}>
                         <StyledTextField short label="Min CR" number value={complexQuery?.cr?.min} 
                             center={true}
+                            disabled={disabled.indexOf("cr") >= 0}
                             onChange={e => updateCQ("cr.min")(Number(e.target.value))}/>
                         <StyledTextField short label="Max CR" number value={complexQuery?.cr?.max} 
                             center={true}
+                            disabled={disabled.indexOf("cr") >= 0}
                             onChange={e => updateCQ("cr.max")(Number(e.target.value))}/>
                     </Stack>
                 </Grid>
-                <Grid item xs={4} xl={2}>
+                <Grid item width="160px">
                     <StyledCheckbox label="Spellcasting" checked={complexQuery?.spellcasting} long
+                        disabled={disabled.indexOf("spellcasting") >= 0}
                         onCheckChange={() => updateCQ("spellcasting")(complexQuery.spellcasting ? null : true)}
                     />
                 </Grid>
-                <Grid item xs={12} lg={8} xl={4.5}>
+                <Grid item minWidth="200px" maxWidth="100%">
                     <StyledMultiSelect short label="Type" options={TYPES} selected={complexQuery?.types}
+                    disabled={disabled.indexOf("type") >= 0}
                         setSelected={s => updateCQ("types")(s)} 
                         endButton={[<Clear />]} onEndButtonClick={[() => updateCQ("types")(null)]}
                     />
                 </Grid>
-                <Grid item xs={12} lg={8} xl={4.5}>
+                <Grid item minWidth="200px" maxWidth="100%">
                     <StyledMultiSelect short label="Size" options={SIZES} selected={complexQuery?.sizes}
                         setSelected={s => updateCQ("sizes", true)(s)} 
+                        disabled={disabled.indexOf("size") >= 0}
                         endButton={[<Clear />]} onEndButtonClick={[() => updateCQ("sizes")(null)]}
                     />
                 </Grid>
-                <Grid item xs={12} lg={8} xl={6}>
+                <Grid item minWidth="200px" maxWidth="100%">
                     <StyledMultiSelect short label="Source" options={sources?.map(s => s.title)} 
+                        disabled={disabled.indexOf("source") >= 0}
                         selected={
                             sources?.filter(s => complexQuery.sources?.indexOf(s.id) >= 0).map(s => s.title)
                         }
@@ -134,9 +141,11 @@ export default function SearchForm(
                         endButton={[<Clear />]} onEndButtonClick={[() => updateCQ("sources")(null)]}
                     />
                 </Grid>
+                <Grid item xs={12}>
+                <Divider />
+                </Grid>
                 </>}
             </Grid>
-            {results && <Typography color="primary.contrastText" variant="nav">{results.length} statblocks found</Typography>}
         </Stack>
     )
 }

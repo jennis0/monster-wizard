@@ -112,6 +112,31 @@ class FVTTWriter(WriterInterface):
         name = name[0].upper() + name[1:]
         return name
 
+    def writes(self, source: Source, creatures: List[Any], append:bool=None, merge_data=None) -> Any:
+        
+        label = source.name
+
+        if merge_data:
+            data = merge_data
+        else:
+            data = self.create_compendium_pack(label)
+        
+        converter = FVTTConverter(self.config, self.logger)
+        for creature in creatures:
+            try:
+                cr = converter.convert_creature(creature)
+            except Exception as e:
+                traceback.print_exc()
+                exit(e)
+            if cr is None: 
+                self.logger.error("Failed to convert {}".format(creature['name']))
+                continue
+
+            data['items'].append(cr)
+
+        return data
+
+
     def write(self, filename: str, source: Source, creatures: List[Any], append: bool=None) -> bool:
         '''Writes the creatures to the specified file. If append is set to true, creatures will be inserted into the existing file. Returns True if write is successful'''
 

@@ -119,3 +119,16 @@ export function reparse_action(action_type, title, text, onSuccessCallback, onEr
       }
     })
 }
+
+export function convert(target_type, title, statblocks, onSuccessCallback) {
+  fetch(`${ADDRESS}/convert/`,
+  {
+    method:"POST",
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({type:target_type, title:title, statblocks:statblocks.map(s => s.modified_data)})
+  }).then(r => r.json(), (e) => {console.log("error", e); throw e})
+    .then(onSuccessCallback)
+}

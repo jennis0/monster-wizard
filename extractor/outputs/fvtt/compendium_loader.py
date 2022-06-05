@@ -109,10 +109,11 @@ class CompendiumLoader(object):
 
         compendiums = []
         compendium_dir = self.config.get("foundry", "compendium-dir", fallback="./foundry")
-        for f in os.listdir(compendium_dir):
-            if ".json" not in f:
-                continue
-            compendiums.append(os.path.join(compendium_dir, f))
+        if os.path.exists(compendium_dir):
+            for f in os.listdir(compendium_dir):
+                if ".json" not in f:
+                    continue
+                compendiums.append(os.path.join(compendium_dir, f))
         for f in self.config.get("foundry", "compendia", fallback="").split(","):
             if f != "":
                 compendiums.append(f)
@@ -127,8 +128,14 @@ class CompendiumLoader(object):
         for c in self.compendia:
             self.logger.info(f"Processing {len(self.compendia[c])} entries of type {c}")
 
-        self.image_paths = self.to_map(self.__get_images(self.compendia[CompendiumTypes.Item.name.lower()]))
-        self.actor_image_paths = self.to_map(self.__get_images(self.compendia[CompendiumTypes.Actor.name.lower()]))
+        if (CompendiumTypes.Item.name.lower() in self.compendia):
+            self.image_paths = self.to_map(self.__get_images(self.compendia[CompendiumTypes.Item.name.lower()]))
+        else:
+            self.image_paths = {}
+        if (CompendiumTypes.Actor.name.lower() in self.compendia):
+            self.actor_image_paths = self.to_map(self.__get_images(self.compendia[CompendiumTypes.Actor.name.lower()]))
+        else:
+            self.actor_image_paths = {}
 
         self.logger.info(f"Loaded {len(self.image_paths)} entries of type 'item'")
         self.logger.info(f"Loaded {len(self.actor_image_paths)} entries of type 'actor'")
@@ -207,6 +214,8 @@ class CompendiumLoader(object):
             return paths[n]
 
         ### If we dont have a path yet, use backup image search
-        backup_feature = self.image_guesser.get_match(name)
-        self.logger.debug(f"Guessing '{backup_feature}' as image for '{name}'")
-        return self.image_paths[backup_feature]
+        if len(paths.keys()) > 0:
+            backup_feature = self.image_guesser.get_match(name)
+            self.logger.debug(f"Guessing '{backup_feature}' as image for '{name}'")
+            return self.image_paths[backup_feature]
+        return None

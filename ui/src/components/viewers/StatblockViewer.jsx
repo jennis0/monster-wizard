@@ -85,14 +85,14 @@ function StatblockViewer( { statblock, style, allowEdit=false, defaultEdit=false
   }, [])
 
   console.log(statblock)
-  if (Object.keys(statblock?.errors)?.length > 0) {
-    const k = Object.keys(statblock.errors)[0]
+  if (statblock && Object.keys(statblock?.errors)?.length > 0) {
+    const k = Object.keys(statblock?.errors)[0]
   }
 
 
   return (
   <Stack spacing={1} ref={ref}>
-    {Object.keys(statblock?.errors)?.map(k =>
+    {statblock && Object.keys(statblock?.errors)?.map(k =>
         statblock?.errors[k]?.map((e,i) => {
           let title = k
           if (k === "action" || k === "features") {
@@ -170,7 +170,7 @@ function StatblockViewer( { statblock, style, allowEdit=false, defaultEdit=false
           <FeaturesField statblock={sb} setStatblock={setStatblock} editable={editable}  resetFunc={resetFunc("features")}/>
           <ActionField statblock={sb} setStatblock={setStatblock} editable={editable} resetFunc={resetFunc}/>
           <div style={{marginTop:10}} />
-          <Typography align="right" variant="subtitle2" sx={{margin:1}}><i>Source: {statblock.source.title}, pg.{statblock.source.page}</i></Typography>
+          {statblock?.source && <Typography align="right" variant="subtitle2" sx={{margin:1}}><i>Source: {statblock?.source.title}, pg.{statblock.source.page}</i></Typography>}
           </>
         : <></>}
       </Box>

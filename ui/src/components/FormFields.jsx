@@ -419,7 +419,7 @@ export function StyledMultiSelect({id, label, short, width="100%", selected=[], 
                 disableUnderline={true} 
                 disabled={disabled}
                 variant="standard"
-                sx={{overflow:"hidden", m:0, p:0, pl:0, pr:0, flex:1, height:"32px", textAlign:"center", fontFamily:"Scaly Sans", fontSize:17}} 
+                sx={{overflow:"hidden", m:0, p:0, pl:0.5, pr:0.5, flex:1, height:"32px", textAlign:"center", fontFamily:"Scaly Sans", fontSize:17}} 
                 key={`styledtext-${label}-selectfield-${id}`}
                 fullWidth
                 MenuProps={{sx:{p:0, m:0}, PaperProps:{variant:"outlined", elevation:0, square:true, sx:{borderRadius:0, p:0, m:0}}}}

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Grid, Paper, Typography, Box, Stack, Button, IconButton, Popper, Dialog, Tab } from "@mui/material";
+import { Grid, Paper, Typography, Box, Stack, Button, IconButton, Popper, Dialog, Tab, CircularProgress } from "@mui/material";
 import SaveIcon from '@mui/icons-material/Save';
 import EditIcon from '@mui/icons-material/Edit';
 
@@ -9,7 +9,7 @@ import PDFViewer from '../components/viewers/PDFViewer';
 import { StyledTextField } from '../components/FormFields';
 
 
-import { useParams } from 'react-router-dom'
+import { Navigate, useParams } from 'react-router-dom'
 import {db, updateSource, updateStatblock, useSource} from '../libs/db'
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Close, Done } from '@mui/icons-material';
@@ -17,6 +17,8 @@ import ImageViewer from '../components/viewers/ImageViewer';
 import TabContext from '@mui/lab/TabContext';
 import TabPanel from '@mui/lab/TabPanel';
 import TabList from '@mui/lab/TabList';
+import { useSearch } from '../libs/search';
+import ExportButton from '../components/ExportButton';
 
 function AdditionalDataTabs( {image, imageOptions, pdf, page} ) {
     const [value, setValue] = useState("image")
@@ -50,11 +52,10 @@ function AdditionalDataTabs( {image, imageOptions, pdf, page} ) {
 }
 
 
-function SourcePagePart( {source} ) {
+function SourcePagePart( {source_id, source, statblocks, setStatblocks} ) {
 
-    const statblocks = useLiveQuery(() => db.statblocks.where("source").equals(source.id).toArray(), [source])
-    const images = useLiveQuery(() => db.images.where("source").equals(source.id).toArray(), [source])
-    const raws = useLiveQuery(() => db.pdfs.where("source").equals(source.id).toArray(), [source])
+    const images = useLiveQuery(() => db.images.where("source").equals(Number(source_id)).toArray(), [source_id])
+    const raws = useLiveQuery(() => db.pdfs.where("source").equals(Number(source_id)).toArray(), [source_id])
 
     const [selected, setSelected] = useState(0);
     const [currentImage, setCurrentImage] = useState(null);
@@ -74,7 +75,9 @@ function SourcePagePart( {source} ) {
             }
 
             if (statblocks && statblocks[selected]) {
+                console.log(raws)
                 const candidates = raws?.filter(r => r.title.startsWith(statblocks[selected].modified_data.source.title))
+                console.log("candidates", candidates.length)
                 if (candidates?.length > 0) {
                     setCurrentSource([candidates[0], statblocks[selected].modified_data.source.page])
                 }
@@ -82,46 +85,56 @@ function SourcePagePart( {source} ) {
                 setCurrentSource(null)
             }
         }
-    }, [source, images, selected, statblocks])
+    }, [source_id, images, selected, statblocks])
 
 
     const onSave = (id) => (sb) => {
         updateStatblock(id, sb)
     }
 
+    console.log("current source", currentSource, statblocks?.length)
+
     return (
 
-    <Grid container item direction="row" spacing={0} height="95%">
-    {statblocks && statblocks.length > 0 ? <>
+    <Grid container item direction="row" spacing={0} height="calc(100vh-100px)">
         <Paper variant="elevation" elevation={3} sx={{p:0, m:0, width:"100%", height:"calc(100vh - 100px)", display:"flex"}}>
-        <Grid container>
-        <Grid item xs={0} lg={1.5}>
-            <Paper square variant="outlined" sx={{p:0,m:0, overflowY:"auto", width:"100%", maxHeight:"calc(100vh - 120px)"}}>
-                <StatblockList width={200} selected={selected} statblocks={statblocks.map(s => s.modified_data)} onClick={selectStatblock} title="" sort={sortByAlphabet} />
-            </Paper>
-        </Grid>
-        <Grid item md={12} lg={6}>
-            <Paper variant="elevation" elevation={0} square sx={{p:2, m:0, overflowY:"scroll", height:"100%", width:"100%"}}>
-                <StatblockViewer statblock={statblocks[selected].modified_data} allowEdit={true} onSave={onSave(statblocks[selected].id)}/>
-            </Paper>
-        </Grid>
-        <Grid item md={12} lg={4}>
-            <Paper variant="outlined" square sx={{p:2, m:0, overflowY:"auto", height:"100%", width:"100%"}}>
-                <AdditionalDataTabs 
-                    image={currentImage} 
-                    imageOptions={images} 
-                    pdf={currentSource ? currentSource[0].file : null} 
-                    page={currentSource ? currentSource[1] : null} />
-            </Paper>
-        </Grid>
-        </Grid>
+            <Grid container>
+                <Grid item xs={0} lg={2.5}>
+                    <Paper square variant="outlined" sx={{p:0,m:0, overflowY:"auto", width:"100%", height:"calc(100vh - 100px)"}}>
+                        <StatblockList width={250} 
+                            selected={selected} 
+                            statblocks={statblocks?.map(s => s.modified_data)} 
+                            onClick={selectStatblock} 
+                            title="" 
+                            sort={sortByAlphabet} 
+                            setStatblocks={setStatblocks}
+                            defaultQuery={{sources:[Number(source_id)]}} 
+                            sources={[source]}
+                            disabled={["source"]}
+                        />
+                    </Paper>
+                </Grid>
+                <Grid item md={12} lg={4.5}>
+                    <Paper variant="elevation" elevation={0} square sx={{p:2, m:0, overflowY:"auto", height:"calc(100vh - 100px)", width:"100%"}}>
+                        {statblocks && <StatblockViewer statblock={statblocks[selected]?.modified_data} allowEdit={true} onSave={onSave(statblocks[selected]?.id)}/>}
+                    </Paper>
+                </Grid>
+                <Grid item sx={12} lg={5}>
+                    <Paper variant="outlined" square sx={{p:2, m:0, overflowY:"auto", height:"100%", width:"100%"}}>
+                        <AdditionalDataTabs 
+                            image={currentImage} 
+                            imageOptions={images} 
+                            pdf={currentSource ? currentSource[0].file : null} 
+                            page={currentSource ? currentSource[1] : null} />
+                    </Paper>
+                </Grid>
+            </Grid>
         </Paper>
-       </>  : <></>} 
     </Grid>
 )
 }
 
-function SourceTitlePart( {source} ) {
+function SourceTitlePart( {source, statblocks} ) {
     const [tmpMeta, setTmpMeta] = useState()
     const frontpage = useLiveQuery(() => db.images.where("id").equals(source?.frontpage >= 0 ? source.frontpage : -1).toArray(), [source])
 
@@ -198,21 +211,25 @@ return (<>
                 backgroundSize:"cover", backdropFilter: "contrast(0%)", zIndex:1, filter: "blur(20px)", overflow:"hidden"
             }}
         />
-        <Paper square variant="elevation" elevation={5} 
-            sx={{position:"absolute", height:"100px", left:220, top:0, backgroundColor:"transparent", width:"100%", zIndex:2,
-                p:1.6, pl:4,m:0, justifyContent:"space-between", display:"flex", flexDirection:"row",
+        <Paper square variant="elevation" elevation={1} 
+            sx={{position:"absolute", height:"100px", left:220, top:0, 
+                backgroundColor:"transparent", width:"calc(100% - 220px)", zIndex:2,
+                p:1.6, pl:4,m:0,  display:"flex", flexDirection:"row", justifyContent:"space-between"
             }}
         >
             <Stack>
-            <Typography variant="pageTitle" color="primary.contrastText">
-                {source?.title} <IconButton id="edit-source-meta-button" onClick={(e) => {setAnchorEl(anchorEl ? undefined : e.currentTarget)}}><EditIcon /></IconButton>
-            </Typography>
-            <Typography variant="pageSubtitle"  color="primary.contrastText">
-                {source?.author}
-            </Typography>
+                <Typography variant="pageTitle" color="primary.contrastText">
+                    {source?.title} <IconButton id="edit-source-meta-button" onClick={(e) => {setAnchorEl(anchorEl ? undefined : e.currentTarget)}}><EditIcon /></IconButton>
+                </Typography>
+                <Typography variant="pageSubtitle"  color="primary.contrastText">
+                    {source?.author}
+                </Typography>
             </Stack>
-            </Paper>
+            <Box sx={{alignContent:"center", pt:1.5, pr:1}}>
+                <ExportButton title={source?.title} statblocks={statblocks} width={200} />
             </Box>
+        </Paper>
+    </Box>
 
     </>)
 }
@@ -222,17 +239,17 @@ export default function SourcePage () {
     const params = useParams();
     const source_id = params.id
 
+    const [statblocks, setStatblocks] = useState([])
+
     const source = useSource(source_id)
 
     return (<>
         <Grid container spacing={0} direction="column">
         <Grid item xs={2}>
-            <SourceTitlePart source={source} />
+            <SourceTitlePart source={source} statblocks={statblocks} />
         </Grid>
         </Grid>
-        {source &&
-        <SourcePagePart source={source} />
-        }
+        <SourcePagePart source_id={source_id} source={source} statblocks={statblocks} setStatblocks={setStatblocks}/>
         </>
     )
 }

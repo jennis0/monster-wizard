@@ -68,10 +68,10 @@ function createQueryFilters(query) {
     if (query.sources) {
         filterList.push(filterSource(query.sources))
     }
-    if (query.types) {
+    if (query.types && query.types.length > 0) {
         filterList.push(filterType(query.types))
     }
-    if (query.sizes) {
+    if (query.sizes && query.sizes.length > 0) {
         filterList.push(filterSize(query.sizes))
     }
     if (query.spellcasting) {
@@ -83,7 +83,7 @@ function createQueryFilters(query) {
                      query.cr.max ? query.cr.max : 1000)
         )
     }
-    if (query.text) {
+    if (query.text && query.text.value) {
         console.log("creating text filter")
         filterList.push(searchText(query.text))
     }

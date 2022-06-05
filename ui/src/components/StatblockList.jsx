@@ -1,5 +1,7 @@
 import React from 'react';
-import { Divider, List, ListItem, ListItemText, ListItemButton } from "@mui/material";
+import { Divider, List, ListItem, ListItemText, ListItemButton, ListSubheader } from "@mui/material";
+import SearchForm from './SearchForm';
+import { Box } from '@mui/system';
 
 export function sortByPage(s1, s2, reverse=false) {
     if (s1.source.page < s2.source.page) {
@@ -14,7 +16,7 @@ export function sortByAlphabet(s1, s2, reverse=false) {
     return s1.name.localeCompare(s2.name) * reverse ? -1 : 1
 }
 
-export default function StatblockList( { title, statblocks, onClick, selected, filter, sort }) {
+export default function StatblockList( { statblocks, sources, disabled, onClick, selected, filter, setStatblocks, defaultQuery }) {
 
     const index = statblocks ? statblocks.filter(filter ? filter : () => true) : [];
     const sbs = [...index];
@@ -22,16 +24,26 @@ export default function StatblockList( { title, statblocks, onClick, selected, f
     //     sbs.sort(sort)
     // }
 
-    const is_error = statblocks.map(sb => Object.keys(sb.errors).length > 0)
+    const is_error = statblocks?.map(sb => Object.keys(sb.errors).length > 0)
+
+    console.log("sb list")
 
     return (
-      <List sx={{p:0, m:0}}>
-        {title ? <>
-        <ListItem key={`sb-item-header-${title}`} sx={{topMargin:"10px", bottomMargin:"10px"}}>
-            <ListItemText align="center" primaryTypographyProps={{variant:"statblock"}} primary={title} /> 
-        </ListItem>
-        <Divider sx={{".MuiDivider-root":{color:"pink", backgroundColor:"pink", background:"pink"}}}/></> : <></>
-        }
+      <Box sx={{height:"100%"}}>
+      <List sx={{p:0, m:0, height:"100%"}}
+            subheader={<li />}
+      >
+        <ListSubheader key={`sb-item-search`} >
+          <Box sx={{pt:"10px", pb:"10px", pr:1, pl:1}}>
+          <SearchForm 
+            defaultQuery={defaultQuery} 
+            setResults={setStatblocks}
+            sources={sources}
+            disabled={disabled}
+          />
+          </Box>
+        </ListSubheader>
+        <Divider />
 
         {sbs.map((sb,i) => (<>
             <ListItemButton onClick={() => onClick(i)} selected={selected === i} key={`sb-item-button-${sb.name}-${i}`} 
@@ -45,10 +57,11 @@ export default function StatblockList( { title, statblocks, onClick, selected, f
                   <ListItemText primary={sb.name} primaryTypographyProps={{variant:"statblock"}}/>
                 </ListItem>
           </ListItemButton>
-          <Divider sx={{backgroundColor: (is_error[i] || is_error[Math.min(i+1,is_error.length)]) ? "secondary.main" : "primary.main", opacity:0.5}}  />
+          <Divider sx={{backgroundColor: (is_error[i] || is_error[Math.min(i+1,is_error.length)]) ? "secondary.main" : null, opacity:0.5}}  />
             </>
               ))}
       </List>
+      </Box>
     );
   }
   

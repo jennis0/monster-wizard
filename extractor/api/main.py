@@ -1,5 +1,5 @@
 from typing import Union, List, Any
-from fastapi import FastAPI, UploadFile, BackgroundTasks, Form
+from fastapi import FastAPI, Response, UploadFile, BackgroundTasks, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -205,3 +205,28 @@ def parse_text(request: ParseRequest):
         print(e)
 
     return {"result":result, "error":error}
+
+class ConvertRequest(BaseModel):
+    type:str
+    title: str
+    statblocks: Any
+
+@app.post("/convert/")
+def convert(request: ConvertRequest):
+    if (request.type == "fvtt"):
+        writer = FVTTWriter(extractor.config, extractor.logger)
+
+        source = Source(
+            request.title,
+            request.title,
+            len(request.statblocks),
+            [],[],[],
+            request.statblocks,
+            [],[],[]
+            )
+        result = writer.writes(source, request.statblocks)
+
+        return Response(content=json.dumps(result), status_code=200, headers={
+            'Content-Type': 'application/octet-stream; charset=utf-8',
+            'Content-Disposition': 'attachment; filename="filename.jpg"; filename*="filename.jpg"',
+        })
