@@ -1,4 +1,4 @@
-import { addSource, addUpload, addImage, addStatblock, db, updateUpload } from "./db"
+import { addSource, addUpload, addImage, addStatblock, db, updateUpload, addPDF } from "./db"
 import { v4 as uuidv4 } from 'uuid';
 import { get_process_update, post_file } from "./api";
 
@@ -32,6 +32,12 @@ function handleFinished(upload_id, response) {
                     if (upload.store_images) {
                         for (const image of source.images) {
                             addImage(id, image.page, image)
+                        }
+                    }
+                    if (upload.raw) {
+                        for (const f of upload.raw) {
+                            console.log("raw", f)
+                            addPDF(id, f.name, f)
                         }
                     }
                     console.log("finished save")

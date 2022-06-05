@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { format_cr } from "../../libs/creature_format";
-import { StyledTextField } from "./FormFields";
+import { StyledTextField } from "../FormFields";
 import PoppableField from "./PoppableField";
 import { Grid } from "@mui/material";
 import EditBlock from "./EditBlock";
@@ -25,13 +25,13 @@ export default function ChallengeField ( {statblock, setStatblock, editable, res
         if (e.target.value.indexOf("/") > 0) {
             const parts = e.target.value.split("/")
             if (parts.length === 2 && parts[1].length > 0 && parts[0] === "1") {
-                console.log(parts)
                 cr[field] = Number(parts[0]) / Number(parts[1])
-                console.log(cr[field])
                 setStatblock({...statblock, cr:cr})
             } else {
                 cr[field] = e.target.value
-                setLastState(cr)
+                if (lastState != cr) {
+                    setLastState(cr)
+                }
             }
         } else {
             cr[field] = Math.min(Number(e.target.value), 30)
@@ -46,7 +46,6 @@ export default function ChallengeField ( {statblock, setStatblock, editable, res
         } else {
             cr[field] = cr.cr
         }
-        console.log(cr)
         setStatblock({...statblock, cr:cr})
     }
 

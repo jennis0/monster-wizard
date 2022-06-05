@@ -12,7 +12,6 @@ export default function Explorer() {
     const [source, setSource] = useState(null);
 
     const setNewSource = ((event) => {
-        console.log(`Loading ${event.target.files[0]}`)
         const reader = new FileReader();
         reader.onload = (event) => {
             const text = JSON.parse(reader.result)

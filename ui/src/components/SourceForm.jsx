@@ -3,11 +3,10 @@ import { useState, useEffect } from 'react'
 import { Grid, Typography, Stack, Box, Button, Paper, Divider, Tabs, Tooltip } from '@mui/material'
 import { Done,  Delete } from '@mui/icons-material'
 
-import { StyledCheckbox, StyledTextField } from './statblock/FormFields'
-import PDFDisplay from './PDFDisplay'
+import { StyledCheckbox, StyledTextField } from './FormFields'
+import PDFViewer from './viewers/PDFViewer'
 
 import {load_pdf} from '../libs/pdf'
-import { post_file_2 } from '../libs/api'
 
 import Tab from '@mui/material/Tab';
 import TabContext from '@mui/lab/TabContext';
@@ -114,7 +113,6 @@ function SourceRequestDisplay ({request, setRequest, removeRequest, disabled=fal
         }
 
         if (request.source.filename && !request.file) {
-            console.log("Loading pdf")
             load_pdf(request.source.filename, handlePDFLoad)
         }
     }, [request])
@@ -157,7 +155,7 @@ function SourceRequestDisplay ({request, setRequest, removeRequest, disabled=fal
 function SourcePDFDisplay( {file, setPDFMetadata} ) {
     return (
     <Box justifyContent="center" alignContent="center" textAlign="center" padding={2} height={450}>
-        <PDFDisplay pdfContent={file} startPage={1} scale={0.55} sendData={setPDFMetadata}/>
+        <PDFViewer pdfContent={file} startPage={1} scale={0.55} sendData={setPDFMetadata}/>
     </Box>)
 }
  
@@ -229,11 +227,9 @@ export default function SourceForm() {
 
 
     const updateField = (field) => (val) => {
-        console.log("cr", val)
         setCurrentRequests(cr => {
             const newRequest = {...cr}
             newRequest[field] = val
-            console.log(cr, newRequest)
             return newRequest
         })
         
@@ -246,8 +242,6 @@ export default function SourceForm() {
             return {...cr, merged_source:ns}
         })
     }
-
-    console.log(currentRequests)
 
     return (
     <Box sx={{width:"100%", height:"100%", justifyItems:"center", alignItems:"center"}}>
@@ -314,15 +308,17 @@ export default function SourceForm() {
         <Grid item xs={12} lg={6} xl={4}>
             <StyledCheckbox checked={currentRequests.store_raw} 
                 tooltip="Store the original PDF alongside the extracted statblocks. This can use a large amount of space."
-                label="Store PDFs" onCheckChange={(e) => updateField("store_raw")(e.target.checked)} />
+                label="Store PDFs" onCheckChange={(e) => updateField("store_raw")(e.target.checked)} long />
         </Grid>
         <Grid item xs={12} lg={6} xl={4}>
             <StyledCheckbox checked={currentRequests.store_images} 
                 tooltip="Extract images from PDF files and attempt to attach them to statblocks. This can use a large amount of space."
-                label="Extract Images" onCheckChange={(e) => updateField("store_images")(e.target.checked)} />
+                label="Extract Images" onCheckChange={(e) => updateField("store_images")(e.target.checked)} long/>
         </Grid>
         <Grid item xs={12} lg={6} xl={4}>
-            <StyledCheckbox checked={currentRequests.merge} tooltip="Merge all documents into a single source" label="Merge to Single Source" onCheckChange={(e) => updateField("merge")(e.target.checked)} />
+            <StyledCheckbox checked={currentRequests.merge} 
+                tooltip="Merge all documents into a single source" 
+                label="Merge to Single Source" onCheckChange={(e) => updateField("merge")(e.target.checked)} long />
         </Grid>
     </Grid>
 

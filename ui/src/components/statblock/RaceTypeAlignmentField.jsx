@@ -1,6 +1,6 @@
 import { FormGroup,  FormControlLabel,  Checkbox, Grid,  } from "@mui/material"
 import { TYPES, SIZES,  } from '../../constants.js';
-import { StyledTextField, StyledDropdown, StyledCheckbox } from './FormFields.jsx';
+import { StyledTextField, StyledDropdown, StyledCheckbox } from '../FormFields.jsx';
 import PoppableField from "./PoppableField.jsx";
 
 import * as fmt from '../../libs/creature_format.js'

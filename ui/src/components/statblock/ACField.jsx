@@ -1,6 +1,6 @@
 import { Paper,Button, Box, Grid, Divider, ButtonGroup, IconButton } from "@mui/material"
 
-import { StyledTextField } from './FormFields.jsx';
+import { StyledTextField } from '../FormFields.jsx';
 import PoppableField from "./PoppableField.jsx";
 
 import * as fmt from '../../libs/creature_format.js'
@@ -66,7 +66,7 @@ export default function ACField({ statblock, setStatblock, editable, resetFunc, 
       >
           {statblock?.ac?.map((ac, i) => 
             (
-            <EditBlock title="Armour Class" onAdd={addAC} onDelete={removeAC(i)} first={i === 0}>
+            <EditBlock title="Armour Class" onAdd={addAC} onDelete={removeAC(i)} first={i === 0} key={`ac-eb-${i}`}>
               <Grid item xs={12} md={3}>
                 <StyledTextField short label="AC" value={ac.ac} onChange={setACField("ac", i)} number/>
               </Grid>
@@ -75,8 +75,8 @@ export default function ACField({ statblock, setStatblock, editable, resetFunc, 
               </Grid>
               {ac.from.map((f,j) =>
                 (
-                <Grid item xs={12}>
-                  <StyledTextField key={`ac-set-value-${i}-from-${j}`} label="Source" value={f}
+                <Grid item xs={12} key={`ac-set-value-${i}-from-${j}`} >
+                  <StyledTextField label="Source" value={f}
                     onChange={setACField("from", i, j)} 
                     endButton={[<Add />, <Delete />]}
                     onEndButtonClick={[addACFrom(i), removeACFrom(i,j)]} />

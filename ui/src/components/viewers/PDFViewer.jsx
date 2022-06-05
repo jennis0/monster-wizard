@@ -5,7 +5,7 @@ import { Document, Page } from 'react-pdf/dist/esm/entry.webpack5';
 import {ButtonGroup, Button, Stack} from "@mui/material";
 import { ArrowLeft, ArrowRight, FirstPage, LastPage } from '@mui/icons-material';
 
-function PDFDisplay({pdfContent, startPage=1, processedData=null, scale=1.3, sendData=null}) {
+function PDFViewer({pdfContent, startPage=1, scale=1.3, sendData=null}) {
   const [numPages, setNumPages] = useState(null);
   const [mouseHover, setMouseHover] = useState(false)
   const [page, setPage] = useState(startPage)
@@ -13,10 +13,9 @@ function PDFDisplay({pdfContent, startPage=1, processedData=null, scale=1.3, sen
 
   useEffect(() => {
     setPage(startPage)
-  },[pdfContent])
+  },[pdfContent, startPage])
 
   function onDocumentLoadSuccess(pdfResult) {
-    console.log("pdfinfo", pdfResult)
     const data = {"numPages":pdfResult._pdfInfo.numPages}
     pdfResult.getMetadata().then(r => {
       if (r.info.Title) {
@@ -41,8 +40,8 @@ function PDFDisplay({pdfContent, startPage=1, processedData=null, scale=1.3, sen
 
   return (
     <>{pdfContent ? 
-    <div onMouseEnter={() => setMouseHover(true)} onMouseLeave={() => setMouseHover(false)} style={{padding:0, margin:0}}>
-    <Stack alignItems="center" >
+    <div onMouseEnter={() => setMouseHover(true)} onMouseLeave={() => setMouseHover(false)} style={{padding:0, margin:0, width:"100%"}}>
+    <Stack alignItems="center">
           <Document file={pdfContent} onLoadSuccess={onDocumentLoadSuccess} onLoadError={console.error}>
             <Page pageNumber={page} renderAnnotationLayer={false} scale={scale} canvasRef={canvasRef}/>
           </Document>
@@ -60,4 +59,4 @@ function PDFDisplay({pdfContent, startPage=1, processedData=null, scale=1.3, sen
   );
 }
 
-export default PDFDisplay;
+export default PDFViewer;

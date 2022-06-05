@@ -1,5 +1,5 @@
 import { Grid  } from "@mui/material"
-import { StyledTextField } from './FormFields.jsx';
+import { StyledTextField } from '../FormFields.jsx';
 import PoppableField from "./PoppableField.jsx";
 
 import * as fmt from '../../libs/creature_format.js'

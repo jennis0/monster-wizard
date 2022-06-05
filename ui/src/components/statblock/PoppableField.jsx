@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Stack, Divider, Box, Grid } from "@mui/material"
 
-import { HighlightText } from './FormFields.jsx';
+import { HighlightText } from '../FormFields.jsx';
 import { Restore, AutoFixHigh } from '@mui/icons-material';
 import { Close } from '@mui/icons-material';
 
-export default function PoppableField( {children, text, textProps, hide=false, editable=true, onReset=null, onGenerate=null} ) {
+export default function PoppableField( {children, text, textProps, hide=false, editable=true, onReset=null, onGenerate=null, ...props},  ) {
     const [open, setOpen] = useState(null);   
 
     useEffect(() => {
@@ -17,7 +17,7 @@ export default function PoppableField( {children, text, textProps, hide=false, e
     }
 
     return (
-      <Box sx={{breakInside:"avoid-column", p:0, m:0}}>
+      <Box sx={{breakInside:"avoid-column", p:0, m:0}} {...props}>
           <Grid container spacing={1} width="100%" sx={{width:"100%"}}>
             <Grid xs={12} item>
               {!(hide === true) ? <HighlightText editable={editable} {...textProps} onClick={editable ? handleClick : null}>{text}</HighlightText> : <></>}

@@ -172,8 +172,10 @@ class StatblockExtractor(object):
             filename: Optional[str] = None, 
             filetype:str=None, 
             pages:Optional[List[int]]=None, 
+            extract_images: bool=True,
             state:Optional[Dict[str,Any]] = {
-                "state":JobState.text_extraction, "progress":[-1,1], "errors":[]}
+                "state":JobState.text_extraction, "progress":[-1,1], "errors":[]},
+            
         ) -> Tuple[Source, Dict[str, Any]]:
         
         self.logger.info("Loading {}".format(filename))
@@ -298,7 +300,6 @@ class StatblockExtractor(object):
         self.enrichments.filter_and_associate_backgrounds(source)
         self.enrichments.filter_and_associate_images(source)
 
-        state["state"] = StatblockExtractor.JobState.finished
         state["progress"] = [1,1]
 
         return source, state["errors"]

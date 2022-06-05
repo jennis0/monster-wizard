@@ -57,6 +57,36 @@ class Source:
         )
         return s
 
+    @staticmethod
+    def merge(sources: List[Source]):
+        pages = []
+        images = []
+        background = []
+        statblocks = []
+        page_images = []
+        authors = []
+
+        for s in sources:
+            pages += s.pages
+            images += s.images
+            background += s.background_text
+            statblocks += s.statblocks
+            page_images += s.page_images
+            authors += s.authors
+
+        return Source(
+            filepath=sources[0].filepath,
+            name=sources[0].name,
+            num_pages=sum(s.num_pages for s in sources),
+            url=sources[0].url,
+            pages = pages,
+            images = images,
+            background_text=background,
+            statblocks=statblocks,
+            page_images=page_images,
+            authors=authors
+        )
+
 
 @dataclasses.dataclass
 class Bound:

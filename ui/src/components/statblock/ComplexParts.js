@@ -3,7 +3,7 @@ import { Grid, Button, Paper, TextField } from "@mui/material"
 import { DAMAGE_TYPES, MEASURES, TIME_MEASURES } from "../../constants"
 import EditBlock from "./EditBlock"
 import { EditEffect } from "./EditEffect"
-import { StyledTextAndOptField, StyledTextField, StyledDropdown, StyledRangeField, LazyTextField } from "./FormFields"
+import { StyledTextAndOptField, StyledTextField, StyledDropdown, StyledRangeField, LazyTextField } from "../FormFields"
 
 const DEFAULT_ROLL = {formula:"0", average:"0"}
 export function Roll( {roll, setRoll }) {
@@ -301,8 +301,6 @@ export function OptionalEffects ( { effects, setEffects, postText="", preTitle="
         setEffects(newEffects)
     }
 
-    console.log("effects", effects)
-
     return (<>
         {effects && effects.length > 0 ? 
         <Grid item container spacing={0.3} xs={12}>
@@ -396,8 +394,6 @@ export function Attack ( {attack, setAttack} ) {
         setAttackPart("target")(newTarget)
     }
 
-    console.log("attack", attack)
-
     return (<>
         {attack ?
         <EditBlock title="Attack Configuration" onDelete={removeAttack}>
@@ -428,8 +424,8 @@ export function Attack ( {attack, setAttack} ) {
         <Grid item xs={4}>
         <StyledTextAndOptField 
             label="Reach"
-            textValue={attack.reach.distance}
-            selectValue={attack.reach.measure}
+            textValue={attack.reach?.distance}
+            selectValue={attack.reach?.measure}
             options={MEASURES}
         /> </Grid>:
          <></>

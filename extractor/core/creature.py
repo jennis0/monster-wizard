@@ -451,7 +451,6 @@ class Creature:
             })
 
         self.data["skills"] = skills
-        self.__validate_part("skills")
 
     def set_cr(self, line: Line):
         cr_matches = re.findall("^Challenge\s+([0-9]+/?[0-9]*)\s*\(?([0-9,]+)?(?:XP)?\s*\)?", line.text, re.IGNORECASE)
@@ -746,7 +745,6 @@ class Creature:
         '''Use results of precomplied regexes to turn attack text intro structured data'''
 
         attack = {
-            "name":title,
             "type":properties["type"][1][0].strip(),
             "weapon": properties["type"][1][1].strip() if properties["type"][1][1] else "weapon",
         }
@@ -805,8 +803,10 @@ class Creature:
                 #Formula but no number
                 if v[0] and not v[1]:
                     v[1] = self.__calculate_average_formula(v[0])
+                
+                print(v)
 
-                attack["damage"] = {"damage":{"average":int(v[1]), "formula":v[0]}, "type":v[2].strip() if v[2] else None}
+                attack["damage"] = [{"damage":{"average":int(v[1]), "formula":v[0]}, "type":v[2].strip() if v[2] else None}]
                 max_parsed = max(properties["hit_damage"][0], max_parsed)
 
         if properties["versatile_damage"]:
@@ -824,7 +824,7 @@ class Creature:
                 if v[0] and not v[1]:
                     v[1] = self.__calculate_average_formula(v[1])
 
-                attack["versatile"] = {"damage":{"average":int(v[1]), "formula":v[0]}, "type":v[2].strip() if v[2] else None}
+                attack["versatile"] = [{"damage":{"average":int(v[1]), "formula":v[0]}, "type":v[2].strip() if v[2] else None}]
                 max_parsed = max(properties["versatile_damage"][0], max_parsed)
 
         effects = self.__create_effects(properties, start_char=max_parsed)
@@ -835,7 +835,8 @@ class Creature:
 
     def __normalise_formula(self, formula: str) -> str:
         last_was_num = False
-        parts = [f.strip() for f in formula.split() if f.strip()]
+        
+        parts = [p.strip() for p in re.split("([\s+-])", formula) if p.strip()]
         normed_parts = []
         for p in parts:
             if p.replace('d','').isnumeric():
@@ -858,6 +859,9 @@ class Creature:
         '''
         total = 0
         next_pos = 1
+
+
+
         for part in formula.split():
             part = part.strip()
             if "d" in part:
@@ -1258,14 +1262,19 @@ class Creature:
         if "skills" in self.data:
             for i,s in enumerate(self.data["skills"]):
                 if s["skill"] in SHORT_SKILL_ABILITY_MAP:
+                    self.data["skills"][i]["is_custom"] = False
                     if "proficiency" in self.data:
                         ability = SHORT_SKILL_ABILITY_MAP[s["skill"]]
-                        ability = self.data["abilities"][ability]
-                        default_value = self.data["proficiency"] + floor((ability - 10)/2)
-                        self.data["skills"][i]["default"] = default_value == s["mod"]
+                        if "abilities" in self.data:
+                            ability = self.data["abilities"][ability]
+                            default_value = self.data["proficiency"] + floor((ability - 10)/2)
+                            self.data["skills"][i]["default"] = default_value == s["mod"]
+                    
                 else:
                     self.data["skills"][i]["default"] = True
-                    self.data["skills"][i]["__custom_id"] = randint(10000,100000) #Needed for the statblock editor to give the skill a unique ID
+                    self.data["skills"][i]["is_custom"] = True #Needed for the statblock editor to give the skill a unique ID
+        
+            self.__validate_part("skills")
 
         ### Store errors
         self.data["errors"] = self.errors

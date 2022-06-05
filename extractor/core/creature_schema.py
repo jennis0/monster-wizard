@@ -61,6 +61,7 @@ SkillSchema = Schema(
         "skill": Or(enum_str(constants.SHORT_SKILLS ), str),
         "mod": int,
         "prof": bool,
+        "is_custom":bool,
         Optional("default"):bool
     },
     error="Failed to validate skill"
@@ -106,7 +107,7 @@ DurationSchema = Schema(
 DamageSchema = Schema(
     {
         "damage": AverageDiceSchema,
-        "type": enum_str(constants.DAMAGE_TYPES),
+        Optional("type"): enum_str(constants.DAMAGE_TYPES),
     },
     error="Failed to validate damage text"
 )
@@ -132,6 +133,7 @@ EffectSchema = Schema({
             "ability": Or(enum_str(constants.SHORT_ABILITIES), enum_str(constants.SKILLS), enum_str(constants.SHORT_SKILLS), "ath or acr"),
             "value": int
         },
+        Optional("duration"): DurationSchema
     },
     error="Failed to validate effect text"
 )
@@ -156,7 +158,6 @@ TargetSchema = Schema(
 
 AttackSchema = Schema(
     {
-        "name": str,
         "type": Or("melee", "ranged", "both"),
         "weapon": Or("weapon", "spell"),
         Optional("reach"): {
@@ -170,8 +171,8 @@ AttackSchema = Schema(
         },
         "hit":int,
         "target": TargetSchema,
-        "damage": DamageSchema,
-        Optional("versatile"): DamageSchema,
+        Optional("damage"): [DamageSchema],
+        Optional("versatile"): [DamageSchema],
         Optional("effects"): [EffectSchema]
     },
     error="Failed to validate attack"
@@ -183,7 +184,8 @@ FeatureSchema = Schema(
         "text":str,
         Optional("attack"): AttackSchema,
         Optional("effects"): [EffectSchema],
-        Optional("uses"): UsesSchema
+        Optional("uses"): UsesSchema,
+        Optional("recharge"): {"from": int, "to": int}
     },
     error="Failed to validate feature"
 )
@@ -239,8 +241,8 @@ SourceSchema = Schema(
     {
         "title":str,
         Optional("short_title"):str,
-        Optional("pages"):[int],
-        Optional("authors"):[str]
+        Optional("pages"):int,
+        Optional("authors"):[str],
     },
     error="Failed to validate source"
 )

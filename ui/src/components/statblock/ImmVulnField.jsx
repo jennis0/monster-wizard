@@ -1,5 +1,5 @@
 import { Button, Grid } from "@mui/material"
-import { StyledTextField, StyledDropdown } from './FormFields.jsx';
+import { StyledTextField, StyledDropdown } from '../FormFields.jsx';
 import PoppableField from "./PoppableField.jsx";
 
 import { Delete } from '@mui/icons-material';
@@ -9,7 +9,6 @@ import EditBlock from "./EditBlock.jsx";
 
 export default function ImmVulnField({ statblock, setStatblock, options, title_text, title, singular, fmt_func, editable, resetFunc }) {
   const setField = (field, i, j=null) => (event) => {
-    console.log("setfield")
     setStatblock(s => {
       const val = s[title]
       if (field === "type") {
@@ -24,7 +23,6 @@ export default function ImmVulnField({ statblock, setStatblock, options, title_t
   }
 
   const addEntry = () => {
-    console.log("addentry")
     setStatblock(s => {
       let val = s[title]
       if (val === null || val === undefined) {
@@ -38,7 +36,6 @@ export default function ImmVulnField({ statblock, setStatblock, options, title_t
   }
 
   const removeEntry = (i) => () => {
-    console.log("removeentry")
     setStatblock(s => {
       const val = s[title]
       val.splice(i, 1);
@@ -49,7 +46,6 @@ export default function ImmVulnField({ statblock, setStatblock, options, title_t
   }
 
   const addType = (i, j) => () => {
-    console.log("addtype")
     setStatblock(s => {
       let val = s[title]
       if (val) {
@@ -61,7 +57,6 @@ export default function ImmVulnField({ statblock, setStatblock, options, title_t
       }
       const newS = {...s}
       newS[title] = val
-      console.log("news", newS)
       return newS
     })
   }
@@ -86,13 +81,13 @@ export default function ImmVulnField({ statblock, setStatblock, options, title_t
     <PoppableField editable={editable} text={<><b>{title_text}</b> {fmt_func(statblock)}</>} onReset={applyReset}>
         { statblock && statblock[title] && statblock[title].length > 0 ? statblock[title].map((val, i) => {
           return (
-            <EditBlock title={singular} onAdd={addEntry} onDelete={removeEntry(i)}>
+            <EditBlock title={singular} onAdd={addEntry} onDelete={removeEntry(i)} key={`immvun-field-${i}`}>
               <Grid item xs={12}>
                 <StyledTextField label="Pre-text" value={val.pre_text} 
                                   onChange={setField("pre_text", i)}/>
               </Grid>
               {val.type.map((v,j) => (
-                  <Grid item xs={12} xl={12}>
+                  <Grid item xs={12} xl={12} key={`cond-dropdown-${i}-${j}`}>
                   <StyledDropdown id={`condition-dropdown-${i}-${j}`} label="Type" 
                     value={v} 
                     short

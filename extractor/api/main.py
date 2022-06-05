@@ -1,10 +1,11 @@
-from typing import Union
-from fastapi import FastAPI, Request, UploadFile, BackgroundTasks
+from typing import Union, List, Any
+from fastapi import FastAPI, UploadFile, BackgroundTasks, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-import uuid
 from datetime import datetime
+import uuid
+import json
 
 from ..data_loaders.textract_image_loader import TextractImageLoader
 from ..data_loaders.pdf_loader import PDFLoader
@@ -16,7 +17,7 @@ from ..outputs.print_writer import PrintWriter
 from ..outputs.fvtt_writer import FVTTWriter
 
 from ..utils.config import get_config, get_api_argparser
-from ..utils.datatypes import Bound, Line, Section
+from ..utils.datatypes import Bound, Line, Section, Source
 from ..utils.logger import get_logger
 
 
@@ -69,34 +70,51 @@ extractor = create_configured_extractor(args)
 
 CURRENT_JOBS = {}
 
-@app.get("/")
-async def read_root():
-    return {"Hello":"World"}
-
 @app.post("/process/")
-async def parse_file(file: UploadFile, request: Request, background_tasks: BackgroundTasks):
+async def parse_file(
+    background_tasks: BackgroundTasks,
+    files:List[UploadFile], 
+    uuid: str = Form(""),
+    extract_images: bool = Form(True),
+    source: Any = Form(None),
+    pages: List[Any] = Form([])
+):
+    pages = [json.loads(p) for p in pages]
+    source = json.loads(source)
 
-    job_id = str(uuid.uuid4())
-    CURRENT_JOBS[job_id] = {
-            "id":job_id, 
+    if not pages:
+        pages = [None for f in files]
+    for i in range(len(pages)):
+        if pages[i] and len(pages[i]) == 0:
+            pages[i] = None
+
+    request_id = uuid
+    CURRENT_JOBS[request_id] = {
+            "id":request_id, 
             "state":StatblockExtractor.JobState.file_upload, 
-            "file":file.file, "filename":file.filename,
-            "source":None, 
-            "progress":[-1,1], 
-            "errors":[]
+            "metadata": {"extract_images":extract_images},
+            "files": [f.file for f in files],
+            "filenames":[f.filename for f in files],
+            "meta":source,
+            "sources":{},
+            "pages":pages, 
+            "file_progress":[0, len(files)],
+            "progress":[0,1], 
+            "errors":{f.filename:[] for f in files}
         }
 
-    background_tasks.add_task(handle_parse_file, job_id)
+    background_tasks.add_task(handle_parse_files, request_id)
+    return response(**CURRENT_JOBS[request_id])
 
-    return response(**CURRENT_JOBS[job_id])
-
-def response(id, state, progress=[-1,1], errors=[], source={}, version=1, **kwargs):
+def response(id, state, progress, file_progress, errors={}, sources={}, version=1, **kwargs):
+    print(errors[list(errors.keys())[0]])
     return {
-        "id":id, 
-        "state":state.name,
+        "request_id":id, 
+        "status":state.name,
         "progress":progress,
+        "file_progress":file_progress,
         "errors":errors,
-        "source": source.serialise() if source else {},
+        "sources": [sources[s].serialise() for s in sources],
         "version":version
     }
 
@@ -105,7 +123,12 @@ def response(id, state, progress=[-1,1], errors=[], source={}, version=1, **kwar
 async def return_request(id:str):
 
     if id not in CURRENT_JOBS:
-        return JSONResponse(response(id=id, state=StatblockExtractor.JobState.error, errors=["Id not found"]), 404)
+        return JSONResponse(response(id=id, 
+                            state=StatblockExtractor.JobState.error, 
+                            progress=[1,1],
+                            file_progress=[0,0],
+                            errors={"api":"Request ID not found"}
+                        ), 404)
 
     state = CURRENT_JOBS[id]
 
@@ -115,26 +138,41 @@ async def return_request(id:str):
     return response(**state)
 
 
-def handle_parse_file(id):
-    try:
-        state = CURRENT_JOBS[id]
-        extractor.select_writer(DefaultWriter.get_name())
+def handle_parse_files(id):
+    file_count = 0
+    state = CURRENT_JOBS[id]
 
-        state["state"] = StatblockExtractor.JobState.text_extraction
-        source, errors = extractor.parse(state["file"], state["filename"], "pdf", state=state)
+    for file,filename, pages in zip(state["files"], state["filenames"], state["pages"]):
+        state["file_progress"] = [file_count+1, len(state["files"])]
+        file_count += 1
+        try:
+            state = CURRENT_JOBS[id]
+            extractor.select_writer(DefaultWriter.get_name())
 
-        state["source"] = source
-        state["errors"] = errors
+            state["state"] = StatblockExtractor.JobState.text_extraction
+            source, errors = extractor.parse(file, filename, "pdf", state=state, 
+                        pages=pages, extract_images=state["metadata"]["extract_images"])
 
-        if source and source.statblocks == None:
+            state["sources"][filename] = source
+
+            if source and source.statblocks == None:
+                state["state"] = StatblockExtractor.JobState.error
+                state["errors"][filename].append("Did not find any statblocks")
+                return
+
+        except:
             state["state"] = StatblockExtractor.JobState.error
-            state["errors"].append("Did not find any statblocks")
-            return
+            state["errors"][filename].append("Unexpected failure in API")
 
-    except Exception as e:
-        state["state"] = StatblockExtractor.JobState.error
-        state["errors"].append(["Unexpected failure in API"])
-        exit(1)
+    if file_count > 1:
+        merged_source = Source.merge([state["sources"][s] for s in state["sources"]])
+        if state["meta"]["title"]:
+            merged_source.name = state["meta"]["title"]
+        if state["meta"]["author"]:
+            merged_source.name = state["meta"]["author"]
+        state["sources"] = {merged_source.name: merged_source}
+
+    state["state"] = StatblockExtractor.JobState.finished
 
 class ParseRequest(BaseModel):
     type: str
@@ -147,7 +185,7 @@ def parse_text(request: ParseRequest):
     cr = Creature(extractor.config, extractor.logger.getChild("parse_request"))
     cr.set_name("tmp")
     lines = [Line(text=request.title + ". " + request.text, bound=Bound(0,0,1,1), page=0, attributes=[], id="1")]
-    print(lines)
+    error = None
     try:
         s = Section(lines=lines)
         print(s)
@@ -161,7 +199,9 @@ def parse_text(request: ParseRequest):
                 return JSONResponse({"result":None, "error":"Unknown action type"}, 500)
             cr.add_action(s, action_type=ACTION_TYPES._member_map_[request.action_type])
             result = cr.data[request.action_type][0]
-    except:
+            print(cr.data[request.action_type])
+    except Exception as e:
+        error = [e]
         print(e)
 
-    return {"result":result, "error":None}
+    return {"result":result, "error":error}

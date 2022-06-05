@@ -2,7 +2,7 @@ import { Button, Divider, Grid, Typography} from "@mui/material"
 import {  DAMAGE_TYPES, CONDITIONS, SHORT_ABILITIES } from "../../constants";
 import { Add,Delete } from "@mui/icons-material";
 
-import { StyledTextAndOptField, StyledDropdown, StyledCheckbox, StyledTextField } from "./FormFields";
+import { StyledTextAndOptField, StyledDropdown, StyledCheckbox, StyledTextField } from "../FormFields";
 import { Damage, Roll } from "./ComplexParts";
 
 export function EditEffect( {effect, setEffect, removeEffect} ) {
@@ -19,7 +19,6 @@ export function EditEffect( {effect, setEffect, removeEffect} ) {
 
     const addRemoveField = (field, default_value) => () => {
         const newEffect = {...effect}
-        console.log(newEffect)
         if (newEffect[field]) {
             delete newEffect[field]
         } else {
@@ -68,8 +67,6 @@ export function EditEffect( {effect, setEffect, removeEffect} ) {
         newEffect[part] = val
         setEffect(newEffect)
     }
-
-    console.log(effect)
 
     return (
             <>

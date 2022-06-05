@@ -27,7 +27,6 @@ function App() {
 
   return (
     <CssBaseline>
-          <Paper sx={{height:"100vh"}} elevation={0}>
             <NavDrawer pages={ROUTES}/>
             <Box sx={{marginLeft:"240px", p:0, overflowY:"hidden"}}>
               <Routes>
@@ -37,7 +36,6 @@ function App() {
                   )}
               </Routes>
             </Box>
-          </Paper>
       </CssBaseline>
   );
 }

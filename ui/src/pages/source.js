@@ -1,41 +1,93 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Grid, Paper, Typography, Box, Stack, Button, IconButton, Popper, Dialog } from "@mui/material";
+import { Grid, Paper, Typography, Box, Stack, Button, IconButton, Popper, Dialog, Tab } from "@mui/material";
 import SaveIcon from '@mui/icons-material/Save';
 import EditIcon from '@mui/icons-material/Edit';
 
-import Statblock from '../components/statblock/EditableStatblock';
+import StatblockViewer from '../components/viewers/StatblockViewer';
 import StatblockList, { sortByAlphabet } from '../components/StatblockList';
-import PDFDisplay from '../components/PDFDisplay';
-import { StyledTextField } from '../components/statblock/FormFields';
-import B64Image from '../components/B64Image';
+import PDFViewer from '../components/viewers/PDFViewer';
+import { StyledTextField } from '../components/FormFields';
 
 
 import { useParams } from 'react-router-dom'
-import {db, updateSource, useSource} from '../libs/db'
+import {db, updateSource, updateStatblock, useSource} from '../libs/db'
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Close, Done } from '@mui/icons-material';
+import ImageViewer from '../components/viewers/ImageViewer';
+import TabContext from '@mui/lab/TabContext';
+import TabPanel from '@mui/lab/TabPanel';
+import TabList from '@mui/lab/TabList';
+
+function AdditionalDataTabs( {image, imageOptions, pdf, page} ) {
+    const [value, setValue] = useState("image")
+
+    const handleChange = (event, newValue) => {
+        setValue(newValue)
+    }
+
+    return (
+        <Box sx={{with:"100%", typography:'smallNav'}}>
+            <TabContext value={value} onChange={handleChange}>
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', width:"100%", pl:0, pr:0, ml:0, mr:0}}>
+                    <TabList onChange={handleChange} 
+                        aria-label="Additional statblock information"
+                        scrollButtons="false"
+                    >
+                        <Tab label={"Image"} value={"image"} key={`image-tab-label`}/>
+                        <Tab label={"PDF"} value={"pdf"} key={`pdf-tab-label`}/>
+                    
+                    </TabList>
+                </Box>
+                <TabPanel value={"image"} key={"image-tab"}>
+                    <ImageViewer image={image} imageOptions={imageOptions} allowEdit={true} defaultEdit={false} />
+                </TabPanel>
+                <TabPanel value={"pdf"} key={"pdf-tab"}>
+                    <PDFViewer pdfContent={pdf} startPage={page} />
+                </TabPanel>
+            </TabContext>
+        </Box>
+    )
+}
 
 
-function SourcePagePart( {source_id} ) {
+function SourcePagePart( {source} ) {
 
-    const statblocks = useLiveQuery(() => db.statblocks.where("source").equals(Number(source_id)).toArray())
-    const images = useLiveQuery(() => db.images.where("source").equals(Number(source_id)).toArray())
+    const statblocks = useLiveQuery(() => db.statblocks.where("source").equals(source.id).toArray(), [source])
+    const images = useLiveQuery(() => db.images.where("source").equals(source.id).toArray(), [source])
+    const raws = useLiveQuery(() => db.pdfs.where("source").equals(source.id).toArray(), [source])
 
     const [selected, setSelected] = useState(0);
-    const [imageData, setImageData] = useState(null);
+    const [currentImage, setCurrentImage] = useState(null);
+    const [currentSource, setCurrentSource] = useState(null);
 
     const selectStatblock = (index) => {
         setSelected(index);
     }
 
     useEffect(() => {
-        const options = images?.filter(i => i.reference === statblocks[selected].modified_data.image?.ref)
-        if (options && options.length > 0) {
-            setImageData(options[0].data)
-        } else {
-            setImageData(null)
+        if (statblocks && statblocks[selected]) {
+            const options = images?.filter(i => i.reference === statblocks[selected].modified_data.image?.ref)
+            if (options && options.length > 0) {
+                setCurrentImage(options[0])
+            } else {
+                setCurrentImage(null)
+            }
+
+            if (statblocks && statblocks[selected]) {
+                const candidates = raws?.filter(r => r.title.startsWith(statblocks[selected].modified_data.source.title))
+                if (candidates?.length > 0) {
+                    setCurrentSource([candidates[0], statblocks[selected].modified_data.source.page])
+                }
+            } else {
+                setCurrentSource(null)
+            }
         }
-    }, [source_id, images, selected, statblocks])
+    }, [source, images, selected, statblocks])
+
+
+    const onSave = (id) => (sb) => {
+        updateStatblock(id, sb)
+    }
 
     return (
 
@@ -49,16 +101,17 @@ function SourcePagePart( {source_id} ) {
             </Paper>
         </Grid>
         <Grid item md={12} lg={6}>
-            <Paper variant="elevation" elevation={0} square sx={{p:2, m:0, overflowY:"auto", height:"100%", width:"100%"}}>
-                <Statblock statblock={statblocks[selected].modified_data} allowEdit={true}/>
+            <Paper variant="elevation" elevation={0} square sx={{p:2, m:0, overflowY:"scroll", height:"100%", width:"100%"}}>
+                <StatblockViewer statblock={statblocks[selected].modified_data} allowEdit={true} onSave={onSave(statblocks[selected].id)}/>
             </Paper>
         </Grid>
         <Grid item md={12} lg={4}>
             <Paper variant="outlined" square sx={{p:2, m:0, overflowY:"auto", height:"100%", width:"100%"}}>
-                {imageData && <B64Image 
-                    image_data={imageData}
-                    width={500}
-                />}
+                <AdditionalDataTabs 
+                    image={currentImage} 
+                    imageOptions={images} 
+                    pdf={currentSource ? currentSource[0].file : null} 
+                    page={currentSource ? currentSource[1] : null} />
             </Paper>
         </Grid>
         </Grid>
@@ -70,10 +123,7 @@ function SourcePagePart( {source_id} ) {
 
 function SourceTitlePart( {source} ) {
     const [tmpMeta, setTmpMeta] = useState()
-    console.log("fp", source?.frontpage)
     const frontpage = useLiveQuery(() => db.images.where("id").equals(source?.frontpage >= 0 ? source.frontpage : -1).toArray(), [source])
-
-    console.log(frontpage)
 
     useEffect(() => {
         if (source) {
@@ -90,7 +140,6 @@ function SourceTitlePart( {source} ) {
     }
 
     const updateSourceMeta = () => {
-        console.log("updating source", tmpMeta)
         updateSource(source.id, {title:tmpMeta.title, author:tmpMeta.author}, (e) => console.log(e))
         setAnchorEl(null)
     }
@@ -156,7 +205,7 @@ return (<>
         >
             <Stack>
             <Typography variant="pageTitle" color="primary.contrastText">
-                {source?.title} <IconButton id="edit-source-meta-button" onClick={(e) => {console.log(e); setAnchorEl(anchorEl ? undefined : e.currentTarget)}}><EditIcon /></IconButton>
+                {source?.title} <IconButton id="edit-source-meta-button" onClick={(e) => {setAnchorEl(anchorEl ? undefined : e.currentTarget)}}><EditIcon /></IconButton>
             </Typography>
             <Typography variant="pageSubtitle"  color="primary.contrastText">
                 {source?.author}
@@ -182,7 +231,7 @@ export default function SourcePage () {
         </Grid>
         </Grid>
         {source &&
-        <SourcePagePart source_id={source?.id} />
+        <SourcePagePart source={source} />
         }
         </>
     )

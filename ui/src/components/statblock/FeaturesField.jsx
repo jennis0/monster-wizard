@@ -6,7 +6,7 @@ import { reparse_feature } from '../../libs/api.js';
 import * as fmt from '../../libs/creature_format.js'
 import {  TIME_MEASURES } from '../../constants.js';
 
-import { StyledTextField,  StyledTextAndOptField } from './FormFields.jsx';
+import { StyledTextField,  StyledTextAndOptField } from '../FormFields.jsx';
 import PoppableField from "./PoppableField.jsx";
 import { EditEffect } from "./EditEffect.jsx";
 import TitleField from "./TitleField.jsx";
@@ -19,7 +19,6 @@ function FeatureEditBlock( {feature, setFeature, deleteFeature} ) {
 
     const setFeaturePart = (part) => (newPart) => {
         const newFeature = {...feature}
-        console.log(newPart)
         newFeature[part] = newPart
         setFeature(newFeature)
     }
@@ -40,14 +39,13 @@ function FeatureEditBlock( {feature, setFeature, deleteFeature} ) {
 
 export default function FeaturesField( {statblock, setStatblock, editable, resetFunc}) {
 
-    useEffect(() => {
-        if (!statblock.deleted_features) {
-            console.log("Resetting deleted features")
-            setStatblock(s => {
-                return {...s, deleted_features:{}}
-            })
-        }
-    },[statblock])
+    // useEffect(() => {
+    //     if (!statblock.deleted_features) {
+    //         setStatblock(s => {
+    //             return {...s, deleted_features:{}}
+    //         })
+    //     }
+    // },[statblock])
 
     const setFeature = (i) => (feature) => {
         const newF = [...statblock.features]
@@ -65,13 +63,17 @@ export default function FeaturesField( {statblock, setStatblock, editable, reset
     }
 
     const deleteFeature = (i) => () => {
-    let delF = {...statblock.deleted_features}
+    let delF = null
+    if (!statblock.deleted_features) {
+        delF = []
+    } else {
+        delF = [...statblock.deleted_features]
+    }
     delF[i] = true
     return setStatblock({...statblock, deleted_features:delF})
     }
 
     const regenerateEffects = (i) => () => {
-    console.log(i, statblock.features[i])
     const title = fmt.title_with_uses(statblock.features[i])
     reparse_feature(title, statblock.features[i].text, 
     (r => {

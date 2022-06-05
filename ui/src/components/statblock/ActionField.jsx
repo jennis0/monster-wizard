@@ -6,7 +6,7 @@ import PoppableField from "./PoppableField"
 import { useEffect } from "react"
 import EditBlock from "./EditBlock"
 import { Attack, Cost, LongText, OptionalEffects, Recharge, Title, Uses } from "./ComplexParts"
-import { StyledDropdown } from "./FormFields"
+import { StyledDropdown } from "../FormFields"
 import { reparse_action } from "../../libs/api"
 
 
@@ -30,7 +30,6 @@ function make_new_action(actionType) {
 function ActionEditBlock( {action, setAction} ) {
 
     const setActionPart = (part) => (val) => {
-        console.log("setting action part")
         const newAction = {...action}
         newAction[part] = val
         setAction(newAction)
@@ -55,7 +54,6 @@ function ActionTypeField( { type, setAction, actions, onAdd, onDelete, editable,
         const title = title_with_uses(actions[i])
         reparse_action(type, title, actions[i].text, 
             (r => {
-                console.log(r)
                 setAction(i)(r)
             }))
         }
@@ -65,7 +63,9 @@ function ActionTypeField( { type, setAction, actions, onAdd, onDelete, editable,
         <Stack spacing={2}>
             {actions.map((action, i) => { 
                 return (
-                    <PoppableField text={format_action(action)} editable={editable} onReset={onReset(i)} onGenerate={regenerateEffects(i)}>
+                    <PoppableField key={`action-type-${i}`} text={format_action(action)} 
+                        editable={editable} onReset={onReset(i)} onGenerate={regenerateEffects(i)}
+                    >
                         <EditBlock title={"Action"} onDelete={onDelete(i)}>
                             <ActionEditBlock action={action} setAction={setAction(i)} />
                         </EditBlock>
@@ -79,14 +79,13 @@ function ActionTypeField( { type, setAction, actions, onAdd, onDelete, editable,
 
 export default function ActionField( {statblock, setStatblock, editable, resetFunc } ) {
 
-    useEffect(() => {
-        if (!statblock.deleted_actions) {
-            console.log("Resetting deleted actions")
-            setStatblock(s => {
-                return {...s, deleted_actions:{"action":{}, "bonus":{}, "reaction":{}, "legendary":{}}}
-            })
-        }
-    },[statblock])
+    // useEffect(() => {
+    //     if (!statblock.deleted_actions) {
+    //         setStatblock(s => {
+    //             return {...s, deleted_actions:{"action":{}, "bonus":{}, "reaction":{}, "legendary":{}}}
+    //         })
+    //     }
+    // },[statblock])
 
     const onReset = (resetFunc, actionType) => (i) => () => {
         resetFunc(s => {
@@ -128,17 +127,17 @@ export default function ActionField( {statblock, setStatblock, editable, resetFu
     }
 
     const setAction = (actionType) => (i) => (val) => {
-        console.log("setting action")
         const newSb = {...statblock}
         newSb[actionType][i] = val
         setStatblock({...newSb})
     }
 
     return (<>
-        {["action", "bonus", "reaction", "legendary"].map(a => {
+        {["action", "bonus", "reaction", "legendary"].map((a,i) => {
             if (statblock[a]) {
                 return (
                     <ActionTypeField 
+                        key={`${a}-field-${i}`}
                         type={a} 
                         actions={statblock[a]} 
                         editable={editable} 
@@ -150,7 +149,11 @@ export default function ActionField( {statblock, setStatblock, editable, resetFu
                     /> 
                 )
             } else if (editable) {
-                return <TitleField text={action_type_map[a]} editable={editable} onAdd={addAction(a)(0)} onReset={onResetAll(a)} />
+                return <TitleField
+                            key={`${a}-field`}
+                            text={action_type_map[a]} editable={editable} 
+                            onAdd={addAction(a)(0)} onReset={onResetAll(a)}
+                        />
             }
         })}
     </>)

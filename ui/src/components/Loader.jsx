@@ -1,7 +1,7 @@
 import React from 'react'
 import { Box, CircularProgress, Typography, Paper, Button, IconButton, Tooltip, LinearProgress } from "@mui/material"
 import { Stack } from '@mui/material';
-import { Cancel, CancelOutlined, Replay } from '@mui/icons-material';
+import { Cancel, CancelOutlined, CheckCircleOutline, Replay } from '@mui/icons-material';
 import { db, deleteUpload } from '../libs/db';
 
 function CircularProgressWithLabel(props) {
@@ -33,12 +33,12 @@ export function ImportProgress ( {upload} ) {
 
   const onCancel = (e) => {
     deleteUpload(upload.id)
-    
+    e.stopPropagation()
+    e.preventDefault()
   }
 
   const error = upload.status === "error"
   const stage_progress = 100* upload.progress[0] / upload.progress[1]
-  console.log(stage_progress)
 
   return (
     <Box sx={{w:"100%"}}>

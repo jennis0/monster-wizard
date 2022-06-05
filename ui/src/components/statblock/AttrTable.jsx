@@ -3,7 +3,7 @@ import { Typography, Table, TableHead, TableBody, TableRow, Button, Popper, Pape
 import { Close, Restore } from '@mui/icons-material';
 import TableCell, { tableCellClasses } from "@mui/material/TableCell";
 import {SHORT_ABILITIES} from '../../constants.js';
-import { StyledTextField } from './FormFields.jsx';
+import { StyledTextField } from '../FormFields.jsx';
 
 import * as fmt from '../../libs/creature_format.js'
 

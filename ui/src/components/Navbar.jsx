@@ -23,11 +23,16 @@ const drawerWidth = 240;
 
 function ImportProgressViewer( {uploads} ) {
   const [open, setOpen] = useState(uploads?.length > 0)
+  const navigate = useNavigate()
   
   useEffect(() => {
     const timer = setTimeout(() => get_request_status(uploads), open ? 1e3 : 1e4)
     return () => clearTimeout(timer)
    })
+
+  const goTo = (id) => (e) => {
+    navigate(`/sources/${id}`)
+  }
 
   return (
     <Box sx={{width:"100%", m:0, p:0, alignItems:"end", direction:"column"}}>
@@ -44,11 +49,26 @@ function ImportProgressViewer( {uploads} ) {
     {open ? 
     <>
     <Divider sx={{mb:0}}/>
-      <List sx={{width:"100%", m:0, p:2, height:"400px", overflowY:"auto"}}>
+      <List sx={{width:"100%", m:0, mt:-1, p:2, height:"400px", overflowY:"auto"}} disablePadding={true} disableGutters={true}>
         {uploads?.map(u => {
-          console.log(u.source)
-          return (
-          <ListItem key={u.id} sx={{m:0, p:0}}>
+          return (<>
+          {u.status === "finished" ? 
+            <ListItemButton key={u.id} onClick={goTo(u.id)} sx={{m:0, p:0, pl:1, pr:1, pt:0.5, mt:-1, ml:-2, mr:-2, mb:1, "&:hover":{backgroundColor:"primary.dark"}}} >
+              <ListItem sx={{m:0, p:0}} disableGutters>
+              <Stack sx={{width:"100%"}} spacing={0}>
+                <Box sx={{width:"100%"}}>
+                <ListItemText primaryTypographyProps={{fontFamily:"Scaly Sans", fontSize:13}}
+                  primary={u.source?.title}/>
+                </Box>
+                <Box sx={{w:"100%"}}>
+                  <ImportProgress upload={u} />
+                </Box>
+              <Divider sx={{mt:1.5, h:5, ml:-2, mr:-2}}/>
+              </Stack>
+            </ListItem>
+          </ListItemButton>
+            :
+            <ListItem key={u.id} sx={{m:0, p:0}}>
             <Stack sx={{width:"100%"}} spacing={0}>
               <Box sx={{width:"100%", mt:-1}}>
               <ListItemText primaryTypographyProps={{fontFamily:"Scaly Sans", fontSize:13}}
@@ -60,6 +80,8 @@ function ImportProgressViewer( {uploads} ) {
             <Divider sx={{mt:1, mb:1, h:5, ml:-2, mr:-2 }}/>
             </Stack>
           </ListItem>
+          }</>
+          
 
         )})}
       </List></> : <></>}
@@ -78,13 +100,10 @@ export function NavDrawer(props) {
   const uploads = useLiveQuery(() => db.uploads.toArray())
 
   const path = location.pathname.split("/")[1];
-  console.log(path)
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
-
-  console.log("uploads", uploads, db.uploads.toArray())
 
   const drawer = (<>
       <Box sx={{height:50, width:"100%"}}></Box>

@@ -4,7 +4,7 @@ import { Grid, Button } from "@mui/material";
 
 import EditBlock from "./EditBlock";
 import { LongText, Title } from "./ComplexParts";
-import { StyledCheckbox, StyledDropdown, StyledTextField } from "./FormFields";
+import { StyledCheckbox, StyledDropdown, StyledTextField } from "../FormFields";
 import { SHORT_ABILITIES } from "../../constants";
 import { Add, Delete } from "@mui/icons-material";
 
@@ -40,7 +40,6 @@ function SpellLevelEdit( {spellLevel, setSpellLevel} ) {
 
     const is_levelled = spellLevel.level !== "unlevelled"
 
-    console.log(spellLevel)
     return (<>
         {is_levelled ?<>
         <Grid item xs={4}>
@@ -79,7 +78,7 @@ function SpellLevelEdit( {spellLevel, setSpellLevel} ) {
         {spellLevel.spells && spellLevel.spells.length > 0 ? <>
             {spellLevel.spells.map((sp,i) => {
                 return (
-                <Grid item container xs={12}>
+                <Grid item container xs={12} key={`spell-level-${i}`}>
                     <Grid item xs={6}>
                         <StyledTextField
                             label="Spell"

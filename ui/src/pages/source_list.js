@@ -14,9 +14,6 @@ export default function SourceListPage () {
   const images = useLiveQuery( () => db.images.where("page").equals(0).toArray() )
   const sources = useLiveQuery( () => db.sources.toArray() )
 
-  console.log(sources)
-  console.log(db.sources)
-
   const onClick = (id) => () => {
     navigate(`/sources/${id}`)
   }
@@ -24,8 +21,6 @@ export default function SourceListPage () {
   const onDelete = (id) => () => {
     deleteSource(id)
   }
-
-  console.log("ims", images?.length, sources?.map(s => [s.id, s.frontpage]))
 
   const mw = 310 * 4
 
@@ -43,7 +38,7 @@ export default function SourceListPage () {
 
           {images && images.length && source.frontpage > 0 ? 
             <B64Image 
-              image_data={images.filter(i => i.source === source.id)[0].data}
+              image_data={images.filter(i => i.source === source.id)[0]?.data}
               alt={source.frontpage}
               width="100%"
               style={{alignItems:"center", overflowY:"clip"}}

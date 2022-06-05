@@ -4,7 +4,7 @@ import { FormGroup, Typography, Button, Grid } from "@mui/material"
 import { LANGUAGES } from '../../constants.js';
 
 
-import { StyledDropdown, StyledTextField } from './FormFields.jsx';
+import { StyledDropdown, StyledTextField } from '../FormFields.jsx';
 import PoppableField from "./PoppableField.jsx";
 
 
@@ -52,7 +52,7 @@ export default function LanguagesField( {statblock, setStatblock, editable=true,
                     hide={!editable && !statblock?.languages?.length > 0} onReset={onReset}>
         <EditBlock title="Languages">
         {statblock.languages?.map((lg, i) => (
-          <Grid item xs={12}>
+          <Grid item xs={12} key={`lang-field-${i}`}>
             <StyledTextField 
                 label="Language" 
                 value={lg}

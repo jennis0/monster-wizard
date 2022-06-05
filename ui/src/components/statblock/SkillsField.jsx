@@ -4,7 +4,7 @@ import { FormGroup, Typography, Button, Grid, Checkbox } from "@mui/material"
 import { REVERSE_SKILL_MAP, SHORT_SKILLS, SHORT_SKILL_ABILITY_MAP, SKILLS, SKILL_MAP } from '../../constants.js';
 
 
-import {SkillField, CustomSkillField, StyledTextAndOptField, StyledDropdown, StyledTextField, StyledCheckbox } from './FormFields.jsx';
+import {SkillField, CustomSkillField, StyledTextAndOptField, StyledDropdown, StyledTextField, StyledCheckbox } from '../FormFields.jsx';
 import PoppableField from "./PoppableField.jsx";
 
 
@@ -41,6 +41,24 @@ export default function SkillsField( {statblock, setStatblock, editable=true, re
       skill.skill = ""
       skill.mod = 0
       skills[i] = skill
+      return {...s, skills:skills}
+    })
+  }
+
+  const onValueOverride = (i) => (val) => {
+    console.log(val)
+    setStatblock(s => {
+      const skills = [...s.skills]
+      if (val === "") {
+        console.log("resetting to default")
+        console.log(skills[i])
+        skills[i].mod = get_default_skill_bonus(s, skills[i].skill, skills[i].prof).mod
+        console.log(get_default_skill_bonus(s, skills[i].skill))
+        skills[i].default = true
+      } else {
+        skills[i].mod = Number(val)
+        skills[i].default = false
+      }
       return {...s, skills:skills}
     })
   }
@@ -107,9 +125,9 @@ export default function SkillsField( {statblock, setStatblock, editable=true, re
   
   return ( 
     <PoppableField editable={editable} text={<><b>Skills</b> {skills_text}</>} hide={!editable && skills_text.trim().length === 0} onReset={onReset}>
-      {statblock.skills && statblock.skills.length > 0 ? 
-      
-      statblock.skills.map((sk,i) => { 
+      <Grid item container spacing={1} xs={12} key={`skills-eb`} sx={{alignItems:"center"}}>
+        <EditBlock title="Skill" onAdd={onAddSkill(-1)}>
+      {statblock.skills?.map((sk,i) => { 
         let skill_name = SKILL_MAP[sk.skill]?.toLowerCase()
         let short_ability = SHORT_SKILL_ABILITY_MAP[sk.skill]?.toUpperCase()
         if (skill_name === null | skill_name === undefined) {
@@ -118,38 +136,34 @@ export default function SkillsField( {statblock, setStatblock, editable=true, re
         }
         const default_skill = get_default_skill_bonus(statblock, sk.skill, sk.prof)            
     
-        return (
-          <Grid item container spacing={1} xs={12}>
-            <EditBlock title="Skill" onAdd={onAddSkill(i)} onDelete={onDeleteSkill(i)}>
-              <Grid item xs={6}>
+        return (<>
+              <Grid item xs={6} xl={2}>
                 <StyledCheckbox
                   checked={sk.prof}
                   onCheckChange={onProfChange(i)}
                   label="Proficient" />
               </Grid>
-              <Grid item xs={6}>
+              <Grid item xs={6} xl={2}>
                 <StyledCheckbox
                   checked={sk.is_custom}
                   onCheckChange={onCustomChange(i)}
                   label="Custom" />
               </Grid>
-              <Grid item xs={12}>
+              <Grid item xs={12} xl={8}>
                 <SkillField skill={sk.skill} set_value={sk.mod} key={`skill-${i}`}
                           is_custom={sk.is_custom}
                           is_proficient={sk.prof} is_default={sk.default} width="400px"
                           default_value={default_skill.mod} skill_mod={default_skill.skill_mod}
-                          onSkillChange={onSkillChange(i)}/>
+                          onSkillChange={onSkillChange(i)}
+                          onValueChange={e => onValueOverride(i)(e.target.value)}
+                          onAdd={onAddSkill(i)}
+                          onDelete={onDeleteSkill(i)}
+                        />
               </Grid>
+        </>)
+      })}
             </EditBlock>
-          </Grid>
-        )
-      }) : 
-      <Grid item xs={12} lg={6}>
-        <Button sx={{height:"40px"}} startIcon={<Add />} 
-                onClick={onAddSkill(0)}>Add Skill</Button>
-      </Grid>
-    }
-      
+        </Grid>
       </PoppableField>
   );
 }

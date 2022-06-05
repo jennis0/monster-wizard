@@ -3,10 +3,9 @@ import { Grid, Paper, Typography, Box, Stack, Button, IconButton, Tab, Tabs, Ima
 import SaveIcon from '@mui/icons-material/Save';
 import EditIcon from '@mui/icons-material/Edit';
 
-import Statblock from './statblock/EditableStatblock';
+import StatblockViewer from './viewers/StatblockViewer';
 import StatblockList, { sortByAlphabet } from './StatblockList';
-import UploadButton from './UploadButton';
-import PDFDisplay from './PDFDisplay';
+import PDFViewer from './viewers/PDFViewer';
 
 
 import { post_file } from '../libs/api';
@@ -59,7 +58,7 @@ export default function ReviewPanel( {source, setSource} ) {
           setPDFSource(reader.result);
           var data = new FormData()
           data.append("file", source.filename);
-          post_file(data, (x) => {console.log("setting statblock", x); setProcessedData(x)}, null, setUploadState);
+          post_file(data, (x) => {setProcessedData(x)}, null, setUploadState);
         };
     }, [source])
   
@@ -90,8 +89,6 @@ export default function ReviewPanel( {source, setSource} ) {
                 for (const image of processedData.source.images) {
                     addImage(id, image.page, image)
                 }
-                console.log("finished save")
-                //navigate("/sources")
         })
     }
 
@@ -103,7 +100,6 @@ export default function ReviewPanel( {source, setSource} ) {
             }
         }
         setImageData(images)
-        console.log(images)
     }, [processedData])
 
     if (!processedData && uploadState) {
@@ -130,7 +126,7 @@ export default function ReviewPanel( {source, setSource} ) {
                 </Grid>
                 <Grid item xs={4} md={5}>
                     <Paper variant="outlined" square sx={{p:2, m:0, overflowY:"auto", height:"100%", width:"100%"}}>
-                        <Statblock statblock={processedData.source.statblocks[selected]} allowEdit={true} defaultEdit={true}/>
+                        <StatblockViewer statblock={processedData.source.statblocks[selected]} allowEdit={true} defaultEdit={true}/>
                     </Paper>
                 </Grid>
                 <Grid item xs={4} md={5} >
@@ -142,7 +138,7 @@ export default function ReviewPanel( {source, setSource} ) {
                         </Tabs>
                     </Box>
                     <TabPanel value={selectedTab} index={0}>
-                        <PDFDisplay pdfContent={pdfSource} processedData={processedData} page={page} setPage={setPage} style={{margin:5}} scale={1}/>
+                        <PDFViewer pdfContent={pdfSource} processedData={processedData} page={page} setPage={setPage} style={{margin:5}} scale={1}/>
                     </TabPanel>
                     <TabPanel value={selectedTab} index={1}>
                     <ImageList sx={{ width: 500, height: 450 }} cols={3} rowHeight={164}>

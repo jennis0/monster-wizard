@@ -55,7 +55,6 @@ function format_race_type_alignment(monster) {
         if (monster.creature_type.swarm_size != null) {
             parts.push(`${size} swarm of ${monster.creature_type.swarm_size} ${type}s`)
         } else {
-            console.log(type)
             const tIndex = TYPES.findIndex(t => t === type.toLowerCase());
             const pluralType = PLURAL_TYPES[tIndex];
             parts.push(`${size} swarm of ${capitalise(pluralType)}`)

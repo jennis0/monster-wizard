@@ -1,6 +1,7 @@
 
-import {TextField, IconButton, Stack, MenuItem, Box, Button, Paper, Divider, Typography, Select, FormControl, Checkbox, ListSubheader, ButtonGroup, Tooltip} from "@mui/material"
-import { SKILL_MAP, SHORT_SKILL_ABILITY_MAP, SKILLS, MEASURES} from "../../constants";
+import {TextField, IconButton, MenuItem, Box, Paper, Divider, ListItemText, Typography,
+    Select, Checkbox, ListSubheader, ButtonGroup, Tooltip} from "@mui/material"
+import { SKILL_MAP, SHORT_SKILL_ABILITY_MAP, SKILLS, MEASURES} from "../constants";
 import { AnchorOutlined, ConstructionOutlined, Delete } from "@mui/icons-material";
 import { Add } from "@mui/icons-material";
 import { useEffect, useState } from "react";
@@ -44,7 +45,7 @@ export function HighlightText ( {editable, onClick, color, ...props} ) {
 export function StyledCheckbox(props) {
 
     const labelWidth = props.short ? 60 : 100
-    const width = props.width ? props.width : "100%"   
+    const totalWidth = props.long ? "100%" : "151px"
 
     const error = props.validate ? !props.validate(props.value) : false;
     const bg =  error ? "#fcc" : null
@@ -57,20 +58,20 @@ export function StyledCheckbox(props) {
         <Tooltip title={props.tooltip && !props.disabled ? props.tooltip : ""}>
         <Paper
             sx={{ p:0, display: 'flex', alignItems: 'center',  
-                    backgroundColor:bg, maxWidth:"151px", height:"40px",
+                    backgroundColor:bg, maxWidth:totalWidth, height:"40px"
                 }}
             variant="outlined"
             onClick={() => props.onCheckChange({target:{checked:!props.checked}})}
             square={true}
             >
-            <Box sx={{width:"100px", textAlign:"center"}}>
+            <Box sx={{width:"100%", textAlign:"center"}}>
                 <Typography variant="statblock"  sx={{padding:1 ,m:0, ml:0, mr:0.0, textAlign:"center", width:`${labelWidth}px`}}>
                     {props.label}
                 </Typography> 
             </Box>
-            <Divider orientation="vertical" sx={{height:40, m:0., ml:0, mr:1, p:0}} />
-            <Box sx={{width:"40px", alignItems:"center", justifyItems:"center", textJustify:"center"}}>
-                <Checkbox sx={{m:0, mr:0,ml:0.6, p:0, alignSelf:"center"}} checked={props.checked === true} onChange={props.onCheckChange}/>         
+            <Divider orientation="vertical" sx={{height:40, m:0., ml:0, mr:0., p:0}} />
+            <Box sx={{width:"50px", alignItems:"center", justifyItems:"center", textJustify:"center"}}>
+                <Checkbox sx={{m:0, mr:1, ml:1, p:0, alignSelf:"center"}} checked={props.checked === true} onChange={props.onCheckChange}/>         
             </Box>
     </Paper>
     </Tooltip>
@@ -183,7 +184,7 @@ export function StyledTextField(props) {
                 </>
             : <></>} 
         
-            {props.label && <Divider orientation="vertical" sx={{height:40, m:0., ml:0, mr:1, p:0}} />}
+            {props.label && <Divider orientation="vertical" sx={{height:40, m:0., ml:0, mr:0, p:0}} />}
 
             { props.select ?
             <Select 
@@ -193,17 +194,19 @@ export function StyledTextField(props) {
                 disableUnderline={true} 
                 disabled={props.disabled}
                 variant="standard"
-                sx={{m:0, p:0, flex:1, m:0.5, height:"32px", textAlign:"center", fontFamily:"Scaly Sans", fontSize:17}} 
+                sx={{m:0, p:0, flex:1, height:"32px", textAlign:"center", fontFamily:"Scaly Sans", fontSize:17}} 
                 key={`styledtext-${props.label}-selectfield-${props.id}`}
-                fullWidth/> :
+                fullWidth
+                {...props.textProps}
+            /> :
             <LazyTextField
                 variant="standard"
                 value={props.value}
                 onChange={props.onChange}
                 disabled={props.disabled}
                 InputProps={{disableUnderline:true}}
-                inputProps={{style:{alignSelf:"center", fontFamily:"Scaly Sans", fontSize:17}}}
-                sx={{ m:0, p:0, mb:-0.5, flex: 1 }}
+                inputProps={{style:{fontFamily:"Scaly Sans", fontSize:17, textAlign:props.center ? "center" : null}}}
+                sx={{ m:0, pl:1, pr:1, mb:-0.5, flex: 1 }}
                 fullWidth
                 key={`styledtext-${props.label}-textfield`}
                 {...props.textProps}
@@ -333,12 +336,16 @@ export function StyledTextAndOptField(props) {
 
 
 export function StyledDropdown ({ id, label, value, onChange, options, capitalise=true, textFieldProps={}, ...props }) { 
-    console.log(value)
+
     const do_capitalise = (s) => {
       return s.length > 0 ? s[0].toUpperCase() + s.substring(1) : ""
     }
     return (
-      <StyledTextField id={id} label={label} select value={value} onChange={onChange} {...textFieldProps} {...props}>
+      <StyledTextField 
+            id={id} label={label} select 
+            value={value} onChange={onChange} 
+            {...textFieldProps} {...props}
+        >
         {!Array.isArray(options) ? 
             Object.keys(options).map(k => {
                 return [
@@ -364,7 +371,94 @@ export function StyledDropdown ({ id, label, value, onChange, options, capitalis
         </StyledTextField>
   )}
 
-export function SkillField ( { skill, is_proficient, is_custom, is_default, default_value, set_value, skill_mod, onSkillChange, onValueChange, tooltip}) {
+export function StyledMultiSelect({id, label, short, width="100%", selected=[], options=[], 
+     disabled, tooltip, setSelected, capitalise=true, 
+     endButton, onEndButtonClick, ...props
+}) {
+    const handleChange = (event) => {
+      const {
+        target: { value },
+      } = event;
+      setSelected(
+        typeof value === 'string' ? value.split(',') : value,
+      );
+    };
+
+    const do_capitalise = (s) => {
+        return s.length > 0 ? s[0].toUpperCase() + s.substring(1) : ""
+      }
+  
+    const labelWidth = short ? 60 : 100
+        
+    return (
+        <Tooltip title={tooltip && !disabled ? tooltip : ""} disableHoverListener={disabled === true}>
+        <Paper
+            sx={{ p:0, display: 'flex', alignItems: 'center',  
+                    width:width, height:"40px"
+                }}
+            disabled={disabled}
+            variant="outlined"
+            square={true}
+        >
+            {label ? <>
+                <Typography variant="statblock"  
+                    sx={{padding:0 ,m:0, ml:0, textAlign:"center", width:`${labelWidth}px`,
+                            color: disabled ? "#a0a0a0" : null
+                        }}>
+                    {label}
+                </Typography> 
+            </>
+            : <></>}
+        
+            {label && <Divider orientation="vertical" sx={{height:40, m:0., ml:0, mr:0, p:0}} />}
+            <Select 
+                value={selected} 
+                onChange={handleChange}
+                multiple
+                renderValue={(val) => val.map(v => do_capitalise(v)).join(', ')}
+                disableUnderline={true} 
+                disabled={disabled}
+                variant="standard"
+                sx={{overflow:"hidden", m:0, p:0, pl:0, pr:0, flex:1, height:"32px", textAlign:"center", fontFamily:"Scaly Sans", fontSize:17}} 
+                key={`styledtext-${label}-selectfield-${id}`}
+                fullWidth
+                MenuProps={{sx:{p:0, m:0}, PaperProps:{variant:"outlined", elevation:0, square:true, sx:{borderRadius:0, p:0, m:0}}}}
+                {...props}
+                >
+                {options.map((s, i) => {
+                    return (
+                    <MenuItem key={`${s}-${i}`} value={s}>
+                        <ListItemText primaryTypographyProps={{variant:"statblock"}} 
+                            primary={capitalise ? do_capitalise(s) : s} />
+                    </MenuItem>
+                )
+                })}
+                </Select>
+
+                { endButton ? 
+                <><Divider orientation="vertical" sx={{height:40, m:0.}} />
+                <ButtonGroup sx={{width:`${27*endButton.length}px`, alignItems:"center", ml:-0.5}}>
+                {endButton.map((eb, i) => {
+                    return (
+                    <Box key={`end-button-${i}`} sx={{display:"flex", flexDirection:"row", alignItems:"center", height:40, width:"27px"}}>
+                    <IconButton key={`end-button-${i}`} sx={{margin:0, p:0, borderRadius:0 , height:40, width:"27px"}} 
+                        onClick={onEndButtonClick[i]} disabled={disabled}>
+                            {eb}
+                    </IconButton>
+                    {i < endButton.length-1 && <Divider orientation="vertical" sx={{height:40, m:0.}} />}
+                    </Box>
+                    )
+                })}
+                </ButtonGroup>
+                </> : <></>
+            }
+    </Paper>
+    </Tooltip>
+    )
+  }
+
+export function SkillField ( { skill, is_proficient, is_custom, is_default, default_value, set_value, skill_mod, 
+    onSkillChange, onValueChange, onAdd, onDelete, tooltip}) {
     
     if (is_proficient === undefined) {
         is_proficient = true
@@ -386,7 +480,6 @@ export function SkillField ( { skill, is_proficient, is_custom, is_default, defa
         ability = ability.toLowerCase()
     }
 
-    console.log(skill_mod)
     const prof = is_proficient ? default_value - skill_mod : 0
 
     return (
@@ -398,15 +491,16 @@ export function SkillField ( { skill, is_proficient, is_custom, is_default, defa
             variant="outlined"
             square={true}
         >
-            <Box sx={{flex:1, maxWidth:"70%", p:0, mr:1, justifyContent:"center"}}>
+            <Box sx={{flex:1, width:"100%", p:0, mr:1, justifyContent:"center"}}>
             {is_custom ? 
                 <LazyTextField
                 variant="standard"
+                placeholder="Skill Name"
                 value={ability}
                 onChange={onSkillChange}
                 InputProps={{disableUnderline:true}}
                 inputProps={{style:{alignSelf:"center", fontFamily:"Scaly Sans", fontSize:17}}}
-                sx={{ m:0, p:1, mb:-0.5, flex: 1 }}
+                sx={{display:"flex", flex:1, m:0, p:1, mb:-0.5, flex: 1 }}
                 fullWidth
                 key={`styledtext-${skill.__custom_id}-textfield`}
             />
@@ -443,24 +537,38 @@ export function SkillField ( { skill, is_proficient, is_custom, is_default, defa
             }
             </Box>
             <Divider orientation="vertical" sx={{height:40, m:0., ml:0, mr:1, p:0, w:5}} />
-            <Box sx={{justifyContent:"center", ml:1, mr:1}}>
+            <Box sx={{justifyContent:"center", ml:1, mr:1, width:"100px", textAlign:"center"}}>
                 <Typography variant="statblock" fontSize={16} lineHeight={1.2}
-                    sx={{marginRight:1, textJustify:"left", width:120}}>
+                    sx={{marginRight:1, textJustify:"left", width:"100%"}}>
                         {`${default_value} (${short_ability}${is_proficient ? ' + ' : ''}${is_proficient ? prof : ""})`}
                 </Typography>
             </Box>
-            <Divider orientation="vertical" sx={{height:40, m:0., ml:0, mr:1, p:0, w:5}} />
-            <TextField
-                variant="standard"
-                value={is_default ? "" : set_value}
-                placeholder="Override"
-                onChange={onValueChange}
-                InputProps={{disableUnderline:true, color:"red"}}
-                inputProps={{style:{textAlign:"center", fontFamily:"Scaly Sans Caps", fontSize:17}}}
-                margin="dense"
-                sx={{ m:0.6, p:0, pr:1, width:"80px", "& input::placeholder":{fontSize:14}}}
-                fullWidth            
-            />
+            <Divider orientation="vertical" sx={{height:40, m:0., ml:0, mr:0, p:0, w:5}} />
+            <Box sx={{width:"80px", m:0, p:0, alignText:"center"}}>
+                <LazyTextField
+                    variant="standard"
+                    value={is_default ? "" : set_value}
+                    placeholder="Override"
+                    onChange={onValueChange}
+                    InputProps={{disableUnderline:true, color:"red"}}
+                    inputProps={{style:{textAlign:"center", fontFamily:"Scaly Sans Caps", fontSize:17}}}
+                    margin="dense"
+                    sx={{ alignText:"center", m:0., p:0, width:"100%", "& input::placeholder":{fontSize:14}}}
+                    fullWidth            
+                />
+            </Box>
+            <Divider orientation="vertical" sx={{height:40, m:0., ml:0, mr:0, p:0, w:5}} />
+            <Box sx={{width:"28px", m:0, p:0, alignItems:"center", justifyItems:"center"}}>
+            <IconButton sx={{margin:0, p:0, borderRadius:0 , height:40, width:"27px"}} onClick={onAdd}>
+                    <Add />
+                </IconButton>
+            </Box>
+            <Divider orientation="vertical" sx={{height:40, m:0., ml:0, mr:0, p:0, w:5}} />
+            <Box sx={{width:"28px", m:0, p:0, alignItems:"center", justifyItems:"center"}}>
+            <IconButton sx={{margin:0, p:0, borderRadius:0 , height:40, width:"27px"}} onClick={onDelete}>
+                    <Delete />
+                </IconButton>
+            </Box>
         </Paper>
         </Tooltip>
     )

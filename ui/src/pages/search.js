@@ -4,40 +4,44 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Paper, TextField, Stack, Box, Container, Grid, Divider, Typography } from '@mui/material'
 import StatblockResultList from '../components/StatblockResultList'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useSearch, filterCR } from '../libs/search'
+import SearchForm from '../components/SearchForm'
 
-function useSearch (text, deps) {
-    return useLiveQuery(() => db.statblocks.filter(sb => sb.modified_data.name.toLowerCase().indexOf(text.toLowerCase()) >= 0).toArray(), deps)
-}
 
 export default function SearchPage() {
-    const location = useLocation().search
+    const location = useLocation()
     const navigate = useNavigate()
-    let query= new URLSearchParams(location).get("query")
-    query = query ? query : ""
+    const [query, setQuery] = useState("")
+    const [results, setResults] = useState([])
+    const [filters, setFilters] = useState([])
 
-    const results = useSearch(query, [query])
+    useEffect(() => {
+        const val = new URLSearchParams(location.search).get("query")
+        if (val && val !== query) {
+            setQuery(val)
+        } else {
+            setQuery("")
+        }
+    }, [location])
+
     const sources = useLiveQuery(() => db.sources.toArray())
 
     return (
         <Grid container sx={{width:"100%"}}>
             <Grid item xs={2} />
             <Grid item xs={8}>     
-            <Paper sx={{width:"100%", height:"calc(100vh - 1px)", p:0, m:0}}>
-                <Box sx={{m:0, p:0, height:"20vh", width:"100%", justifyContent:"center", display:"flex", flexGrow:1, flex:1, backgroundColor:"#eee"}} color="primary">
-                    <Stack sx={{m:0, p:5, width:"100%"}} spacing={2}>
-                        <Typography variant="h4">Search Statblocks</Typography>
-                        <Divider width="100%"/>
-                        <TextField component="form" sx={{width:"80%", p:5, alignSelf:"center"}}
-                            placeholder="Search Statblocks"
-                            defaultValue={query} 
-                            InputProps={{sx:{backgroundColor:"white"}}}
-                            onSubmit={(e) => {e.preventDefault(); navigate(`/search?query=${e.target[0].value}`)}}>
-                        </TextField>
-                    </Stack>
+            <Paper variant="elevation" sx={{p:2, mt:1, mb:0, backgroundColor:"primary.light", color:"primary.contrastText"}} square>
+                <Typography variant="nav" fontSize={30}>Search</Typography>
+                <Box sx={{m:0, p:0, width:"100%", justifyContent:"center",
+                        display:"flex", flexGrow:1, flex:1, backgroundColor:"primary.light"}}>
+                    <SearchForm setResults={setResults} sources={sources}/>
                 </Box>
-                <Divider sx={{width:"100%"}}/>
+                </Paper>
+
+            <Paper variant="elevation" square
+                    sx={{width:"100%", height:"90vh", p:0, m:0}}>
                 <StatblockResultList statblocks={results} sources={sources} sx={{width:"100%"}}/>
-                </Paper>   
+            </Paper>   
             </Grid>
             <Grid item xs={2} />
         </Grid>
