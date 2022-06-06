@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
-import { Paper, Box } from "@mui/material"
+import { Paper, Box, Grid, Stack, useMediaQuery } from "@mui/material"
 
 import UploadPage from './pages/upload';
 import SourceListPage from './pages/source_list';
 import SourcePage from './pages/source'
+import CollectionPage from './pages/collections';
 
 import { Routes, Route } from 'react-router-dom';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -19,7 +20,7 @@ const ROUTES = [
   {label:"Create", path:"create", element:<CreatePage />, icon:<Add />},
   {label:"Import", path:"import", element:<UploadPage />, icon:<Upload />},
   {label:"Sources", path:"sources", element:<SourceListPage />, icon:<Book />},
-  {label:"Collections", path:"collections", element:<SourceListPage />, icon:<Collections />},
+  {label:"Collections", path:"collections", element:<CollectionPage />, icon:<Collections />},
   {label:"Search", path:"search", element:<SearchPage />, icon:<Search />},
   // {label:"Settings", path:"settings", element:null, icon:<Settings />},
   // {label:"About", path:"about", element:null, icon:<Info />}
@@ -27,17 +28,25 @@ const ROUTES = [
 
 function App() {
 
+  const persistantNav = useMediaQuery('(min-width:900px)');
+
+
   return (
     <CssBaseline>
-            <NavDrawer pages={ROUTES}/>
-            <Box sx={{marginLeft:"240px", p:0, overflowY:"hidden"}}>
-              <Routes>
-              <Route path={"/sources/:id"} element={<SourcePage />}/>
-                {ROUTES.map(r => 
-                  <Route key={`route-${r.path}`} path={`/${r.path}`} element={r.element}/>
+        <Stack direction={persistantNav ? "column" : "row"}>
+          <NavDrawer pages={ROUTES} persistant={persistantNav}/>
+          <Box sx={{width:"100%", p:0, overflowY:"hidden", 
+            paddingLeft:persistantNav ? "240px" : null, marginTop:{xs:"50px", sm:"64px", md:"0px"}
+          }}>
+                <Routes>
+                  <Route path={"/sources/:id"} element={<SourcePage />}/>
+                  {ROUTES.map(r => 
+                    <Route key={`route-${r.path}`} path={`/${r.path}`} element={r.element}/>
                   )}
-              </Routes>
-            </Box>
+                </Routes>
+          </Box>
+        </Stack>
+ 
       </CssBaseline>
   );
 }

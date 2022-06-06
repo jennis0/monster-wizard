@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useReducer, useRef} from 'react';
 import PropTypes from 'prop-types';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
@@ -9,11 +9,12 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Toolbar from '@mui/material/Toolbar';
+import { Menu as MenuIcon } from '@mui/icons-material';
 
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../libs/db';
-import { IconButton, LinearProgress, Stack, Typography } from '@mui/material';
+import { AppBar, Dialog, DialogContent, IconButton, LinearProgress, Menu, Paper, Stack, Typography } from '@mui/material';
 import { ImportProgress } from './Loader';
 import { ExpandLess, ExpandMore } from '@mui/icons-material';
 import { get_request_status } from '../libs/upload';
@@ -91,72 +92,97 @@ function ImportProgressViewer( {uploads} ) {
   )
 }
 
-export function NavDrawer(props) {
-  const { window, pages } = props;
-  const [mobileOpen, setMobileOpen] = React.useState(false);
-  const navigate = useNavigate()
+function LinksMenu( {pages} ) {
   const location = useLocation()
-
-  const uploads = useLiveQuery(() => db.uploads.toArray())
-
-  const path = location.pathname.split("/")[1];
-
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
-
-  const drawer = (<>
-      <Box sx={{height:50, width:"100%"}}></Box>
-      <Toolbar sx={{width:"100%"}}>
-      </Toolbar>
-      <List sx={{width:"100%", m:0, p:0}}>
-        {pages.map(p => (
-          <ListItem key={p.path} disablePadding={true} sx={{backgroundColor: path === p.path ? "primary.light" : null}}>
-            <ListItemButton onClick={() => {navigate(`/${p.path}`)}}>
-              <ListItemIcon sx={{color:'background.default'}}>
-                {p.icon}
-              </ListItemIcon>
-              <ListItemText primaryTypographyProps={{variant:"nav"}} primary={p.label} />
-            </ListItemButton>
-            <Divider />
-
-          </ListItem>
-
-        ))}
-      </List>
-      
-      <Box sx={{position:"absolute", bottom:"0", left:0, width:"100%"}}>
-      {uploads && <ImportProgressViewer uploads={uploads}/>}
-      </Box>
-      </>
-  );
-
-  const container = window !== undefined ? () => window().document.body : undefined;
+  const navigate = useNavigate()
+  const currentPath = location.pathname.split("/")[1]; 
 
   return (
-        <Drawer
-          variant="permanent"
-          PaperProps={{variant:"elevation", elevation:2}}
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': {
-              backgroundColor:"primary.main", 
-              color:"background.default",
-              width: drawerWidth,
-              p:0, m:0
-            },
-          }}
-          open
-        >
-          {drawer}
-        </Drawer>
+    <List sx={{width:"100%", m:0, p:0}}>
+    {pages?.map(p => (
+      <ListItem key={p.path} disablePadding={true} sx={{backgroundColor: currentPath === p.path ? "primary.light" : null}}>
+        <ListItemButton onClick={() => {navigate(`/${p.path}`)}}>
+          <ListItemIcon sx={{color:'background.default'}}>
+            {p.icon}
+          </ListItemIcon>
+          <ListItemText primaryTypographyProps={{variant:"nav"}} primary={p.label} />
+        </ListItemButton>
+        <Divider />
+
+      </ListItem>
+
+    ))}
+  </List>
+  )
+}
+
+function AppBarNav( {openDrawer}) { 
+  return (
+    <Box sx={{p:0, m:0}}>
+      <AppBar sx={{p:0, m:0}}>
+        <Toolbar sx={{p:0}}>
+          <IconButton
+            edge="start"
+            color="inherit"
+            aria-label="menu"
+            sx={{ ml:1, mr: 2 }}
+            onClick={() => openDrawer(true)}
+          >
+            <MenuIcon sx={{color:"primary.contrastText"}}/>
+          </IconButton>
+        </Toolbar>
+      </AppBar>
+    </Box>
   );
 }
 
-NavDrawer.propTypes = {
-  /**
-   * Injected by the documentation to work in an iframe.
-   * You won't need it on your project.
-   */
-  window: PropTypes.func,
-};
+function DrawerNav( {pages, variant, open, setOpen} ) {
+  const uploads = useLiveQuery(() => db.uploads.toArray())
+
+  console.log("drawer", open)
+
+  return (
+      <Drawer
+        variant={variant}
+        anchor="left"
+        // PaperProps={{variant:"elevation", elevation:2}}
+        sx={{
+          display: "block",
+          '& .MuiDrawer-paper': {
+            backgroundColor:"primary.main", 
+            color:"background.default",
+            width: drawerWidth,
+            p:0, m:0
+          },
+        }}
+        open={open}
+        onClose={() => setOpen(false)}
+      >
+        <Box sx={{width:"100%", height:"100px"}} />
+        <LinksMenu pages={pages} />
+        <Box sx={{position:"absolute", bottom:"0", left:0, width:"100%"}}>
+          {uploads && <ImportProgressViewer uploads={uploads}/>}
+        </Box>
+      </Drawer>
+  )
+}
+
+
+export function NavDrawer( {pages, persistant}) {
+  const [drawerOpen, setDrawerOpen] = useState(persistant)
+
+  // useEffect(() => {
+  //   setDrawerOpen(persistant)
+  // },[persistant])
+
+  console.log(persistant, drawerOpen)
+
+  return (<>
+    {!persistant && <AppBarNav openDrawer={setDrawerOpen}/>}
+    <DrawerNav 
+      open={drawerOpen} setOpen={setDrawerOpen} pages={pages} 
+      variant={persistant ? "permanent" : "temporary"}
+    />
+    </>
+  );
+}

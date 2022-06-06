@@ -73,6 +73,7 @@ export function Damage( {damage, setDamage, versatile=false}) {
     }
 
     const updateDamage = (i, field, is_num) => (e) => {
+        console.log("damage", damage, i)
         const newDamage = [...damage]
         if (is_num) {
             newDamage[i][field] = Number(e.target.value)
@@ -89,8 +90,8 @@ export function Damage( {damage, setDamage, versatile=false}) {
                     label={versatile ? "Versatile" : "Damage"}
                     textValue={ed.damage.formula}
                     selectValue={ed.type}
-                    onTextChange={updateDamage("damage",true)}
-                    onSelectChange={updateDamage("type",false)}
+                    onTextChange={updateDamage(i, "damage",true)}
+                    onSelectChange={updateDamage(i, "type",false)}
                     endButton={[<Add />,<Delete />]}
                     onEndButtonClick={[addDamage(i), removeDamage(i)]}
                     options={DAMAGE_TYPES}

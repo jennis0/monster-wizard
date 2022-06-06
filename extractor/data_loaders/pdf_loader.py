@@ -391,7 +391,7 @@ class PDFLoader(DataLoaderInterface):
 			for o in lt._objs:
 				if isinstance(o, LTChar):
 					annotations.append(f"size:{round(o.size)}")
-					if o.size < 6.1:
+					if o.size < 6.1 and (o.bbox[1] < 0.03 or o.bbox[1] > 0.97):
 						skip = True
 					size = o.size
 					break
