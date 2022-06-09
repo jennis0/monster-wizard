@@ -1,33 +1,48 @@
-import { ImageList, ImageListItem, ImageListItemBar, Box, Container } from "@mui/material"
+import { AddPhotoAlternate, Image } from "@mui/icons-material"
+import { ImageList, ImageListItem, ImageListItemBar, Box, Container, Button, Dialog } from "@mui/material"
+import { useState } from "react"
 import B64Image from "../B64Image"
+import { SelectImage, SelectImageFromSource } from "../SelectImage"
 
 
-export default function ImageViewer( { image, imageOptions, allowEdit=false, defaultEdit=false } ) {
+function SelectImageDialog( {startingImage, open, setOpen, setImage} ) {
     return (
-        <Box width="100%">
-        <Container width="100%" alignItems="center">
+        <Dialog open={open} PaperProps={{square:true, sx:{p:2, width:"1200px", maxHeight:"800px"}}}
+            maxWidth={{sm:12, lg:6}} onClose={() => setOpen(false)}
+        >
+            <SelectImageFromSource selectedImage={startingImage} 
+                sourceIds={startingImage && startingImage.source ? [startingImage.source] : []} 
+                setSelectedImage={setImage}
+            />
+        </Dialog>
+    )
+}
+
+export default function ImageViewer( { image, imageOptions, allowEdit=false, defaultEdit=false, setImage=null } ) {
+    const [dialogOpen, setDialogOpen] = useState(false)
+    const [fromSource, setFromSource] = useState(true)
+
+    
+    return (
+        <Box width="100%" sx={{p:1}}>
+        <Container width="80%" sx={{display:"flex", justifyContent:"center"}}>
             {image && <B64Image
                 image_data={image.data}
                 alt={`Image ${image.page}-main`}
-                width="90%"
+                width="80%"
             />}
         </Container>
-        
-            <ImageList sx={{ width: 500, height: 450 }} cols={3} rowHeight={164}>
-            {imageOptions && imageOptions.map((image,i) => (
-                    <ImageListItem key={`image-${image.page}-${i}`}>
-                    <B64Image
-                        image_data={image.data}
-                        alt={`Image ${image.page}-${image.id}`}
-                        width={240}
-                    />
-                    <ImageListItemBar
-                        title={`Page ${image.page}`}
-                    />
-                    </ImageListItem>
-            ))
-            }
-            </ImageList>
+        <Button startIcon={<Image />} onClick={() => setDialogOpen(true)}>
+            Select Image From Source
+        </Button>
+        <Button startIcon={<AddPhotoAlternate />}>
+            Select New Image
+        </Button>
+
+        <SelectImageDialog startingImage={image} fromSource={fromSource} 
+            open={dialogOpen} setOpen={setDialogOpen} 
+            setImage={setImage}
+        />
         </Box>
     )
 }

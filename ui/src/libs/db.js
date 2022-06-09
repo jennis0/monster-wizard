@@ -5,12 +5,13 @@ import { useLiveQuery } from 'dexie-react-hooks'
 
 
 export const db = new Dexie('pdf2vtt');
-db.version(1).stores({
+db.version(2).stores({
   sources: '++id, title, type, author, pages, file, upload, version, status, errors, frontpage',
   statblocks: '++id, source, original_data, modified_data, image',
   images: "++id, source, page, reference, data, bound",
   pdfs: "++id, source, title, file",
-  uploads: "++id, title, time, status, progress, file_progress, errors, raw, store_images, source, request_id"
+  uploads: "++id, title, time, status, progress, file_progress, errors, raw, store_images, source, request_id",
+  collections: "++id, title, description, statblocks, image, searches"
 });
 
 export function useSource(id) {
@@ -78,5 +79,17 @@ export async function updateUpload(upload, update) {
 
 export async function deleteUpload(upload) {
   return await db.uploads.delete(upload)
+}
+
+export async function addCollection(title, description, image=null, statblocks=[], searches=[]) {
+  return await db.collections.add({title:title, description:description, image:image, statblocks:statblocks, searches:searches})
+}
+
+export async function updateCollection(id, update) {
+  return await db.collections.update(id, update)
+}
+
+export async function deleteCollection(id) {
+  return await db.collections.delete(id)
 }
 

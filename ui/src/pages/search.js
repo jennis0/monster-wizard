@@ -40,22 +40,6 @@ export default function SearchPage() {
     const sources = useLiveQuery(() => db.sources.toArray())
 
     return (
-        // <Grid container sx={{width:"100%"}}>
-        //     <Grid item xs={2} />
-        //     <Grid item xs={8}>     
-        //     <Paper variant="elevation" sx={{p:2, mt:1, mb:0, backgroundColor:"primary.light", color:"primary.contrastText"}} square>
-        //         <Typography variant="nav" fontSize={30}>Search</Typography>
-        //         <Box sx={{m:0, p:0, width:"100%", justifyContent:"center",
-        //                 display:"flex", flexGrow:1, flex:1, backgroundColor:"primary.light"}}>
-        //         </Box>
-        //     </Paper>
-
-        //     <Paper variant="elevation" square
-        //             sx={{width:"100%", height:"90vh", p:0, m:0}}>
-        //     </Paper>   
-        //     </Grid>
-        //     <Grid item xs={2} />
-        // </Grid>
         <CenteredContent
             title="Search"
             subheader={<SearchSubheader setResults={setResults} source={sources} />}

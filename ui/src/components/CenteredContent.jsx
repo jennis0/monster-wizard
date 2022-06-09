@@ -3,7 +3,7 @@ import { Typography, Box, Paper, Stack, Grid } from '@mui/material'
 import { useEffect, useRef, useState } from 'react'
 
 
-export default function CenteredContent( {title, subheader, body}) {
+export default function CenteredContent( {title, subheader, headerbutton=null, body}) {
     const headerRef = useRef()
     const boxRef = useRef()
     const [bodyHeight, setBodyHeight] = useState(0)
@@ -22,7 +22,10 @@ export default function CenteredContent( {title, subheader, body}) {
                 <Box sx={{m:0, ml:0, mr:0, pt:{lg:0, xl:2}, width:"100%", height:"100vh"}} ref={boxRef}>
                     <Paper sx={{p:2, width:"100%", backgroundColor:"primary.light"}} square elevation={3} ref={headerRef}>
                         <Stack spacing={1}>
-                            <Typography variant="nav" fontSize={30} color="primary.contrastText">{title}</Typography>
+                            <Box sx={{justifyContent:"space-between", display:"flex", flexDirection:"row"}}>
+                                <Typography variant="nav" fontSize={30} color="primary.contrastText">{title}</Typography>
+                                {headerbutton}
+                            </Box>
                             {subheader}
                         </Stack>
                     </Paper>

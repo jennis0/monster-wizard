@@ -1,34 +1,53 @@
-import React from 'react'
-import { Grid, ImageListItem, ImageListItemBar, IconButton, Container, Paper, Box, Typography } from "@mui/material"
+import React, { useEffect, useRef, useState } from 'react'
+import { Grid, ImageListItem, ImageListItemBar, IconButton, Container, Paper, Box, Typography, Divider, Dialog, Button } from "@mui/material"
 import InfoIcon from '@mui/icons-material/Info';
 
 import { useQuery, db, deleteSource } from '../libs/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useNavigate } from 'react-router-dom';
-import { Delete } from '@mui/icons-material';
+import { Add, Delete } from '@mui/icons-material';
 import B64Image from '../components/B64Image';
 import CenteredContent from '../components/CenteredContent';
 import { StyledCheckbox, StyledTextField } from '../components/FormFields';
 
+import _ from 'lodash'
+import SourceItem from '../components/SourceItem';
+import CreateSource from '../components/CreateSource';
+import ImageGridItem from '../components/ImageGridItem';
+
 
 function SourceListHeader( {setSources} ) {
+  const [searchTerm, setSearchTerm] = useState("")
+  const [group, setGroup] = useState(true)
+
+  const sources = useLiveQuery( () => db.sources.filter(s => s.title.toLowerCase().indexOf(searchTerm) >= 0).toArray(), [searchTerm])
+  
+  console.log(searchTerm)
+
+  useEffect(() => {
+    sources?.sort((s1, s2) => s1.title > s2.title)
+    if (group) {
+      setSources(_.groupBy(sources, (s=>s.author)))
+    } else {
+      setSources({"":sources})
+    }
+  },[sources, group])
+
   return (
     <Grid container spacing={1}>
       <Grid item xs={12} md={6}>
-        <StyledTextField label="Search" value=""/>
+        <StyledTextField label="Search" value="" onChange={(e) => setSearchTerm(e.target.value)}/>
       </Grid> 
-      <Grid item xs={6} md={3}>
-        <StyledCheckbox label="Group by author" long/>
+      <Grid item width="auto">
+        <StyledCheckbox checked={group} label="Group by author" long onCheckChange={() => setGroup(!group)}/>
       </Grid>     
     </Grid>
   )
 }
 
-
-function SourceListBody() {
+function SourceListBody( {sources} ) {
   const navigate = useNavigate()
   const images = useLiveQuery( () => db.images.where("page").equals(0).toArray() )
-  const sources = useLiveQuery( () => db.sources.toArray() )
 
   const onClick = (id) => () => {
     navigate(`/sources/${id}`)
@@ -38,61 +57,68 @@ function SourceListBody() {
     deleteSource(id)
   }
 
+  const authors = sources ? Object.keys(sources) : []
+  authors.sort()
+
   return (
     <Grid container spacing={2} sx={{p:2}}>
-      {sources?.map((source) => {
-        return (
-          <Grid item xs={12} sm={6} md={6} lg={4} xl={3} >
-            <Paper square elevation={0} sx={{textAlign:"center"}}>
-              <ImageListItem key={source.id} cols={1} onClick={onClick(source.id)}
-                sx={{ width:"290px", alignItems:"center", p:0, filter:"grayscale(15%)", "&:hover": {
-                  filter:"grayscale(0%) contrast(125%)"},
-                  }
-                }
-              >
-                {images && images.length && source.frontpage > 0 ? 
-                  <B64Image 
-                    image_data={images.filter(i => i.source === source.id)[0]?.data}
-                    alt={source.frontpage}
-                    width="100%"
-                    height="400px"
-                    style={{alignItems:"center", overflowY:"clip"}}
-                  /> : <></>}
-                <ImageListItemBar
-                  title={(<Typography variant="nav" sx={{fontSize:20}}>{source.title}</Typography>)}
-                  subtitle={(<Typography variant="nav"><i>{source.author}</i></Typography>)}
-                  actionIcon={
-                    <IconButton
-                      sx={{ color: 'rgba(255, 255, 255, 0.54)' }}
-                      aria-label={`info about ${source.title}`}
-                      onClick={e => {onDelete(source.id)(); e.stopPropagation(); e.preventDefault()}}
-                    >
-                      <Delete />
-                    </IconButton>
-                  }
-                  sx={{backgroundColor:"primary.dark", height:70, opacity:0.8}}
-                />
-              </ImageListItem>
-            </Paper>
+
+      {authors?.map((s) => {
+        const author_sources = sources[s]
+        return (<>
+          {s !== "" && <>
+          <Grid item xs={12}>
+            <Typography variant="nav" fontSize={24} color="primary">{s}</Typography>
+            <Divider sx={{mb:0, pb:0, mt:0.}}/>
           </Grid>
-        )
-      })}      
+          </>}
+          {author_sources.map((source,i) => 
+          { 
+              let image = images.filter(i => i.id === source.frontpage);
+              if (image.length === 1) {
+                image = image[0]
+              } else {
+                image = null
+              }
+            return (
+              <ImageGridItem key={`source-item-${s}-${i}`} image={image} onClick={onClick(source.id)}
+                height="100%" width="100%" text={source.title} subText={source.author}
+                onDelete={onDelete(source.id)} 
+              />
+            )
+          }
+           )} </>)
+      })}     
     </Grid>
+  )
+}
+
+function CreateSourceButton() {
+  const [dialogOpen, setDialogOpen] = useState(false)
+  return (<>
+
+      <Dialog open={dialogOpen} PaperProps={{square:true, sx:{p:2}}}>
+        <CreateSource onClose={() => setDialogOpen(false)} onCreate={() => setDialogOpen(false)} />
+      </Dialog>
+      <Button startIcon={<Add />} onClick={() => setDialogOpen(true)} 
+        sx={{color:"primary.contrastText"}} variant="contained"
+      >
+        New Source
+      </Button>
+      </>
   )
 }
 
 export default function SourceListPage () {
 
-
-
-
-  const mw = 310 * 4
+  const [sources, setSources] = useState(null)
 
   return (
       <CenteredContent
         title="Sources"
-        subheader={<SourceListHeader />}
-        body={<SourceListBody />}
+        subheader={<SourceListHeader setSources={setSources} />}
+        body={<SourceListBody sources={sources}/>}
+        headerbutton={<CreateSourceButton />}
       />
   )
 }

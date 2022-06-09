@@ -33,10 +33,11 @@ function App() {
 
   return (
     <CssBaseline>
+      <Box sx={{overflow:"hidden"}}>
         <Stack direction={persistantNav ? "column" : "row"}>
           <NavDrawer pages={ROUTES} persistant={persistantNav}/>
-          <Box sx={{width:"100%", p:0, overflowY:"hidden", 
-            paddingLeft:persistantNav ? "240px" : null, marginTop:{xs:"50px", sm:"64px", md:"0px"}
+          <Box sx={{width:"100%", p:0, overflowY:"clip", 
+            paddingLeft:persistantNav ? "240px" : null, paddingTop:{xs:"50px", sm:"64px", md:"0px"}
           }}>
                 <Routes>
                   <Route path={"/sources/:id"} element={<SourcePage />}/>
@@ -46,7 +47,7 @@ function App() {
                 </Routes>
           </Box>
         </Stack>
- 
+      </Box>
       </CssBaseline>
   );
 }

@@ -1,49 +1,20 @@
 import { Add, ExpandLess, ExpandMore } from "@mui/icons-material";
-import { Button, Dialog, DialogActions, DialogContent, Grid, Paper, Typography, Stack, Box } from "@mui/material";
+import { Button, Dialog,  Grid, Typography, Box } from "@mui/material";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CenteredContent from "../components/CenteredContent";
-import { StyledDropdown, StyledTextField } from "../components/FormFields";
+import CreateSource from "../components/CreateSource";
+import { StyledDropdown } from "../components/FormFields";
 import StatblockList from "../components/StatblockList";
-import StatblockResultList from "../components/StatblockResultList";
 import { cloneStatblock, createStatblock } from "../libs/create";
-import { addSource, db } from "../libs/db";
-import { useStatblockSearch } from "../libs/search";
+import { db } from "../libs/db";
 
 
-function NewSourceDialog( {open, setOpen, setSource} ) {
-    const [title, setTitle] = useState("")
-    const [author, setAuthor] = useState("")
-    const [image, setImage] = useState("")
-
-    const createSource = () => {
-        addSource(title, author, 0, null, null, null, "finished", [], null)
-            .then(setSource(title))
-        setOpen(false)
-    }
-
+function CreateSourceDialog( {open, setOpen, setSource} ) {
     return (
-        <Dialog open={open} PaperProps={{square:true, sx:{p:0}}}>
-            <DialogContent>
-            <Grid container spacing={1}>
-                <Grid item xs={12}>
-                    <Typography variant="nav">Create New Source</Typography>
-                </Grid>
-                <Grid item xs={12}>
-                    <StyledTextField label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-                </Grid>
-                <Grid item xs={12}>
-                    <StyledTextField label="Author" value={author} onChange={(e) => setAuthor(e.target.value)} />
-                </Grid>
-            </Grid>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={() => setOpen(false)}>Cancel</Button>
-                <Button 
-                    disabled={title === "" || author === ""}
-                    onClick={createSource}>Create</Button>
-            </DialogActions>
+        <Dialog open={open} PaperProps={{square:true, sx:{p:1}}}>
+            <CreateSource onClose={() => setOpen(false)} onCreate={(s) => setSource(s.title)} />
         </Dialog>
     )
 }
@@ -72,7 +43,7 @@ function CreateBody () {
     console.log(usedStatblocks)
 
     return (<>
-        <NewSourceDialog open={newSourceOpen} setOpen={setNewSourceOpen} setSource={setSelectedSource}/>
+        <CreateSourceDialog open={newSourceOpen} setOpen={setNewSourceOpen} setSource={setSelectedSource}/>
         <Grid container spacing={1}>
         <Grid item xs={12}>
         <Typography variant="nav">Set Source</Typography>

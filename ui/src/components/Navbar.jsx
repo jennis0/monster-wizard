@@ -158,7 +158,12 @@ function DrawerNav( {pages, variant, open, setOpen} ) {
         open={open}
         onClose={() => setOpen(false)}
       >
-        <Box sx={{width:"100%", height:"100px"}} />
+        <Box sx={{width:"100%", height:"100px", p:3}}>
+          {/* <Stack direction="row" alignItems="center" spacing={2}>
+            <img src="/icons/logo-transparent.png" height="60px" />
+            <Typography color="secondary" variant="nav" fontSize={30}>INDEX</Typography>
+          </Stack> */}
+        </Box>
         <LinksMenu pages={pages} />
         <Box sx={{position:"absolute", bottom:"0", left:0, width:"100%"}}>
           {uploads && <ImportProgressViewer uploads={uploads}/>}
@@ -169,7 +174,7 @@ function DrawerNav( {pages, variant, open, setOpen} ) {
 
 
 export function NavDrawer( {pages, persistant}) {
-  const [drawerOpen, setDrawerOpen] = useState(persistant)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
   // useEffect(() => {
   //   setDrawerOpen(persistant)

@@ -11,11 +11,19 @@ const FORMATS = {
     "fvtt":{accept:".json"}
 }
 
+function UploadBody() {
+    return (
+        <Box sx={{p:2}} >
+            <SourceForm />
+        </Box>
+    )
+}
+
 export default function UploadPage () {
     return (
         <CenteredContent
             title="Import"
-            body={<SourceForm />}
+            body={<UploadBody />}
         />
     )
 }

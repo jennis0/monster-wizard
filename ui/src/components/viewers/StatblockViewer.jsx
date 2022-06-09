@@ -21,6 +21,7 @@ import ChallengeField from '../statblock/ChallengeField.jsx';
 import { LockOpen } from '@mui/icons-material';
 import { deleteStatblock, updateStatblock } from '../../libs/db.js';
 import StatblockTitle from '../statblock/StatblockTitle.jsx';
+import { addStatblockToCollection } from '../../libs/collections.js';
 
 function DeleteStatblockDialog( {statblockId, statblock, open, setOpen} ) {
 
@@ -45,12 +46,12 @@ function DeleteStatblockDialog( {statblockId, statblock, open, setOpen} ) {
   )
 }
 
-function StatblockControlButtons( {statblock, editable, allowEdit, setEditable, edited, 
+function StatblockControlButtons( {id, statblock, editable, allowEdit, setEditable, edited, 
     setEdited, setDeleteDialogOpen, setStatblockWithoutEdit, save} ) {
   return (
     <Stack direction="row" alignItems="center">
     {statblock && <Tooltip title="Add to Collection">
-      <IconButton>
+      <IconButton onClick={() => addStatblockToCollection(6, id) }>
         <AddToPhotos sx={{fontSize:30, color:"primary.light"}}/>
       </IconButton>
     </Tooltip>}
@@ -175,6 +176,7 @@ function StatblockViewer( { statblockId, statblock, style, allowEdit=false, defa
                   {/* <HighlightText sx={{m:0}} onChange={console.log("change")} color="primary.main" editable={editable} variant="statblockTitle" suppressContentEditableWarning={editable} contentEditable={editable}>{statblock?.name}</HighlightText>  */}
                   <StatblockTitle statblock={sb} editable={editable} setStatblock={setStatblock}/>
                   <StatblockControlButtons 
+                    id={statblockId}
                     statblock={statblock}
                     editable={editable}
                     allowEdit={allowEdit}

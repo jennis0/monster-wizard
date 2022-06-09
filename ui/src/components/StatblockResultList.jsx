@@ -71,7 +71,7 @@ export default function StatblockResultList( { title, sources, statblocks, selec
       <Pagination 
         count={Math.ceil(statblocks? statblocks.length /perPage : 1)} 
         page={page} 
-        sx={{mt:2, position:"relative", left:0, marginLeft:"auto", marginRight:"auto", width:"450px", marginTop:4, marginBottom:4}} 
+        sx={{mt:2, position:"relative", left:0, marginLeft:"auto", marginRight:"auto", width:"400px", marginTop:4, marginBottom:4}} 
         onChange={onSetPage}
         size="large"
         variant="text"
