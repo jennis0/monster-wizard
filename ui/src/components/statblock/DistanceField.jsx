@@ -11,8 +11,12 @@ export default function DistanceField( { statblock, setStatblock, title, editabl
 
     const addEntry = () => {
       setStatblock(s => {
-        const val = s[title];
-        val.push(default_option)
+        let val = s[title];
+        if (!val) {
+          val = [default_option]
+        } else {
+          val.push(default_option)
+        }
         const newS = {...s}
         newS[title] = val;
         return newS
@@ -63,9 +67,7 @@ export default function DistanceField( { statblock, setStatblock, title, editabl
                 </Grid>
               </EditBlock>) 
           ):
-          <>
-          <EditBlock title={singular} onAdd={addEntry} onDelete={null} first={true}>Test</EditBlock>
-          </>
+          <EditBlock title={singular} onAdd={addEntry} onDelete={null} first={true} />
           }
       </PoppableField>
       

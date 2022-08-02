@@ -1,12 +1,10 @@
 import configparser
 import io
 import logging
-from optparse import Option
 import os
 import traceback
 import base64
 from uuid import uuid4
-from matplotlib import pyplot as plt
 from tqdm import tqdm
 
 from pdfminer.pdfparser import PDFParser
@@ -16,10 +14,9 @@ from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter, resolve1
 from pdfminer.pdfpage import PDFTextExtractionNotAllowed
 from pdfminer.layout import LAParams, LTTextBox, LTTextLine, LTChar, LTImage, LTFigure
 from pdfminer.converter import PDFPageAggregator
-from pdfminer.image import ImageWriter
 from pdfminer.pdffont import PDFCIDFont, PDFUnicodeNotDefined, PDFTrueTypeFont
 
-from PIL import Image, ImageCms
+from PIL import Image
 
 from pdf2image import convert_from_bytes
 
@@ -186,8 +183,7 @@ def override_render_char(self, matrix, font, fontsize, scaling, rise, cid, ncs=N
 
 		item = LTChar(matrix, font, fontsize, scaling, rise, text, textwidth,
 					  textdisp, ncs, graphicstate)
-		# item = LTChar(matrix, font, fontsize, scaling, rise, text, textwidth,
-		# 			  textdisp)
+
 		self.cur_item.add(item)
 
 		return item.adv
@@ -370,6 +366,31 @@ class PDFLoader(DataLoaderInterface):
 		return Bound(bbox[0] / x_size, (y_size - bbox[3]) / y_size, 
 						min(1., (bbox[2] - bbox[0]) / x_size), min(1.,(bbox[3] - bbox[1])/y_size))
 
+	def __chars_to_spans(self, ltchars):
+		if len(ltchars) < 1 : 
+			return []
+
+		spans = [ltchars[0].get_text()]
+		current_span = []
+		current_font = ltchars[0].font
+		current_size = ltchars[0].size
+
+		written = False
+		for c in ltchars[1:]:
+			if current_font == c.font and current_size == c.size:
+				current_span.append(c.get_text())
+				written=False
+			else:
+				spans.append({"font":current_font, "size":current_size, "text":current_span})
+				current_font = c.font
+				current_size = c.size
+				current_span = []
+				written = True
+		if not written:
+			spans.append({"font":current_font, "size":current_size, "text":current_span})
+		return spans
+			
+
 	def __layout_to_line(self, line_id: str, lt: Union[LTTextBox, LTTextLine], x_size: int, y_size: int, page:int) -> List[Line]:
 		'''Split TextBoxes into TextLines'''
 		lines = []
@@ -377,8 +398,9 @@ class PDFLoader(DataLoaderInterface):
 			for obj in lt._objs:
 				self.logger.debug("\t {} - {}".format(obj, type(obj)))
 				if isinstance(obj, LTTextLine):
-					lines += self.__layout_to_line(line_id, obj, x_size, y_size, page)
-					line_id += 1
+					spans += self._chars_to_spans([c for c in obj._objs if isinstance(c, LTChar)])
+					# lines += self.__layout_to_line(line_id, obj, x_size, y_size, page)
+					# line_id += 1
 					
 		elif isinstance(lt, LTTextLine):
 			bound = self.__bbox_to_bound(lt.bbox, x_size, y_size)

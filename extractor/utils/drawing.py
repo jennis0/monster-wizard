@@ -1,4 +1,4 @@
-from utils.datatypes import Section, Line
+from ..utils.datatypes import Section, Line
 from typing import Union, List
 
 import matplotlib.pyplot as plt

@@ -282,7 +282,7 @@ export function StyledTextAndOptField(props) {
             <LazyTextField
                 variant="standard"
                 value={props.textValue}
-                onChange={props.onChange}
+                onChange={props.onTextChange}
                 InputProps={{disableUnderline:true, style:{height:"32px",borderRadius:0, textAlign:"center"}, type:props.number ? "number":null}}
                 inputProps={{style:{alignSelf:"center", fontFamily:"Scaly Sans", fontSize:17, textAlign:"center"}}}
                 margin="dense"

@@ -138,7 +138,8 @@ function format_vulnerabilities(monster) {
 }
 
 function format_senses(monster) {
-    const senses = monster?.senses ? monster.senses.map(s => {
+    const senses = monster?.senses !== undefined && monster?.senses != null ? monster.senses.map(s => {
+        console.log(monster.senses)
         return `${s.type} ${s.distance}${s.measure}`
     }) : [];
     if (monster?.passive) {

@@ -119,8 +119,7 @@ function StatblockViewer( { statblockId, statblock, style, allowEdit=false, defa
     })
   }
 
-  const setStatblock = (sb, test) => {
-    console.log("setting statblock")
+  const setStatblock = (sb) => {
     setEdited(true)
     setStatblockWithoutEdit(sb)
   }
@@ -199,7 +198,7 @@ function StatblockViewer( { statblockId, statblock, style, allowEdit=false, defa
           <DistanceField editable={editable} statblock={sb} setStatblock={setStatblock} title="speed" 
                           text="Speed" singular="Speed" fmt_func={fmt.format_speed} default_option={{type:"walk", distance:"30", measure:"ft"}}
                           min_items={1}
-                          options={MOVEMENT_TYPES} default_options={{type:"walk",distance:"30",measure:"ft"}} resetFunc={resetFunc("speed")} />
+                          options={MOVEMENT_TYPES} default_option={{type:"walk",distance:"30",measure:"ft"}} resetFunc={resetFunc("speed")} />
           <Divider  sx={{marginTop:1}}/>
           <AttrTable editable={editable} statblock={sb} setStatblock={setStatblock} resetFunc={resetFunc("abilities")}/>
           <Divider  sx={{marginBottom:1}}/>
@@ -218,7 +217,7 @@ function StatblockViewer( { statblockId, statblock, style, allowEdit=false, defa
                         fmt_func={fmt.format_vulnerabilities} editable={editable} resetFunc={resetFunc} />
           <DistanceField statblock={sb} setStatblock={setStatblock} title="senses" 
                           text="Senses" fmt_func={fmt.format_senses} singular="Sense"
-                          options={SENSES} default_options={{type:"darkvision",distance:"60",measure:"ft"}} editable={editable} resetFunc={resetFunc("senses")}/>
+                          options={SENSES} default_option={{type:"darkvision",distance:"60",measure:"ft"}} editable={editable} resetFunc={resetFunc("senses")}/>
           <LanguagesField statblock={sb} setStatblock={setStatblock} editable={editable} resetFunc={resetFunc("languages")}/>
           <ChallengeField statblock={sb} setStatblock={setStatblock} editable={editable} resetFunc={resetFunc("cr")}/>
           <div style={{marginTop:10}} />

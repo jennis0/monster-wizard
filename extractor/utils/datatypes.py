@@ -350,3 +350,46 @@ class Section:
             sort_order=Section.SortOrder(object["sort"]),
             page=object["page"]
         )
+
+
+
+@dataclasses.dataclass
+class Line2:
+    '''Container class storing one or more lines of text alongside their attribues and bounding box'''
+    id: str
+    spans: List[Dict[str, str]]
+    bound: Bound
+    page: int
+    attributes: List[str]
+
+    def __init__(self, spans: List[Dict[str, str]], bound: Bound, page: int, attributes: List[str], id:str):
+        self.id = uuid4().hex if not id else id
+        self.spans = spans
+        self.bound = bound
+        self.page = page
+        self.attributes = attributes
+
+    @staticmethod
+    def merge(lines: List[Line], join_char=" ") -> Line:
+        text = join_char.join(l.text for l in lines)
+        bound = Bound.merge(l.bound for l in lines)
+        attrib = []
+        # Sort lines
+        lines.sort(key=lambda l: l.bound.left)
+
+        for l in lines:
+            attrib += l.attributes
+        return Line(id = lines[0].id, text=text, bound=bound, page=lines[0].page, attributes=attrib)
+
+    @staticmethod
+    def deserialise(object: Dict[str, Any]) -> Line:
+        return Line(
+            id=object["id"], 
+            text=object["text"], 
+            bound=Bound.deserialise(object["bound"]), 
+            page=object["page"], 
+            attributes=object["attributes"]
+        )
+
+    def serialise(self) -> List[Any]:
+        return {"id":self.id, "text":self.text, "bound":self.bound.serialise(), "page":self.page, "attributes":self.attributes}
